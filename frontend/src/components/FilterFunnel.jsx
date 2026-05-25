@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 
 const fmt = (n) => n.toLocaleString('de-DE');
 
@@ -6,7 +7,7 @@ const COL = {
   source: '#3f3f46', // zinc-700
   exit: '#7c3a05', // amber-900-ish
   target: '#f5a623',
-  divider: '#52525b', // zinc-600/700
+  divider: '#52525b',
 };
 
 // Measure the wrapper width so the SVG is drawn in real pixel coordinates:
@@ -35,8 +36,17 @@ function curve(x1, y1, x2, y2) {
 // Sankey-style flow: full library bar on the left, the main amber stream narrows
 // at each active-filter gate, and the rejected slice bleeds off downward into a
 // dark exit terminal. Tap a gate → adjust it; tap an exit → confirm + remove it.
+// Hover / long-press surfaces a tooltip with the filter's active value.
 export default function FilterFunnel({ stages, total, onOpenStage, onResetStage }) {
   const [wrapRef, width] = useWidth();
+  const [tip, setTip] = useState(null); // { x, stage, kind }
+  const [legendOpen, setLegendOpen] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches,
+  );
+  const hideTimer = useRef(null);
+  const pressTimer = useRef(null);
+  const suppressRef = useRef(false);
+
   if (!stages.length) return null;
 
   const W = width || 600;
@@ -79,9 +89,35 @@ export default function FilterFunnel({ stages, total, onOpenStage, onResetStage 
 
   const targetH = Math.max(h(finalCount), W < 420 ? 52 : 60);
 
+  // --- tooltip + tap/long-press interaction ---
+  const showTip = (stage, i, kind) => {
+    if (hideTimer.current) { clearTimeout(hideTimer.current); hideTimer.current = null; }
+    setTip({ x: gateX[i], stage, kind });
+  };
+  const hideSoon = () => { hideTimer.current = setTimeout(() => setTip(null), 120); };
+  const startPress = (stage, i, kind) => {
+    suppressRef.current = false;
+    pressTimer.current = setTimeout(() => { suppressRef.current = true; showTip(stage, i, kind); }, 600);
+  };
+  const endPress = () => {
+    if (pressTimer.current) { clearTimeout(pressTimer.current); pressTimer.current = null; }
+    hideSoon();
+  };
+  const hover = (stage, i, kind) => ({
+    onMouseEnter: () => showTip(stage, i, kind),
+    onMouseLeave: hideSoon,
+    onTouchStart: () => startPress(stage, i, kind),
+    onTouchEnd: endPress,
+  });
+  // A long-press (which opened the tooltip) must not also fire the tap action.
+  const guarded = (fn) => () => { if (!suppressRef.current) fn(); };
+  const confirmReset = (s) => { if (window.confirm(`Filter ${s.label} entfernen?`)) onResetStage(s.id); };
+
+  const tipX = tip ? Math.min(Math.max(tip.x, 72), W - 72) : 0;
+
   return (
-    <div className="mb-4 rounded-2xl bg-zinc-900/60 p-2 sm:p-3">
-      <div ref={wrapRef} className="relative w-full max-w-full overflow-hidden">
+    <div className="relative mb-4 rounded-2xl bg-zinc-900/60 px-2 py-2 sm:px-3 sm:py-3">
+      <div ref={wrapRef} className="relative w-full">
         {width > 0 && (
           <>
             <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" className="block">
@@ -117,9 +153,6 @@ export default function FilterFunnel({ stages, total, onOpenStage, onResetStage 
                   `C ${x0} ${m1}, ${tl} ${m1}, ${tl} ${termTop} ` +
                   `L ${tr} ${termTop} ` +
                   `C ${tr} ${m2}, ${x0} ${m2}, ${x0} ${yIn} Z`;
-                const reset = () => {
-                  if (window.confirm(`Filter ${s.label} entfernen?`)) onResetStage(s.id);
-                };
                 return (
                   <g key={s.id}>
                     <line x1={x0} y1={yTop} x2={x0} y2={baseY} stroke={COL.divider} strokeWidth="1" strokeDasharray="3 3" pointerEvents="none" />
@@ -132,7 +165,8 @@ export default function FilterFunnel({ stages, total, onOpenStage, onResetStage 
                           tabIndex={0}
                           role="button"
                           aria-label={`Filter ${s.label} entfernen, ${fmt(delta)} herausgefiltert`}
-                          onClick={reset}
+                          onClick={guarded(() => confirmReset(s))}
+                          {...hover(s, i, 'exit')}
                           className="cursor-pointer outline-none transition-[filter] hover:brightness-150 focus-visible:brightness-150"
                         />
                         <rect x={tl} y={termTop} width={TW} height={TERM_H} rx="3" fill="#1c1917" stroke={COL.exit} strokeWidth="1" pointerEvents="none" />
@@ -149,7 +183,8 @@ export default function FilterFunnel({ stages, total, onOpenStage, onResetStage 
                       tabIndex={0}
                       role="button"
                       aria-label={`Filter ${s.label} anpassen`}
-                      onClick={() => onOpenStage(s.drawer_target)}
+                      onClick={guarded(() => onOpenStage(s.drawer_target))}
+                      {...hover(s, i, 'gate')}
                       className="cursor-pointer outline-none"
                     />
                   </g>
@@ -172,7 +207,8 @@ export default function FilterFunnel({ stages, total, onOpenStage, onResetStage 
                   <button
                     key={s.id}
                     type="button"
-                    onClick={() => onOpenStage(s.drawer_target)}
+                    onClick={guarded(() => onOpenStage(s.drawer_target))}
+                    {...hover(s, i, 'gate')}
                     className="absolute -translate-x-1/2 pointer-events-auto flex items-center gap-1 text-[11px] text-zinc-300 tabular-nums whitespace-nowrap transition-colors hover:text-amber-300"
                     style={{ left: gateX[i], top: 4 }}
                   >
@@ -191,7 +227,8 @@ export default function FilterFunnel({ stages, total, onOpenStage, onResetStage 
                   <button
                     key={s.id}
                     type="button"
-                    onClick={() => { if (window.confirm(`Filter ${s.label} entfernen?`)) onResetStage(s.id); }}
+                    onClick={guarded(() => confirmReset(s))}
+                    {...hover(s, i, 'exit')}
                     className={`absolute -translate-x-1/2 pointer-events-auto flex items-center gap-1 text-[10px] sm:text-[11px] text-zinc-400 whitespace-nowrap transition-colors hover:text-amber-300 ${hideSmall}`}
                     style={{ left: gateX[i] + 6, top: termTop + TERM_H + 3 }}
                   >
@@ -209,8 +246,60 @@ export default function FilterFunnel({ stages, total, onOpenStage, onResetStage 
                 <span className="text-2xl font-extrabold leading-none tabular-nums" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.35)' }}>{fmt(finalCount)}</span>
                 <span className="text-[10px] font-bold uppercase tracking-wider mt-0.5">Treffer</span>
               </div>
+
+              {/* Tooltip */}
+              {tip && (
+                <div
+                  className="absolute z-20 -translate-x-1/2 -translate-y-full pointer-events-none"
+                  style={{ left: tipX, top: yTop - 10 }}
+                >
+                  <div className="relative max-w-[240px] rounded-xl bg-zinc-900/95 backdrop-blur-md ring-1 ring-zinc-800 shadow-xl p-3">
+                    <div className="text-xs font-semibold text-zinc-100">
+                      {tip.stage.label} · <span className="text-amber-400">{tip.stage.summary}</span>
+                    </div>
+                    <div className="text-[11px] text-zinc-400 tabular-nums whitespace-nowrap mt-0.5">
+                      {fmt(tip.stage.count_in)} → {fmt(tip.stage.count_out)} Filme
+                    </div>
+                    <div className="text-[10px] text-zinc-500 mt-1 whitespace-nowrap">
+                      {tip.kind === 'exit' ? 'Tippen zum Entfernen' : 'Tippen zum Anpassen'}
+                    </div>
+                    <div
+                      className="absolute left-1/2 top-full -translate-x-1/2 w-0 h-0"
+                      style={{ borderLeft: '6px solid transparent', borderRight: '6px solid transparent', borderTop: '6px solid rgba(24,24,27,0.95)' }}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           </>
+        )}
+      </div>
+
+      {/* Legend (toggleable; open on desktop, collapsed on tablet) */}
+      <div className="mt-1.5 px-1">
+        <button
+          type="button"
+          onClick={() => setLegendOpen((o) => !o)}
+          className="flex items-center gap-1 text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors"
+        >
+          {legendOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />} Legende
+        </button>
+        {legendOpen && (
+          <div className="mt-1.5 space-y-1 text-[11px] text-zinc-400">
+            <div className="flex items-center gap-4 flex-wrap">
+              <span className="flex items-center gap-1.5">
+                <span className="inline-block w-3 h-3 rounded-sm" style={{ background: 'linear-gradient(90deg,#f5a623,#ffaf3a)' }} />
+                Hauptstrom (Treffer)
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="inline-block w-3 h-3 rounded-sm" style={{ background: COL.exit, opacity: 0.5 }} />
+                Herausgefiltert
+              </span>
+            </div>
+            <p className="text-zinc-500">
+              Tipp: Tippe einen Filter um ihn anzupassen, eine Ausstromfahne um ihn zu entfernen.
+            </p>
+          </div>
         )}
       </div>
     </div>
