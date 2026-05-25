@@ -23,7 +23,7 @@ def get_library():
         try:
             library_cache.refresh(plex_client, settings_store)
             movies = library_cache.movies()
-            library_cache.start_cast_enrichment(plex_client, settings_store)
+            library_cache.start_enrichment(plex_client, settings_store)
         except Exception as exc:  # noqa: BLE001
             logger.warning("Auto-refresh on empty library failed: %s", exc)
     return jsonify(
@@ -45,7 +45,7 @@ def library_status():
 def refresh_library():
     try:
         result = library_cache.refresh(plex_client, settings_store)
-        library_cache.start_cast_enrichment(plex_client, settings_store)
+        library_cache.start_enrichment(plex_client, settings_store)
         return jsonify({"ok": True, **result})
     except ValueError as exc:
         return jsonify({"ok": False, "error": str(exc)}), 400

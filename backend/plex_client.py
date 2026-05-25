@@ -84,38 +84,51 @@ class PlexClient:
         logger.info("Fetched %d movies from Plex", len(movies))
         return movies
 
-    def fetch_actors(
-        self, server: PlexServer, rating_key: str, limit: int = 5
-    ) -> tuple[List[Dict[str, Any]], Dict[str, str]]:
-        """Return ``(actors, thumb_map)`` for one movie — the top ``limit`` lead roles
-        in Plex order (first = most prominent). ``thumb_map`` maps actor key → raw
-        Plex thumb path/URL for the actor-thumb proxy to resolve later."""
+    def fetch_enrichment(
+        self, server: PlexServer, rating_key: str, actor_limit: int = 5, crew_limit: int = 2
+    ) -> Optional[Dict[str, Any]]:
+        """One ``fetchItem`` per movie → top cast + crew/studio/country/tagline/
+        collections. Returns ``{actors, meta, thumbs}`` (thumbs maps person key →
+        raw Plex thumb for the thumb proxy), or ``None`` if the item can't be loaded."""
         try:
             item = server.fetchItem(int(rating_key))
-        except Exception:  # noqa: BLE001 — a missing/oddball item just yields no cast
-            return [], {}
-        roles = getattr(item, "roles", None) or []
-        actors: List[Dict[str, Any]] = []
+        except Exception:  # noqa: BLE001 — a missing/oddball item just yields nothing
+            return None
+
         thumbs: Dict[str, str] = {}
-        for role in roles[:limit]:
-            name = getattr(role, "tag", None)
-            if not name:
-                continue
-            rid = getattr(role, "id", None)
-            akey = str(rid) if rid else None
-            raw_thumb = getattr(role, "thumb", None) or None
-            thumb_url = None
-            if raw_thumb and akey:
-                thumbs[akey] = raw_thumb
-                thumb_url = f"/api/plex/thumb/actor/{akey}"
-            actors.append(
-                {
-                    "name": name,
-                    "role": getattr(role, "role", None) or None,
-                    "thumb_url": thumb_url,
-                }
-            )
-        return actors, thumbs
+
+        def people(tags: Any, limit: int, prefix: str, with_role: bool) -> List[Dict[str, Any]]:
+            out: List[Dict[str, Any]] = []
+            for tag in (tags or [])[:limit]:
+                name = getattr(tag, "tag", None)
+                if not name:
+                    continue
+                tid = getattr(tag, "id", None)
+                key = str(tid) if tid else None
+                raw_thumb = getattr(tag, "thumb", None) or None
+                thumb_url = None
+                if raw_thumb and key:
+                    thumbs[key] = raw_thumb
+                    thumb_url = f"/api/plex/thumb/{prefix}/{key}"
+                out.append(
+                    {
+                        "name": name,
+                        "role": (getattr(tag, "role", None) or None) if with_role else None,
+                        "thumb_url": thumb_url,
+                    }
+                )
+            return out
+
+        actors = people(getattr(item, "roles", None), actor_limit, "actor", True)
+        meta = {
+            "studio": getattr(item, "studio", None) or None,
+            "countries": [c.tag for c in (getattr(item, "countries", None) or [])],
+            "tagline": getattr(item, "tagline", None) or None,
+            "directors": people(getattr(item, "directors", None), crew_limit, "crew", False),
+            "writers": people(getattr(item, "writers", None), crew_limit, "crew", False),
+            "collections": [c.tag for c in (getattr(item, "collections", None) or [])],
+        }
+        return {"actors": actors, "meta": meta, "thumbs": thumbs}
 
     @staticmethod
     def _movie_dict(movie: Any, machine_id: str, base_url: str) -> Dict[str, Any]:

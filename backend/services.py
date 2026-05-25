@@ -39,22 +39,23 @@ def _seed_from_env() -> None:
         logger.info("Seeded Plex settings from environment")
 
 
-def _maybe_enrich_cast() -> None:
-    """On boot, if the cache predates cast data (schema < 2) or was interrupted,
-    kick off background cast enrichment so the quiz actor modes light up."""
+def _maybe_enrich() -> None:
+    """On boot, if the cache predates cast/metadata (schema < 3) or was interrupted,
+    kick off background enrichment so the quiz modes light up."""
     try:
-        if library_cache.status().get("cast_enriched"):
+        status = library_cache.status()
+        if status.get("cast_enriched") and status.get("meta_enriched"):
             return
         if not library_cache.movies():
             return
         if not settings_store.get("plex").get("token"):
             return
-        if library_cache.start_cast_enrichment(plex_client, settings_store):
-            logger.info("Started background cast enrichment on boot")
+        if library_cache.start_enrichment(plex_client, settings_store):
+            logger.info("Started background library enrichment on boot")
     except Exception as exc:  # noqa: BLE001
-        logger.warning("Boot cast enrichment skipped: %s", exc)
+        logger.warning("Boot enrichment skipped: %s", exc)
 
 
 _seed_from_env()
 settings_store.ensure_client_id()
-_maybe_enrich_cast()
+_maybe_enrich()

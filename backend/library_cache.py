@@ -79,41 +79,50 @@ class LibraryCache:
             self._data = {
                 "movies": movies,
                 "server": {"machine_id": machine_id},
-                "schema_version": 2,
+                "schema_version": 3,
                 "cast_enriched": False,
                 "cast_progress": {"done": 0, "total": len(movies)},
+                "meta_enriched": False,
+                "meta_progress": {"done": 0, "total": len(movies)},
                 "actor_thumbs": {},
                 "refreshed_at": datetime.now(timezone.utc).isoformat(),
             }
             self.save()
         return {"count": len(movies), "refreshed_at": self._data["refreshed_at"]}
 
-    # ---- Cast enrichment (background phase) ----
+    # ---- Background enrichment: cast + extended metadata in one pass ----
+
+    _EMPTY_META = {
+        "studio": None, "countries": [], "tagline": None,
+        "directors": [], "writers": [], "collections": [],
+    }
 
     def status(self) -> Dict[str, Any]:
-        """Schema version + cast-enrichment progress for the API/frontend."""
+        """Schema version + enrichment progress for the API/frontend."""
         with self._lock:
             self._reload()
             return {
                 "schema_version": self._data.get("schema_version", 1),
                 "cast_enriched": bool(self._data.get("cast_enriched", False)),
                 "cast_progress": self._data.get("cast_progress", {"done": 0, "total": 0}),
+                "meta_enriched": bool(self._data.get("meta_enriched", False)),
+                "meta_progress": self._data.get("meta_progress", {"done": 0, "total": 0}),
             }
 
-    def actor_thumb_raw(self, key: str) -> Optional[str]:
-        """Raw Plex thumb path/URL for an actor key (used by the thumb proxy)."""
+    def person_thumb_raw(self, key: str) -> Optional[str]:
+        """Raw Plex thumb for an actor/crew key (used by the thumb proxy)."""
         with self._lock:
             self._reload()
             return (self._data.get("actor_thumbs") or {}).get(str(key))
 
-    def start_cast_enrichment(self, plex_client: PlexClient, settings: SettingsStore) -> bool:
-        """Spawn the background cast-enrichment thread, unless already running/done."""
+    def start_enrichment(self, plex_client: PlexClient, settings: SettingsStore) -> bool:
+        """Spawn the background enrichment thread, unless already running/complete."""
         with self._enrich_lock:
             if self._enriching:
                 return False
             with self._lock:
                 self._reload()
-                if self._data.get("cast_enriched"):
+                if self._data.get("cast_enriched") and self._data.get("meta_enriched"):
                     return False
                 if not self._data.get("movies"):
                     return False
@@ -122,18 +131,18 @@ class LibraryCache:
                 return False
             self._enriching = True
         thread = threading.Thread(
-            target=self._run_cast_enrichment, args=(plex_client, settings), daemon=True
+            target=self._run_enrichment, args=(plex_client, settings), daemon=True
         )
         thread.start()
         return True
 
-    def _run_cast_enrichment(self, plex_client: PlexClient, settings: SettingsStore) -> None:
-        """Fetch the top cast per movie and persist it, in batches, in the background."""
+    def _run_enrichment(self, plex_client: PlexClient, settings: SettingsStore) -> None:
+        """Fetch cast + crew/studio/country/tagline/collections per movie, batched."""
         try:
             plex = settings.get("plex")
             server = plex_client.connect(plex.get("url"), plex.get("token"))
-        except Exception as exc:  # noqa: BLE001 — Plex unreachable → leave cast un-enriched
-            logger.warning("Cast enrichment could not connect: %s", exc)
+        except Exception as exc:  # noqa: BLE001 — Plex unreachable → leave un-enriched
+            logger.warning("Enrichment could not connect: %s", exc)
             with self._enrich_lock:
                 self._enriching = False
             return
@@ -141,36 +150,46 @@ class LibraryCache:
             with self._lock:
                 self._reload()
                 self._data.setdefault("actor_thumbs", {})
-                self._data["schema_version"] = 2
+                self._data["schema_version"] = 3
                 movies = self._data.get("movies", [])
                 total = len(movies)
-                pending = [m for m in movies if m.get("actors") is None]
-                base_done = total - len(pending)
+                pending = [
+                    m for m in movies if m.get("actors") is None or m.get("directors") is None
+                ]
+                cast_done = sum(1 for m in movies if m.get("actors") is not None)
+                meta_done = sum(1 for m in movies if m.get("directors") is not None)
                 self._data["cast_enriched"] = False
-                self._data["cast_progress"] = {"done": base_done, "total": total}
+                self._data["meta_enriched"] = False
+                self._data["cast_progress"] = {"done": cast_done, "total": total}
+                self._data["meta_progress"] = {"done": meta_done, "total": total}
                 self.save()
-            logger.info("Cast enrichment: %d movies pending", len(pending))
-            count = 0
+            logger.info("Enrichment: %d movies pending", len(pending))
+            processed = 0
             for movie in pending:
-                try:
-                    actors, thumbs = plex_client.fetch_actors(server, movie.get("key"))
-                except Exception:  # noqa: BLE001
-                    actors, thumbs = [], {}
+                result = plex_client.fetch_enrichment(server, movie.get("key"))
                 with self._lock:
-                    movie["actors"] = actors
-                    if thumbs:
-                        self._data.setdefault("actor_thumbs", {}).update(thumbs)
-                    count += 1
-                    self._data["cast_progress"] = {"done": base_done + count, "total": total}
-                    if count % 40 == 0:
+                    if movie.get("actors") is None:
+                        movie["actors"] = result["actors"] if result else []
+                        cast_done += 1
+                    if movie.get("directors") is None:
+                        movie.update(result["meta"] if result else self._EMPTY_META)
+                        meta_done += 1
+                    if result and result["thumbs"]:
+                        self._data.setdefault("actor_thumbs", {}).update(result["thumbs"])
+                    self._data["cast_progress"] = {"done": cast_done, "total": total}
+                    self._data["meta_progress"] = {"done": meta_done, "total": total}
+                    processed += 1
+                    if processed % 80 == 0:
                         self.save()
             with self._lock:
                 self._data["cast_enriched"] = True
+                self._data["meta_enriched"] = True
                 self._data["cast_progress"] = {"done": total, "total": total}
+                self._data["meta_progress"] = {"done": total, "total": total}
                 self.save()
-            logger.info("Cast enrichment complete (%d movies)", total)
+            logger.info("Enrichment complete (%d movies)", total)
         except Exception:  # noqa: BLE001
-            logger.exception("Cast enrichment failed")
+            logger.exception("Enrichment failed")
         finally:
             with self._enrich_lock:
                 self._enriching = False

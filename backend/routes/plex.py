@@ -15,11 +15,12 @@ bp = Blueprint("plex", __name__, url_prefix="/api/plex")
 _THUMB_TIMEOUT = 15
 
 
-@bp.get("/thumb/actor/<key>")
-def actor_thumb(key: str):
-    """Proxy a Plex actor portrait. ``key`` resolves to a raw thumb that may be a
-    server-relative path (needs the token) or a full plex.tv static URL."""
-    raw = library_cache.actor_thumb_raw(key)
+@bp.get("/thumb/<kind>/<key>")
+def person_thumb(kind: str, key: str):
+    """Proxy a Plex actor/crew portrait. ``key`` resolves to a raw thumb that may be a
+    server-relative path (needs the token) or a full plex.tv static URL. ``kind`` is
+    ``actor`` or ``crew`` — both share one key space."""
+    raw = library_cache.person_thumb_raw(key)
     if not raw:
         return jsonify({"error": "not found"}), 404
 
