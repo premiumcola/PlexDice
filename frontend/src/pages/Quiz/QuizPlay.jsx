@@ -4,8 +4,8 @@ import { navigate } from '../../router';
 import { quizAnswer, quizAbandon } from '../../api';
 import { loadRound, saveResults, clearRound } from './store';
 import { MODE_PROMPT, fmt } from './util';
-
-const DURATION = 15000;
+import { initAudio, tick, tickParams, chime, buzz } from './audio';
+import RadialCountdown from './RadialCountdown';
 
 function basePoints(timeMs) {
   if (timeMs <= 5000) return 100;
@@ -70,6 +70,10 @@ function OptionButton({ option, multi, selected, locked, reveal, onTap }) {
 export default function QuizPlay({ roundId }) {
   const round = useRef(loadRound(roundId)).current;
   const questions = round?.questions || [];
+  const dur = (round?.countdown_seconds || 15) * 1000;
+  const soundOn = round?.sound_enabled !== false;
+  const autoreveal = round?.autoreveal_delay_ms || 1200;
+  const showCorrect = round?.show_correct_on_wrong !== false;
 
   const [index, setIndex] = useState(0);
   const [score, setScore] = useState(0);
@@ -78,14 +82,16 @@ export default function QuizPlay({ roundId }) {
   const [locked, setLocked] = useState(false);
   const [reveal, setReveal] = useState(null);
   const [multiSel, setMultiSel] = useState([]);
-  const [remaining, setRemaining] = useState(DURATION);
+  const [remaining, setRemaining] = useState(dur);
   const [elapsed, setElapsed] = useState(0);
   const [paused, setPaused] = useState(false);
+  const [flash, setFlash] = useState(false);
 
   const startRef = useRef(Date.now());
   const roundStartRef = useRef(Date.now());
   const pausedRef = useRef(false);
-  const pauseRemainRef = useRef(DURATION);
+  const pauseRemainRef = useRef(dur);
+  const lastTickRef = useRef(0);
   const answersRef = useRef([]);
   const multiRef = useRef([]);
   const advanceRef = useRef(null);
@@ -101,7 +107,7 @@ export default function QuizPlay({ roundId }) {
     (chosenArr, timedOut = false) => {
       if (locked || !q) return;
       setLocked(true);
-      const timeMs = timedOut ? DURATION : Math.min(DURATION, Date.now() - startRef.current);
+      const timeMs = timedOut ? dur : Math.min(dur, Date.now() - startRef.current);
       const chosenSet = new Set(chosenArr);
       let correct;
       let pts;
@@ -122,11 +128,17 @@ export default function QuizPlay({ roundId }) {
         pts = correct ? basePoints(timeMs) : 0;
         payload = { question_id: q.id, chosen_option_id: id, time_ms: timeMs };
       }
-      setReveal({ correctIds, chosenIds: chosenSet });
+      const shownCorrect = correct || showCorrect ? correctIds : [];
+      setReveal({ correctIds: shownCorrect, chosenIds: chosenSet });
       setScore((s) => s + pts);
       if (correct) setCorrectCount((c) => c + 1);
       else setWrongCount((c) => c + 1);
       answersRef.current.push({ mode: q.mode, correct, points: pts, difficulty: q.difficulty });
+      if (soundOn) (correct ? chime : buzz)();
+      if (timedOut) {
+        setFlash(true);
+        setTimeout(() => setFlash(false), 200);
+      }
       quizAnswer(roundId, payload).catch(() => {});
       advanceRef.current = setTimeout(() => {
         if (index + 1 >= questions.length) finish();
@@ -137,13 +149,14 @@ export default function QuizPlay({ roundId }) {
           setMultiSel([]);
           multiRef.current = [];
         }
-      }, 1200);
+      }, autoreveal);
     },
-    [locked, q, roundId, index, questions.length, finish],
+    [locked, q, roundId, index, questions.length, finish, dur, soundOn, showCorrect, autoreveal],
   );
 
   const onOption = (id) => {
     if (locked || pausedRef.current) return;
+    initAudio();
     if (q.multi_select) {
       setMultiSel((sel) => {
         const next = sel.includes(id) ? sel.filter((x) => x !== id) : [...sel, id];
@@ -155,25 +168,32 @@ export default function QuizPlay({ roundId }) {
     }
   };
 
-  // Per-question countdown (frozen while paused).
+  // Per-question countdown (frozen while paused) + escalating tick audio.
   useEffect(() => {
     if (locked || !q) return undefined;
     startRef.current = Date.now();
-    setRemaining(DURATION);
+    lastTickRef.current = 0;
+    setRemaining(dur);
     const iv = setInterval(() => {
       if (pausedRef.current) return;
-      const rem = DURATION - (Date.now() - startRef.current);
+      const rem = dur - (Date.now() - startRef.current);
       if (rem <= 0) {
         setRemaining(0);
         lockIn(q.multi_select ? multiRef.current : [], true);
-      } else {
-        setRemaining(rem);
+        return;
+      }
+      setRemaining(rem);
+      if (soundOn) {
+        const { hz, freq } = tickParams(rem / dur);
+        if (Date.now() - lastTickRef.current >= 1000 / hz) {
+          lastTickRef.current = Date.now();
+          tick(freq);
+        }
       }
     }, 100);
     return () => clearInterval(iv);
-  }, [index, locked, q, lockIn]);
+  }, [index, locked, q, lockIn, dur, soundOn]);
 
-  // Round elapsed timer — keeps ticking even when paused.
   useEffect(() => {
     const iv = setInterval(() => setElapsed(Math.floor((Date.now() - roundStartRef.current) / 1000)), 1000);
     return () => clearInterval(iv);
@@ -204,7 +224,7 @@ export default function QuizPlay({ roundId }) {
   }, [remaining]);
 
   const resume = () => {
-    startRef.current = Date.now() - (DURATION - pauseRemainRef.current);
+    startRef.current = Date.now() - (dur - pauseRemainRef.current);
     pausedRef.current = false;
     setPaused(false);
   };
@@ -230,11 +250,10 @@ export default function QuizPlay({ roundId }) {
     );
   }
 
-  const pct = (remaining / DURATION) * 100;
-  const low = remaining <= 3000;
   const stemImage = q.stem.kind === 'image';
   const gridCols = q.options.length > 4 ? 'grid-cols-3 xl:grid-cols-6' : 'grid-cols-2 xl:grid-cols-4';
   const remainingCount = Math.max(0, questions.length - index - 1);
+  const vignette = remaining <= 5000 && !locked;
 
   const leave = async (to) => {
     clearTimeout(advanceRef.current);
@@ -248,8 +267,20 @@ export default function QuizPlay({ roundId }) {
   };
 
   return (
-    <div className="h-[100dvh] bg-zinc-950 text-zinc-100 flex flex-col overflow-hidden">
-      <style>{`@keyframes quizTitleFade {0%{opacity:0;transform:translateY(6px)}100%{opacity:1;transform:translateY(0)}}`}</style>
+    <div className="h-[100dvh] bg-zinc-950 text-zinc-100 flex flex-col overflow-hidden relative">
+      <style>{`
+        @keyframes quizTitleFade {0%{opacity:0;transform:translateY(6px)}100%{opacity:1;transform:translateY(0)}}
+        @keyframes pfVignette {0%,100%{opacity:0.6}50%{opacity:1}}
+      `}</style>
+
+      {/* Vignette + red flash */}
+      {vignette && (
+        <div className="pointer-events-none fixed inset-0 z-40" style={{
+          background: 'radial-gradient(ellipse at center, transparent 45%, rgba(185,28,28,0.25) 100%)',
+          animation: 'pfVignette 0.5s ease-in-out infinite',
+        }} />
+      )}
+      {flash && <div className="pointer-events-none fixed inset-0 z-40" style={{ background: 'rgba(185,28,28,0.35)' }} />}
 
       {/* HUD */}
       <div
@@ -266,21 +297,20 @@ export default function QuizPlay({ roundId }) {
         </button>
       </div>
 
-      {/* Countdown bar */}
-      <div className="shrink-0 px-4 sm:px-6 pt-2">
-        <div className="h-1.5 rounded-full bg-zinc-800 overflow-hidden">
-          <div className="h-full rounded-full" style={{ width: `${pct}%`, background: low ? '#ef4444' : '#f5a623', transition: 'width 0.1s linear' }} />
-        </div>
-      </div>
-
       <div className="shrink-0 px-4 sm:px-6 pt-3 text-center text-sm md:text-base text-zinc-400">{MODE_PROMPT[q.mode] || 'Frage'}</div>
 
-      <div className="flex-1 min-h-0 px-4 sm:px-6 py-3 flex items-center justify-center overflow-hidden">
+      {/* Stem + radial countdown */}
+      <div className="flex-1 min-h-0 px-4 sm:px-6 py-3 flex items-center justify-center overflow-hidden relative">
         {stemImage ? (
           <img src={q.stem.content} alt="" className="max-h-full max-w-full md:max-w-md object-contain rounded-2xl shadow-xl" />
         ) : (
           <div className="max-h-full max-w-2xl overflow-auto rounded-2xl bg-zinc-900/60 ring-1 ring-zinc-800 p-5 md:p-6 text-center">
             <p className="text-base sm:text-lg md:text-xl leading-relaxed text-zinc-200">{q.stem.content}</p>
+          </div>
+        )}
+        {!locked && (
+          <div className="absolute top-1 right-1 sm:top-3 sm:right-3 scale-75 sm:scale-90 xl:scale-100 origin-top-right">
+            <RadialCountdown remaining={remaining} duration={dur} />
           </div>
         )}
       </div>

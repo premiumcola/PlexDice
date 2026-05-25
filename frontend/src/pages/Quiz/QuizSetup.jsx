@@ -3,6 +3,7 @@ import { ArrowLeft, X, Camera, Play, Loader2, AlertCircle } from 'lucide-react';
 import { navigate } from '../../router';
 import { quizNewRound, quizUploadPhoto } from '../../api';
 import { saveRound } from './store';
+import { initAudio } from './audio';
 
 const SIZES = [20, 50, 100];
 
@@ -40,6 +41,7 @@ export default function QuizSetup() {
 
   const start = async () => {
     if (!name.trim() || starting) return;
+    initAudio(); // unlock the audio context on this user gesture (iOS Safari)
     setStarting(true);
     setError('');
     try {

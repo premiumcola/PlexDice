@@ -78,6 +78,10 @@ def new_round():
             "difficulty": meta["difficulty"],
             "modes": meta["modes"],
             "insufficient_cast": meta["insufficient_cast"],
+            "countdown_seconds": cfg.get("countdown_seconds", 15),
+            "sound_enabled": cfg.get("sound_enabled", True),
+            "autoreveal_delay_ms": cfg.get("autoreveal_delay_ms", 1200),
+            "show_correct_on_wrong": cfg.get("show_correct_on_wrong", True),
         }
     )
 
