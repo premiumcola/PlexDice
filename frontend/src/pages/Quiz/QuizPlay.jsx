@@ -22,20 +22,25 @@ function mmss(secs) {
 
 function OptionButton({ option, multi, selected, locked, reveal, onTap }) {
   let ring = 'ring-1 ring-zinc-700';
-  let bg = 'bg-zinc-800';
+  let bg = 'bg-zinc-800/90';
+  let anim;
   if (!locked && multi && selected) {
     ring = 'ring-2 ring-amber-400';
-    bg = 'bg-amber-400/15';
+    bg = 'bg-amber-400/20';
   }
   if (locked && reveal) {
-    if (reveal.correctIds.includes(option.id)) {
+    const isCorrect = reveal.correctIds.includes(option.id);
+    const isChosen = reveal.chosenIds.has(option.id);
+    if (isCorrect) {
       ring = 'ring-2 ring-emerald-400';
-      bg = 'bg-emerald-500/20';
-    } else if (reveal.chosenIds.has(option.id)) {
+      bg = 'bg-emerald-500/25';
+      if (isChosen) anim = 'pfCorrect 0.4s ease';
+    } else if (isChosen) {
       ring = 'ring-2 ring-rose-500';
-      bg = 'bg-rose-500/20';
+      bg = 'bg-rose-500/25';
+      anim = 'pfWrong 0.3s ease';
     } else {
-      bg = 'bg-zinc-800 opacity-50';
+      bg = 'bg-zinc-800/80 opacity-50';
     }
   }
   const isImage = option.kind === 'image';
@@ -44,7 +49,8 @@ function OptionButton({ option, multi, selected, locked, reveal, onTap }) {
       type="button"
       disabled={locked}
       onClick={() => onTap(option.id)}
-      className={`relative rounded-2xl overflow-hidden ${ring} ${bg} text-left transition-all active:scale-[0.97] disabled:active:scale-100 ${isImage ? 'h-24 sm:h-32 md:h-40 xl:h-44' : 'min-h-[64px] md:min-h-[80px] p-3 md:p-4 flex flex-col justify-center'}`}
+      style={{ animation: anim || 'none' }}
+      className={`relative rounded-2xl overflow-hidden ${ring} ${bg} backdrop-blur-sm text-left transition-all active:scale-[0.97] disabled:active:scale-100 ${isImage ? 'h-24 sm:h-32 md:h-40 xl:h-44' : 'min-h-[64px] md:min-h-[80px] p-3 md:p-4 flex flex-col justify-center'}`}
     >
       {isImage ? (
         <>
@@ -128,8 +134,7 @@ export default function QuizPlay({ roundId }) {
         pts = correct ? basePoints(timeMs) : 0;
         payload = { question_id: q.id, chosen_option_id: id, time_ms: timeMs };
       }
-      const shownCorrect = correct || showCorrect ? correctIds : [];
-      setReveal({ correctIds: shownCorrect, chosenIds: chosenSet });
+      setReveal({ correctIds: correct || showCorrect ? correctIds : [], chosenIds: chosenSet });
       setScore((s) => s + pts);
       if (correct) setCorrectCount((c) => c + 1);
       else setWrongCount((c) => c + 1);
@@ -168,7 +173,6 @@ export default function QuizPlay({ roundId }) {
     }
   };
 
-  // Per-question countdown (frozen while paused) + escalating tick audio.
   useEffect(() => {
     if (locked || !q) return undefined;
     startRef.current = Date.now();
@@ -267,13 +271,28 @@ export default function QuizPlay({ roundId }) {
   };
 
   return (
-    <div className="h-[100dvh] bg-zinc-950 text-zinc-100 flex flex-col overflow-hidden relative">
+    <div className="h-[100dvh] bg-zinc-950 text-zinc-100 overflow-hidden relative">
       <style>{`
         @keyframes quizTitleFade {0%{opacity:0;transform:translateY(6px)}100%{opacity:1;transform:translateY(0)}}
         @keyframes pfVignette {0%,100%{opacity:0.6}50%{opacity:1}}
+        @keyframes pfFade {from{opacity:0}to{opacity:1}}
+        @keyframes pfSlideUp {from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes pfCorrect {0%,100%{transform:scale(1)}40%{transform:scale(1.05)}}
+        @keyframes pfWrong {0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
       `}</style>
 
-      {/* Vignette + red flash */}
+      {/* Cinematic blurred backdrop (heavy blur — atmospheric, not a spoiler) */}
+      <img
+        key={q.movie_key}
+        src={`/api/library/thumb/${q.movie_key}?art=1`}
+        alt=""
+        aria-hidden
+        className="absolute inset-0 w-full h-full object-cover z-0"
+        style={{ filter: 'blur(40px) brightness(0.35) saturate(1.2)', animation: 'pfFade 0.25s ease' }}
+        onError={(e) => { e.currentTarget.style.display = 'none'; }}
+      />
+      <div className="absolute inset-0 z-0" style={{ background: 'radial-gradient(ellipse at center, rgba(9,9,11,0.25), rgba(9,9,11,0.88))' }} />
+
       {vignette && (
         <div className="pointer-events-none fixed inset-0 z-40" style={{
           background: 'radial-gradient(ellipse at center, transparent 45%, rgba(185,28,28,0.25) 100%)',
@@ -282,58 +301,62 @@ export default function QuizPlay({ roundId }) {
       )}
       {flash && <div className="pointer-events-none fixed inset-0 z-40" style={{ background: 'rgba(185,28,28,0.35)' }} />}
 
-      {/* HUD */}
-      <div
-        className="shrink-0 sticky top-0 z-30 flex items-center gap-2 sm:gap-3 px-3 sm:px-6 py-2 pt-[max(0.5rem,env(safe-area-inset-top))]"
-        style={{ background: 'rgba(9,9,11,0.7)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)' }}
-      >
-        <span className="flex items-center gap-1 font-mono tabular-nums text-sm text-zinc-200"><Timer className="w-4 h-4 text-zinc-400" /> {mmss(elapsed)}</span>
-        <span className="flex items-center gap-1 text-sm tabular-nums text-emerald-400"><Check className="w-4 h-4" /> {correctCount}</span>
-        <span className="flex items-center gap-1 text-sm tabular-nums text-rose-400"><X className="w-4 h-4" /> {wrongCount}</span>
-        <span className="flex items-center gap-1 text-sm tabular-nums text-zinc-300 ml-auto"><ListChecks className="w-4 h-4" /> {remainingCount}</span>
-        <span className="flex items-center gap-1 text-sm font-semibold tabular-nums text-amber-400">✨ {fmt(score)}</span>
-        <button type="button" onClick={doPause} aria-label="Pause" className="w-9 h-9 rounded-lg bg-zinc-800/80 flex items-center justify-center active:scale-95">
-          <Settings className="w-4 h-4 text-zinc-300" />
-        </button>
-      </div>
-
-      <div className="shrink-0 px-4 sm:px-6 pt-3 text-center text-sm md:text-base text-zinc-400">{MODE_PROMPT[q.mode] || 'Frage'}</div>
-
-      {/* Stem + radial countdown */}
-      <div className="flex-1 min-h-0 px-4 sm:px-6 py-3 flex items-center justify-center overflow-hidden relative">
-        {stemImage ? (
-          <img src={q.stem.content} alt="" className="max-h-full max-w-full md:max-w-md object-contain rounded-2xl shadow-xl" />
-        ) : (
-          <div className="max-h-full max-w-2xl overflow-auto rounded-2xl bg-zinc-900/60 ring-1 ring-zinc-800 p-5 md:p-6 text-center">
-            <p className="text-base sm:text-lg md:text-xl leading-relaxed text-zinc-200">{q.stem.content}</p>
-          </div>
-        )}
-        {!locked && (
-          <div className="absolute top-1 right-1 sm:top-3 sm:right-3 scale-75 sm:scale-90 xl:scale-100 origin-top-right">
-            <RadialCountdown remaining={remaining} duration={dur} />
-          </div>
-        )}
-      </div>
-
-      <div className="shrink-0 h-6 text-center">
-        {locked && (
-          <span className="text-sm font-medium text-zinc-300" style={{ animation: 'quizTitleFade 0.4s ease' }}>{q.movie_title}</span>
-        )}
-      </div>
-
-      <div className="shrink-0 px-4 sm:px-6 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2 w-full max-w-5xl mx-auto">
-        <div className={`grid ${gridCols} gap-2 sm:gap-3`}>
-          {q.options.map((o) => (
-            <OptionButton key={o.id} option={o} multi={q.multi_select} selected={multiSel.includes(o.id)} locked={locked} reveal={reveal} onTap={onOption} />
-          ))}
-        </div>
-        {q.multi_select && !locked && (
-          <button type="button" onClick={() => lockIn(multiSel)}
-            className="mt-3 w-full py-3 rounded-xl bg-amber-400 text-zinc-950 font-semibold active:scale-[0.98] transition-transform disabled:opacity-40"
-            disabled={multiSel.length === 0}>
-            Bestätigen ({multiSel.length})
+      <div className="relative z-10 flex flex-col h-full">
+        {/* HUD */}
+        <div
+          className="shrink-0 sticky top-0 z-30 flex items-center gap-2 sm:gap-3 px-3 sm:px-6 py-2 pt-[max(0.5rem,env(safe-area-inset-top))]"
+          style={{ background: 'rgba(9,9,11,0.7)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)' }}
+        >
+          <span className="flex items-center gap-1 font-mono tabular-nums text-sm text-zinc-200"><Timer className="w-4 h-4 text-zinc-400" /> {mmss(elapsed)}</span>
+          <span className="flex items-center gap-1 text-sm tabular-nums text-emerald-400"><Check className="w-4 h-4" /> {correctCount}</span>
+          <span className="flex items-center gap-1 text-sm tabular-nums text-rose-400"><X className="w-4 h-4" /> {wrongCount}</span>
+          <span className="flex items-center gap-1 text-sm tabular-nums text-zinc-300 ml-auto"><ListChecks className="w-4 h-4" /> {remainingCount}</span>
+          <span className="flex items-center gap-1 text-sm font-semibold tabular-nums text-amber-400">✨ {fmt(score)}</span>
+          <button type="button" onClick={doPause} aria-label="Pause" className="w-9 h-9 rounded-lg bg-zinc-800/80 flex items-center justify-center active:scale-95">
+            <Settings className="w-4 h-4 text-zinc-300" />
           </button>
-        )}
+        </div>
+
+        <div className="shrink-0 px-4 sm:px-6 pt-3 text-center font-display text-lg md:text-2xl lg:text-3xl text-zinc-100">
+          {MODE_PROMPT[q.mode] || 'Frage'}
+        </div>
+
+        {/* Stem + radial countdown */}
+        <div className="flex-1 min-h-0 px-4 sm:px-6 py-3 flex items-center justify-center overflow-hidden relative">
+          {stemImage ? (
+            <img src={q.stem.content} alt="" className="max-h-full max-w-full md:max-w-md object-contain rounded-2xl shadow-2xl" />
+          ) : (
+            <div className="max-h-full max-w-2xl overflow-auto rounded-2xl bg-zinc-900/70 ring-1 ring-zinc-800 p-5 md:p-6 text-center backdrop-blur-sm">
+              <p className="text-base sm:text-lg md:text-xl leading-relaxed text-zinc-100">{q.stem.content}</p>
+            </div>
+          )}
+          {!locked && (
+            <div className="absolute top-1 right-1 sm:top-3 sm:right-3 scale-75 sm:scale-90 xl:scale-100 origin-top-right">
+              <RadialCountdown remaining={remaining} duration={dur} />
+            </div>
+          )}
+        </div>
+
+        <div className="shrink-0 h-6 text-center">
+          {locked && (
+            <span className="text-sm font-medium text-zinc-200" style={{ animation: 'quizTitleFade 0.4s ease' }}>{q.movie_title}</span>
+          )}
+        </div>
+
+        <div className="shrink-0 px-4 sm:px-6 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2 w-full max-w-5xl mx-auto">
+          <div key={index} className={`grid ${gridCols} gap-2 sm:gap-3`} style={{ animation: 'pfSlideUp 0.25s ease' }}>
+            {q.options.map((o) => (
+              <OptionButton key={o.id} option={o} multi={q.multi_select} selected={multiSel.includes(o.id)} locked={locked} reveal={reveal} onTap={onOption} />
+            ))}
+          </div>
+          {q.multi_select && !locked && (
+            <button type="button" onClick={() => lockIn(multiSel)}
+              className="mt-3 w-full py-3 rounded-xl bg-amber-400 text-zinc-950 font-semibold active:scale-[0.98] transition-transform disabled:opacity-40"
+              disabled={multiSel.length === 0}>
+              Bestätigen ({multiSel.length})
+            </button>
+          )}
+        </div>
       </div>
 
       {paused && (

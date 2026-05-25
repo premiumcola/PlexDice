@@ -5,6 +5,40 @@ import { quizComplete, quizAbandon, quizHistory } from '../../api';
 import { loadResults, loadRound, clearRound } from './store';
 import { MODE_LABEL, fmt } from './util';
 
+function Confetti() {
+  const bits = useMemo(
+    () =>
+      Array.from({ length: 36 }, () => ({
+        left: Math.random() * 100,
+        delay: Math.random() * 0.3,
+        dur: 1 + Math.random() * 0.6,
+        color: Math.random() > 0.5 ? '#f5a623' : '#34d399',
+        size: 6 + Math.random() * 6,
+      })),
+    [],
+  );
+  return (
+    <div className="pointer-events-none fixed inset-0 z-50 overflow-hidden">
+      <style>{`@keyframes pfConfetti {0%{transform:translateY(-10vh) rotate(0);opacity:1}100%{transform:translateY(110vh) rotate(720deg);opacity:0}}`}</style>
+      {bits.map((b, i) => (
+        <span
+          key={i}
+          style={{
+            position: 'absolute',
+            left: `${b.left}%`,
+            top: 0,
+            width: b.size,
+            height: b.size * 0.6,
+            background: b.color,
+            borderRadius: 2,
+            animation: `pfConfetti ${b.dur}s ease-in ${b.delay}s forwards`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
 export default function QuizResult({ roundId }) {
   const results = useMemo(() => loadResults(roundId), [roundId]);
   const round = useMemo(() => loadRound(roundId), [roundId]);
@@ -93,6 +127,7 @@ export default function QuizResult({ roundId }) {
 
   return (
     <div className="min-h-[100dvh] bg-zinc-950 text-zinc-100">
+      {accuracy >= 0.7 && <Confetti />}
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-24 sm:py-12">
         <div className="text-center">
           <div className="text-[11px] uppercase tracking-widest text-zinc-500 mb-2">Ergebnis</div>
