@@ -96,7 +96,7 @@ def b_cover_to_genre(m, lib):
 def b_cover_to_studio(m, lib):
     if not m.get("studio"):
         return None
-    others = lib.value_distractors(m["studio"], list(lib.studios), 3)
+    others = lib.studio_peers(m, 3)  # STUDIO_PEER + genre fallback
     if len(others) < 3:
         return None
     return {"stem": _poster_stem(m), **_single(_chip(m["studio"]), [_chip(o) for o in others])}
@@ -173,7 +173,10 @@ def b_movie_to_fsk(m, lib):
     if m.get("fsk") is None:
         return None
     correct = m["fsk"]
-    others = sorted((v for v in FSK_VALUES if v != correct), key=lambda v: abs(v - correct))[:3]
+    pool = [v for v in FSK_VALUES if v != correct]
+    if correct >= 12:  # CLOSE_VALUE: 16 vs 12 vs 18, avoid the trivial 0
+        pool = [v for v in pool if v != 0] or pool
+    others = sorted(pool, key=lambda v: abs(v - correct))[:3]
     if len(others) < 3:
         return None
     return {"stem": _poster_stem(m), **_single(_chip(f"FSK {correct}"), [_chip(f"FSK {o}") for o in others])}

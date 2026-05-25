@@ -5,8 +5,20 @@ options. Distractor strategy names mirror the X2 task registry.
 """
 from __future__ import annotations
 
+import logging
 import random
 from typing import Any, Dict, List, Optional, Sequence
+
+logger = logging.getLogger(__name__)
+
+# Distractor strategy names (mode → strategy mapping lives in quiz/modes.py).
+STRATEGIES = (
+    "genre_and_decade",
+    "genre_adjacent",
+    "decade_adjacent",
+    "collection_other",
+    "same_decade_different_genre",
+)
 
 
 def decade_of(year: Any) -> Optional[int]:
@@ -142,7 +154,28 @@ class QuizLibrary:
                 out.append(m)
                 if len(out) == k:
                     return out
+        if len(out) < k:
+            logger.warning(
+                "distractors: only %d/%d for '%s' via %s", len(out), k, target.get("title"), strategy
+            )
         return out
+
+    def studio_peers(self, target: Dict[str, Any], k: int) -> List[str]:
+        """STUDIO_PEER: other studios that produced films in the target's genre."""
+        pg = self.primary_genre(target)
+        own = target.get("studio")
+        peers = {
+            m["studio"]
+            for m in self.movies
+            if m.get("studio") and m["studio"] != own and (pg is None or pg in (m.get("genres") or []))
+        }
+        result = list(peers)
+        random.shuffle(result)
+        if len(result) < k:
+            extra = [s for s in self.studios if s != own and s not in peers]
+            random.shuffle(extra)
+            result += extra
+        return result[:k]
 
     # ---- person distractors ----
     def person_distractors(self, kind: str, target_movie, exclude_names, k: int) -> List[Dict[str, Any]]:
