@@ -1,19 +1,31 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Dices, Settings as SettingsIcon, AlertCircle } from 'lucide-react';
+import { Dices, Target, Settings as SettingsIcon, AlertCircle } from 'lucide-react';
 import Dice from './pages/Dice';
 import Settings from './pages/Settings';
+import QuizRouter from './pages/Quiz';
 import { getSettings } from './api';
+import { usePathname, navigate } from './router';
 
-function hashRoute() {
-  return window.location.hash.replace('#', '') === 'settings' ? 'settings' : 'dice';
+const TABS = [
+  { id: 'dice', label: 'Würfeln', icon: Dices, path: '/' },
+  { id: 'quiz', label: 'Quiz', icon: Target, path: '/quiz' },
+  { id: 'settings', label: 'Einstellungen', icon: SettingsIcon, path: '/settings' },
+];
+
+function activeTab(pathname) {
+  if (pathname.startsWith('/quiz')) return 'quiz';
+  if (pathname.startsWith('/settings')) return 'settings';
+  return 'dice';
 }
 
 function NavItem({ active, onClick, icon: Icon, label, vertical }) {
   const base = vertical
-    ? 'flex-1 flex flex-col items-center gap-0.5 py-2.5 text-[11px]'
+    ? 'flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 min-h-[48px] text-[11px]'
     : 'flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium';
   const tone = active
-    ? vertical ? 'text-amber-400' : 'bg-amber-400 text-zinc-950'
+    ? vertical
+      ? 'text-amber-400'
+      : 'bg-amber-400 text-zinc-950'
     : 'text-zinc-400 active:text-zinc-200';
   return (
     <button onClick={onClick} className={`${base} ${tone} transition-colors`}>
@@ -24,19 +36,10 @@ function NavItem({ active, onClick, icon: Icon, label, vertical }) {
 }
 
 export default function App() {
-  const [route, setRoute] = useState(hashRoute);
+  const pathname = usePathname();
   const [needSettings, setNeedSettings] = useState(false);
-
-  const navigate = useCallback((r) => {
-    setRoute(r);
-    window.location.hash = r;
-  }, []);
-
-  useEffect(() => {
-    const onHash = () => setRoute(hashRoute());
-    window.addEventListener('hashchange', onHash);
-    return () => window.removeEventListener('hashchange', onHash);
-  }, []);
+  const tab = activeTab(pathname);
+  const immersive = pathname.startsWith('/quiz/play'); // full-screen quiz play
 
   // On first load, send the user to Settings if Plex isn't connected yet.
   useEffect(() => {
@@ -45,44 +48,51 @@ export default function App() {
         const s = await getSettings();
         if (!(s?.plex?.tokenSet && s?.plex?.url)) {
           setNeedSettings(true);
-          navigate('settings');
+          if (!window.location.pathname.startsWith('/settings')) navigate('/settings');
         }
       } catch {
         setNeedSettings(true);
       }
     })();
-  }, [navigate]);
+  }, []);
 
   const handleNeedSettings = useCallback(() => {
     setNeedSettings(true);
-    navigate('settings');
-  }, [navigate]);
+    navigate('/settings');
+  }, []);
+
+  let page;
+  if (tab === 'settings') page = <Settings onConnected={() => setNeedSettings(false)} />;
+  else if (tab === 'quiz') page = <QuizRouter pathname={pathname} />;
+  else page = <Dice onNeedSettings={handleNeedSettings} />;
 
   return (
-    <div className="min-h-screen bg-zinc-950">
-      {needSettings && route === 'settings' && (
+    <div className="min-h-[100dvh] bg-zinc-950">
+      {needSettings && tab === 'settings' && (
         <div className="safe-top sticky top-0 z-50 bg-amber-400 text-zinc-950 text-sm font-semibold px-4 py-2 flex items-center gap-2">
           <AlertCircle className="w-4 h-4 shrink-0" /> Bitte zuerst Plex verbinden
         </div>
       )}
 
-      <main className="pb-16 sm:pb-0">
-        {route === 'settings'
-          ? <Settings onConnected={() => setNeedSettings(false)} />
-          : <Dice onNeedSettings={handleNeedSettings} />}
-      </main>
+      <main className={immersive ? '' : 'pb-16 sm:pb-0'}>{page}</main>
 
-      {/* Desktop: floating top-right nav */}
-      <nav className="hidden sm:flex fixed top-4 right-4 z-40 gap-1 p-1 rounded-2xl bg-zinc-900/90 border border-zinc-800 backdrop-blur">
-        <NavItem active={route === 'dice'} onClick={() => navigate('dice')} icon={Dices} label="Würfeln" />
-        <NavItem active={route === 'settings'} onClick={() => navigate('settings')} icon={SettingsIcon} label="Einstellungen" />
-      </nav>
+      {!immersive && (
+        <>
+          {/* Desktop: floating top-right nav */}
+          <nav className="hidden sm:flex fixed top-4 right-4 z-40 gap-1 p-1 rounded-2xl bg-zinc-900/90 border border-zinc-800 backdrop-blur">
+            {TABS.map((t) => (
+              <NavItem key={t.id} active={tab === t.id} onClick={() => navigate(t.path)} icon={t.icon} label={t.label} />
+            ))}
+          </nav>
 
-      {/* Mobile: bottom tab bar */}
-      <nav className="sm:hidden fixed bottom-0 inset-x-0 z-40 bg-zinc-900/95 border-t border-zinc-800 backdrop-blur safe-bottom flex">
-        <NavItem vertical active={route === 'dice'} onClick={() => navigate('dice')} icon={Dices} label="Würfeln" />
-        <NavItem vertical active={route === 'settings'} onClick={() => navigate('settings')} icon={SettingsIcon} label="Einstellungen" />
-      </nav>
+          {/* Mobile: bottom tab bar */}
+          <nav className="sm:hidden fixed bottom-0 inset-x-0 z-40 bg-zinc-900/95 border-t border-zinc-800 backdrop-blur safe-bottom flex">
+            {TABS.map((t) => (
+              <NavItem key={t.id} vertical active={tab === t.id} onClick={() => navigate(t.path)} icon={t.icon} label={t.label} />
+            ))}
+          </nav>
+        </>
+      )}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 {
-  "name": "PlexDice",
-  "short_name": "PlexDice",
+  "name": "Plex Quiz & Dice",
+  "short_name": "Plex Quiz",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#09090b",

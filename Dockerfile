@@ -22,6 +22,7 @@ COPY --from=frontend /app/frontend/dist ./static
 
 EXPOSE 8080
 
-# 2 workers, 2 threads — plenty for a single-user picker; long Plex syncs get a generous timeout
+# 1 worker, 4 threads — single-user app; one worker keeps in-memory quiz sessions
+# and the background cast-enrichment thread coherent. Generous timeout for Plex syncs.
 CMD ["gunicorn", "--chdir", "backend", "--bind", "0.0.0.0:8080", \
-     "--workers", "2", "--threads", "2", "--timeout", "180", "server:app"]
+     "--workers", "1", "--threads", "4", "--timeout", "180", "server:app"]

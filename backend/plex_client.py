@@ -84,6 +84,39 @@ class PlexClient:
         logger.info("Fetched %d movies from Plex", len(movies))
         return movies
 
+    def fetch_actors(
+        self, server: PlexServer, rating_key: str, limit: int = 5
+    ) -> tuple[List[Dict[str, Any]], Dict[str, str]]:
+        """Return ``(actors, thumb_map)`` for one movie — the top ``limit`` lead roles
+        in Plex order (first = most prominent). ``thumb_map`` maps actor key → raw
+        Plex thumb path/URL for the actor-thumb proxy to resolve later."""
+        try:
+            item = server.fetchItem(int(rating_key))
+        except Exception:  # noqa: BLE001 — a missing/oddball item just yields no cast
+            return [], {}
+        roles = getattr(item, "roles", None) or []
+        actors: List[Dict[str, Any]] = []
+        thumbs: Dict[str, str] = {}
+        for role in roles[:limit]:
+            name = getattr(role, "tag", None)
+            if not name:
+                continue
+            rid = getattr(role, "id", None)
+            akey = str(rid) if rid else None
+            raw_thumb = getattr(role, "thumb", None) or None
+            thumb_url = None
+            if raw_thumb and akey:
+                thumbs[akey] = raw_thumb
+                thumb_url = f"/api/plex/thumb/actor/{akey}"
+            actors.append(
+                {
+                    "name": name,
+                    "role": getattr(role, "role", None) or None,
+                    "thumb_url": thumb_url,
+                }
+            )
+        return actors, thumbs
+
     @staticmethod
     def _movie_dict(movie: Any, machine_id: str, base_url: str) -> Dict[str, Any]:
         rating_key = str(movie.ratingKey)

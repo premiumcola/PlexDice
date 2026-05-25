@@ -45,6 +45,9 @@ export async function getLibrary() {
   return {
     movies: (data.movies || []).map(adaptMovie),
     refreshedAt: data.refreshed_at || null,
+    castEnriched: Boolean(data.cast_enriched),
+    castProgress: data.cast_progress || { done: 0, total: 0 },
+    schemaVersion: data.schema_version || 1,
   };
 }
 

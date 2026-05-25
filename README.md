@@ -1,11 +1,15 @@
-# PlexDice 🎲
+# Plex Quiz & Dice 🎲🎯
 
-PlexDice picks a random movie from your Plex library based on filters you
-control — genre, year, runtime, FSK and rating — with a slot-machine roll,
-optional AI plot/verdict, and one-tap deep links to play it in Plex or open
-the trailer/IMDb. It's a PWA, so you can install it on your iPhone or Android
-home screen. Unlike the old static "Filmwürfel", the catalog is fetched live
-from your Plex server via API.
+Plex Quiz & Dice has two modes built on your Plex library: a **Würfeln** dice
+roller that picks a random movie from filters you control — genre, year,
+runtime, FSK and rating — with a slot-machine roll and one-tap deep links to
+play it in Plex; and a **Quiz** game mode (cover→title, actor→movie,
+movie→actor, plot→movie) with rounds, scoreboard and group photos. It's a PWA,
+so you can install it on your iPhone or Android home screen. The catalog is
+fetched live from your Plex server via API.
+
+(The repo, Docker container and `/data` layout keep the original `plexdice`
+name — only the display name changed.)
 
 ## Quick start (local, Docker)
 
