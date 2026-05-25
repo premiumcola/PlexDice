@@ -2,10 +2,11 @@ import { useState, useMemo, useEffect } from 'react';
 import {
   Dices, SlidersHorizontal, ChevronDown, ChevronUp, Clock, Calendar, Star,
   ShieldAlert, Tag, Film, X, AlertCircle, History as HistoryIcon, Youtube,
-  ExternalLink, Tv2, Sparkles, Play, Loader2, Eye, EyeOff, Check,
+  ExternalLink, Tv2, Sparkles, Play, Loader2, Eye, EyeOff, Check, Shield,
 } from 'lucide-react';
 import { getLibrary, aiPlot, getSettings, saveSettings } from '../api';
-import { HistogramRange, MiniHistogram } from '../components/HistogramRange';
+import { HistogramRange } from '../components/HistogramRange';
+import FilterFunnel from '../components/FilterFunnel';
 
 const ACCENT = '#f5a623';
 const RUNTIME_MIN_BOUND = 60;
@@ -134,6 +135,7 @@ export default function Dice({ onNeedSettings }) {
   const [fireworksKey, setFireworksKey] = useState(0);
   const [history, setHistory] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
+  const [highlightSection, setHighlightSection] = useState(null);
   const [prefsLoaded, setPrefsLoaded] = useState(false);
 
   const [aiInfo, setAiInfo] = useState(null);
@@ -229,18 +231,68 @@ export default function Dice({ onNeedSettings }) {
   const effYearMin = yearMin ?? yearBounds.min;
   const effYearMax = yearMax ?? yearBounds.max;
 
+  // One pipeline of ACTIVE filters, shared by the funnel (per-stage counts) and the
+  // final list — so the funnel's last count always equals filtered.length, and an
+  // empty pipeline means the full, unfiltered library.
+  const activeStages = useMemo(() => {
+    const fmtRating = (v) => v.toFixed(1).replace('.', ',');
+    const runtimeSummary =
+      runtimeMin === RUNTIME_MIN_BOUND ? `≤ ${formatRuntime(runtimeMax)}`
+        : runtimeMax === RUNTIME_MAX_BOUND ? `≥ ${formatRuntime(runtimeMin)}`
+          : `${formatRuntime(runtimeMin)}–${formatRuntime(runtimeMax)}`;
+    const ratingSummary =
+      ratingMax >= 10 ? `Ab ${fmtRating(ratingMin)}`
+        : ratingMin <= 0 ? `Bis ${fmtRating(ratingMax)}`
+          : `${fmtRating(ratingMin)}–${fmtRating(ratingMax)}`;
+    return [
+      selectedGenres.length > 0 && {
+        id: 'genre', label: 'Genres', icon: Tag, drawer_target: 'genre',
+        summary: selectedGenres.join(', '),
+        pred: (m) => selectedGenres.every((g) => (m.g || []).includes(g)),
+      },
+      (effYearMin !== yearBounds.min || effYearMax !== yearBounds.max) && {
+        id: 'year', label: 'Jahr', icon: Calendar, drawer_target: 'year',
+        summary: `${effYearMin}–${effYearMax}`,
+        pred: (m) => !m.y || (m.y >= effYearMin && m.y <= effYearMax),
+      },
+      (runtimeMin !== RUNTIME_MIN_BOUND || runtimeMax !== RUNTIME_MAX_BOUND) && {
+        id: 'runtime', label: 'Spielzeit', icon: Clock, drawer_target: 'runtime',
+        summary: runtimeSummary,
+        pred: (m) => !m.r || (m.r >= runtimeMin && m.r <= runtimeMax),
+      },
+      (fskMin > 0 || fskMax < 18) && {
+        id: 'fsk', label: 'FSK', icon: Shield, drawer_target: 'fsk',
+        summary: fskMin > 0 ? `FSK ${fskMin}–${fskMax}` : `FSK ≤ ${fskMax}`,
+        pred: (m) => m.f == null || (m.f >= fskMin && m.f <= fskMax),
+      },
+      (ratingMin > 0 || ratingMax < 10) && {
+        id: 'rating', label: 'Bewertung', icon: Star, drawer_target: 'rating',
+        summary: ratingSummary,
+        pred: (m) => m.s == null || (m.s >= ratingMin && m.s <= ratingMax),
+      },
+      watched !== 'all' && {
+        id: 'watched', label: 'Gesehen', icon: Eye, drawer_target: 'watched',
+        summary: watched === 'unseen' ? 'Ungesehen' : 'Gesehen',
+        pred: (m) => (watched === 'unseen' ? (m.view_count || 0) === 0 : (m.view_count || 0) > 0),
+      },
+    ].filter(Boolean);
+  }, [selectedGenres, effYearMin, effYearMax, yearBounds.min, yearBounds.max, runtimeMin, runtimeMax, fskMin, fskMax, ratingMin, ratingMax, watched]);
+
   const filtered = useMemo(() => {
-    return movies.filter((m) => {
-      if (selectedGenres.length > 0 && !selectedGenres.every((g) => (m.g || []).includes(g))) return false;
-      if (m.y && (m.y < effYearMin || m.y > effYearMax)) return false;
-      if (m.r && (m.r < runtimeMin || m.r > runtimeMax)) return false;
-      if (m.f != null && (m.f < fskMin || m.f > fskMax)) return false;
-      if (m.s != null && (m.s < ratingMin || m.s > ratingMax)) return false;
-      if (watched === 'unseen' && (m.view_count || 0) > 0) return false;
-      if (watched === 'seen' && (m.view_count || 0) === 0) return false;
-      return true;
+    let pool = movies;
+    for (const stage of activeStages) pool = pool.filter(stage.pred);
+    return pool;
+  }, [movies, activeStages]);
+
+  // Step-by-step counts driving the funnel visualization.
+  const funnelStages = useMemo(() => {
+    let pool = movies;
+    return activeStages.map(({ pred, ...meta }) => {
+      const count_in = pool.length;
+      pool = pool.filter(pred);
+      return { ...meta, count_in, count_out: pool.length };
     });
-  }, [movies, selectedGenres, effYearMin, effYearMax, runtimeMin, runtimeMax, fskMin, fskMax, ratingMin, ratingMax, watched]);
+  }, [movies, activeStages]);
 
   const pick = () => {
     if (filtered.length === 0) return;
@@ -296,13 +348,30 @@ export default function Dice({ onNeedSettings }) {
     setWatched('all');
   };
 
-  const activeFilterCount =
-    (selectedGenres.length > 0 ? 1 : 0) +
-    (effYearMin !== yearBounds.min || effYearMax !== yearBounds.max ? 1 : 0) +
-    (runtimeMin !== RUNTIME_MIN_BOUND || runtimeMax !== RUNTIME_MAX_BOUND ? 1 : 0) +
-    (fskMin > 0 || fskMax < 18 ? 1 : 0) +
-    (ratingMin > 0 || ratingMax < 10 ? 1 : 0) +
-    (watched !== 'all' ? 1 : 0);
+  const activeFilterCount = activeStages.length;
+
+  // Open the drawer scrolled to a stage's section, with a brief highlight pulse.
+  const openStage = (target) => {
+    setShowHistory(false);
+    setShowFilters(true);
+    setHighlightSection(target);
+    setTimeout(() => {
+      document.getElementById(`filter-${target}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 60);
+    setTimeout(() => setHighlightSection(null), 1300);
+  };
+
+  // Clear a single filter dimension to its neutral (inactive) value.
+  const resetStage = (id) => {
+    if (id === 'genre') setSelectedGenres([]);
+    else if (id === 'year') { setYearMin(yearBounds.min); setYearMax(yearBounds.max); }
+    else if (id === 'runtime') { setRuntimeMin(RUNTIME_MIN_BOUND); setRuntimeMax(RUNTIME_MAX_BOUND); }
+    else if (id === 'fsk') { setFskMin(0); setFskMax(18); }
+    else if (id === 'rating') { setRatingMin(0); setRatingMax(10); }
+    else if (id === 'watched') setWatched('all');
+  };
+
+  const sectionClass = (id) => (highlightSection === id ? 'filter-pulse' : undefined);
 
   const selectPicked = (m) => {
     setPicked(m);
@@ -348,6 +417,12 @@ export default function Dice({ onNeedSettings }) {
           100% { transform: scale(1); opacity: 1; filter: blur(0); }
         }
         .reveal-card { animation: revealCard 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+        @keyframes filterPulse {
+          0% { box-shadow: 0 0 0 0 rgba(245,166,35,0); }
+          25% { box-shadow: 0 0 0 3px rgba(245,166,35,0.55); }
+          100% { box-shadow: 0 0 0 0 rgba(245,166,35,0); }
+        }
+        .filter-pulse { border-radius: 12px; animation: filterPulse 1.2s ease-out; }
         .rolling-bg {
           background: linear-gradient(125deg,
             rgba(245,166,35,0.22) 0%, rgba(244,114,182,0.18) 25%,
@@ -442,49 +517,26 @@ export default function Dice({ onNeedSettings }) {
             )}
           </div>
 
-          {/* Mini histogram preview when filters are collapsed */}
-          {!showFilters && movies.length > 0 && (
-            <button
-              onClick={() => setShowFilters(true)}
-              className="w-full mb-4 p-3 rounded-2xl bg-zinc-900/60 border border-zinc-800 active:scale-[0.99] transition-transform"
-            >
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px] uppercase tracking-wider text-zinc-500 flex items-center gap-1">
-                      <Calendar className="w-3 h-3" /> Jahr
-                    </span>
-                    <span className="text-[11px] text-amber-400 font-mono">{effYearMin}–{effYearMax}</span>
-                  </div>
-                  <MiniHistogram
-                    data={movies.map((m) => m.y).filter(Boolean)}
-                    min={yearBounds.min} max={yearBounds.max}
-                    valueMin={effYearMin} valueMax={effYearMax}
-                    bucketCount={32}
-                  />
-                </div>
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px] uppercase tracking-wider text-zinc-500 flex items-center gap-1">
-                      <Clock className="w-3 h-3" /> Spielzeit
-                    </span>
-                    <span className="text-[11px] text-amber-400 font-mono">{formatRuntime(runtimeMin)}–{formatRuntime(runtimeMax)}</span>
-                  </div>
-                  <MiniHistogram
-                    data={movies.map((m) => m.r).filter(Boolean)}
-                    min={RUNTIME_MIN_BOUND} max={RUNTIME_MAX_BOUND}
-                    valueMin={runtimeMin} valueMax={runtimeMax}
-                    bucketCount={28}
-                  />
-                </div>
-              </div>
-            </button>
+          {/* Headline funnel: how active filters narrow the pool (placeholder when none) */}
+          {movies.length > 0 && (
+            funnelStages.length > 0 ? (
+              <FilterFunnel
+                stages={funnelStages}
+                total={movies.length}
+                onOpenStage={openStage}
+                onResetStage={resetStage}
+              />
+            ) : (
+              <p className="mb-4 text-center text-sm text-zinc-500">
+                {movies.length.toLocaleString('de-DE')} Filme · keine Filter aktiv
+              </p>
+            )
           )}
 
           {/* Filter panel */}
           {showFilters && (
             <div className="mb-4 p-4 rounded-2xl bg-zinc-900/60 border border-zinc-800 space-y-5">
-              <div>
+              <div id="filter-genre" className={sectionClass('genre')}>
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-sm font-medium text-zinc-300 flex items-center gap-2">
                     <Tag className="w-3.5 h-3.5" /> Genres
@@ -512,7 +564,7 @@ export default function Dice({ onNeedSettings }) {
                 )}
               </div>
 
-              <div id="filter-watched">
+              <div id="filter-watched" className={sectionClass('watched')}>
                 <label className="text-sm font-medium text-zinc-200 flex items-center gap-2 mb-2">
                   <Eye className="w-3.5 h-3.5" /> Gesehen
                 </label>
@@ -536,7 +588,7 @@ export default function Dice({ onNeedSettings }) {
                 </div>
               </div>
 
-              <div id="filter-year">
+              <div id="filter-year" className={sectionClass('year')}>
                 <label className="text-sm font-medium text-zinc-200 flex items-center gap-2 mb-2">
                   <Calendar className="w-3.5 h-3.5" /> Jahr: <span className="text-amber-400 font-mono">{effYearMin}</span> – <span className="text-amber-400 font-mono">{effYearMax}</span>
                 </label>
@@ -549,7 +601,7 @@ export default function Dice({ onNeedSettings }) {
                 />
               </div>
 
-              <div>
+              <div id="filter-runtime" className={sectionClass('runtime')}>
                 <label className="text-sm font-medium text-zinc-200 flex items-center gap-2 mb-2">
                   <Clock className="w-3.5 h-3.5" /> Spielzeit: <span className="text-amber-400 font-mono">{formatRuntime(runtimeMin)}</span> – <span className="text-amber-400 font-mono">{formatRuntime(runtimeMax)}</span>
                 </label>
@@ -562,7 +614,7 @@ export default function Dice({ onNeedSettings }) {
                 />
               </div>
 
-              <div>
+              <div id="filter-fsk" className={sectionClass('fsk')}>
                 <label className="text-sm font-medium text-zinc-200 flex items-center gap-2 mb-2">
                   <ShieldAlert className="w-3.5 h-3.5" /> FSK: <span className="text-amber-400 font-mono">{fskMin}</span> – <span className="text-amber-400 font-mono">{fskMax}</span>
                 </label>
@@ -607,7 +659,7 @@ export default function Dice({ onNeedSettings }) {
                 })()}
               </div>
 
-              <div>
+              <div id="filter-rating" className={sectionClass('rating')}>
                 <label className="text-sm font-medium text-zinc-200 flex items-center gap-2 mb-2">
                   <Star className="w-3.5 h-3.5" /> Bewertung: <span className="text-amber-400 font-mono">{ratingMin.toFixed(1)}</span> – <span className="text-amber-400 font-mono">{ratingMax.toFixed(1)}</span>
                 </label>

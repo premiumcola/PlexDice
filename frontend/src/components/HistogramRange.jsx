@@ -15,30 +15,6 @@ function useBuckets(data, min, max, bucketCount) {
   }, [data, min, max, bucketCount]);
 }
 
-// Compact, read-only distribution bars (used in the collapsed filter preview).
-export function MiniHistogram({ data, min, max, valueMin, valueMax, bucketCount = 30, accent = ACCENT }) {
-  const { buckets, maxCount } = useBuckets(data, min, max, bucketCount);
-  const range = max - min;
-
-  return (
-    <div className="flex items-end gap-[1px] h-7 w-full">
-      {buckets.map((c, i) => {
-        const bucketStart = min + (range * i) / bucketCount;
-        const bucketEnd = min + (range * (i + 1)) / bucketCount;
-        const active = bucketEnd > valueMin && bucketStart < valueMax;
-        const height = (c / maxCount) * 100;
-        return (
-          <div
-            key={i}
-            className="flex-1 rounded-t-[1px]"
-            style={{ height: `${Math.max(8, height)}%`, background: active ? accent : 'rgba(82,82,91,0.4)' }}
-          />
-        );
-      })}
-    </div>
-  );
-}
-
 // Histogram with a dual-handle range slider underneath.
 export function HistogramRange({
   data,
