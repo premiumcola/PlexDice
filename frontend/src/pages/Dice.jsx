@@ -3,6 +3,7 @@ import {
   Dices, SlidersHorizontal, ChevronDown, ChevronUp, Clock, Calendar, Star,
   ShieldAlert, Tag, Film, X, AlertCircle, History as HistoryIcon, Youtube,
   ExternalLink, Tv2, Sparkles, Play, Loader2, Eye, EyeOff, Check, Shield,
+  CheckCircle2, AlertTriangle,
 } from 'lucide-react';
 import { getLibrary, aiPlot, getSettings, saveSettings } from '../api';
 import { HistogramRange } from '../components/HistogramRange';
@@ -740,7 +741,8 @@ export default function Dice({ onNeedSettings }) {
                       src={picked.thumb_url}
                       alt=""
                       loading="lazy"
-                      className="w-24 sm:w-32 aspect-[2/3] rounded-xl object-cover bg-zinc-800 shadow-lg shrink-0"
+                      className="w-[140px] sm:w-[180px] aspect-[2/3] rounded-xl object-cover bg-zinc-800 shrink-0"
+                      style={{ boxShadow: '0 8px 24px rgba(0,0,0,0.35), 0 0 32px rgba(245, 166, 35, 0.15)' }}
                       onError={(e) => { e.currentTarget.style.display = 'none'; }}
                     />
                   )}
@@ -749,7 +751,7 @@ export default function Dice({ onNeedSettings }) {
                       <span className="text-xs uppercase tracking-widest text-amber-400/80 font-medium">Dein Film für heute</span>
                       <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
                     </div>
-                    <h2 className="text-2xl sm:text-3xl font-bold leading-tight tracking-tight mt-1" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
+                    <h2 className="text-3xl sm:text-4xl font-bold leading-tight tracking-tight mt-1" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
                       {picked.t}
                     </h2>
                     {picked.o && picked.o !== picked.t && (
@@ -814,10 +816,38 @@ export default function Dice({ onNeedSettings }) {
                     <p className="text-xs text-rose-300">KI-Fehler: {aiInfo.error}</p>
                   )}
                   {aiInfo && !aiInfo.disabled && !aiInfo.error && (
-                    <div className="space-y-2 text-sm rounded-xl bg-zinc-950/40 border border-zinc-800/60 p-3">
-                      {!picked.summary && aiInfo.plot && <p className="text-zinc-200 leading-relaxed">{aiInfo.plot}</p>}
-                      {aiInfo.lohnt && <p className="text-amber-200"><span className="font-semibold">Lohnt sich:</span> {aiInfo.lohnt}</p>}
-                      {aiInfo.crew && <p className="text-zinc-400 text-xs">{aiInfo.crew}</p>}
+                    <div className="space-y-3">
+                      {!picked.summary && aiInfo.plot && (
+                        <p className="text-sm text-zinc-300 leading-relaxed">{aiInfo.plot}</p>
+                      )}
+                      {aiInfo.hot_take && (
+                        <div className="rounded-2xl bg-zinc-900 p-4 space-y-3">
+                          <h3 className="text-xl text-white leading-snug" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
+                            {aiInfo.hot_take}
+                          </h3>
+                          {(aiInfo.pros || []).length > 0 && (
+                            <div className="space-y-1.5">
+                              {aiInfo.pros.map((p, i) => (
+                                <div key={i} className="flex items-start gap-2 text-sm text-zinc-200">
+                                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                                  <span>{p}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {aiInfo.caveat && (
+                            <div className="flex items-start gap-2 text-sm text-zinc-200">
+                              <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                              <span>{aiInfo.caveat}</span>
+                            </div>
+                          )}
+                          {aiInfo.fit && (
+                            <p className="text-sm italic text-zinc-400 pt-1">
+                              Passt zu dir, wenn {aiInfo.fit.replace(/^passt zu dir,?\s*wenn\s+/i, '')}
+                            </p>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

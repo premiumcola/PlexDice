@@ -43,7 +43,7 @@ def plot():
     if not title:
         return jsonify({"error": "title required"}), 400
     if not settings_store.get("ai").get("enabled", True):
-        return jsonify({"plot": "", "lohnt": "", "crew": "", "disabled": True})
+        return jsonify({"disabled": True})
 
     original_title = (body.get("original_title") or "").strip()
     year = body.get("year")
@@ -51,7 +51,12 @@ def plot():
 
     with _lock:
         entry = _load_cache().get(cache_key)
-        if entry and (time.time() - entry.get("ts", 0)) < _TTL_SECONDS:
+        # Pre-verdict cache entries lack "hot_take" → treat as miss, refetch & overwrite.
+        if (
+            entry
+            and (time.time() - entry.get("ts", 0)) < _TTL_SECONDS
+            and entry.get("data", {}).get("hot_take")
+        ):
             return jsonify(entry["data"])
 
     result = ai_enrich.synopsis(title, year, original_title)
