@@ -24,16 +24,21 @@ PWA-installable on iOS/Android home screen. Talks to Plex live via API.
 
 ## Git — after each completed task, immediately
 
-```
-Set-Location D:\CLAUDE_code\PlexDice   (or cd /mnt/d/CLAUDE_code/PlexDice in WSL)
-git add .
-git commit -m "feat/fix: short description"
-git push origin main
-```
+Run these as THREE SEPARATE tool calls — never combined with
+`&&`, `;`, or `cd <path> && ...`. The working directory is
+preserved across tool calls automatically.
 
-- Never combine `cd && git` — always separate commands
-- Commit messages in English, max 60 chars
-- One commit per task, not bundled
+1. `git add -A`
+2. `git commit -m "feat/fix: short description"`
+3. `git push origin main`
+
+NEVER:
+- `cd ... && git ...`         ← triggers Bash security prompt
+- `Set-Location ... ; git ...` ← triggers Bash security prompt
+- Multiple git commands chained with `&&` or `;`
+
+One commit per task, not bundled. Commit messages in English,
+max 60 chars.
 
 ## Code Quality
 

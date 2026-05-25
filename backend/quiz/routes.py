@@ -1,16 +1,19 @@
 """Flask blueprint /api/quiz/* — round lifecycle, history, per-movie stats."""
 from __future__ import annotations
 
+import logging
 import os
 from datetime import datetime, timezone
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, send_file
 
+from quiz import photos
 from quiz.generator import QuizGenerator
 from quiz.history import History
 from quiz.session import SessionStore
 from services import DATA_DIR, library_cache
 
+logger = logging.getLogger(__name__)
 bp = Blueprint("quiz", __name__, url_prefix="/api/quiz")
 
 sessions = SessionStore()
@@ -18,6 +21,12 @@ history = History(
     os.path.join(DATA_DIR, "quiz_history.json"),
     os.path.join(DATA_DIR, "quiz_movie_stats.json"),
 )
+
+# Remove photo files no round references anymore (runs once on boot).
+try:
+    photos.cleanup_orphans(history.all_photo_ids())
+except Exception:  # noqa: BLE001
+    pass
 
 
 def _now() -> str:
@@ -146,17 +155,35 @@ def history_delete(round_id: str):
     record = history.delete_round(round_id)
     if not record:
         return jsonify({"error": "not found"}), 404
-    # Photo file cleanup is wired in the N4 task.
-    try:
-        from quiz import photos  # noqa: WPS433 — optional until N4 lands
-
-        if record.get("photo_id"):
-            photos.delete(record["photo_id"])
-    except Exception:  # noqa: BLE001
-        pass
-    return jsonify({"ok": True, "photo_id": record.get("photo_id")})
+    photos.delete(record.get("photo_id"))
+    return jsonify({"ok": True})
 
 
 @bp.get("/movie/<movie_key>/stats")
 def movie_stats(movie_key: str):
     return jsonify(history.movie_stats(movie_key))
+
+
+@bp.post("/photo")
+def upload_photo():
+    file = request.files.get("photo") or request.files.get("file")
+    if not file:
+        return jsonify({"error": "no file"}), 400
+    try:
+        photo_id = photos.save(file)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Photo upload failed: %s", exc)
+        return jsonify({"error": "invalid image"}), 400
+    return jsonify({"photo_id": photo_id, "url": f"/api/quiz/photo/{photo_id}"})
+
+
+@bp.get("/photo/<photo_id>")
+def get_photo(photo_id: str):
+    width = request.args.get("w", type=int)
+    width = width if width and 0 < width <= 1200 else None
+    path = photos.get_path(photo_id, width)
+    if not path:
+        return jsonify({"error": "not found"}), 404
+    response = send_file(path, mimetype="image/jpeg")
+    response.headers["Cache-Control"] = "public, max-age=86400"
+    return response

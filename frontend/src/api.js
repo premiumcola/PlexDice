@@ -120,6 +120,11 @@ export function quizTopMovies() {
 export function quizMovieStats(movieKey) {
   return fetch(`/api/quiz/movie/${movieKey}/stats`).then(unwrap);
 }
+export function quizUploadPhoto(file) {
+  const fd = new FormData();
+  fd.append('photo', file);
+  return fetch('/api/quiz/photo', { method: 'POST', body: fd }).then(unwrap);
+}
 
 export function aiPlot(movie) {
   return postJson('/api/ai/plot', {

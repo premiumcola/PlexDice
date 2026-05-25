@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ArrowLeft, X, Camera, Play, Loader2, AlertCircle } from 'lucide-react';
 import { navigate } from '../../router';
-import { quizNewRound } from '../../api';
+import { quizNewRound, quizUploadPhoto } from '../../api';
 import { saveRound } from './store';
 
 const SIZES = [20, 50, 100];
@@ -12,6 +12,8 @@ export default function QuizSetup() {
   const [playerInput, setPlayerInput] = useState('');
   const [size, setSize] = useState(50);
   const [photoPreview, setPhotoPreview] = useState(null);
+  const [photoId, setPhotoId] = useState(null);
+  const [uploading, setUploading] = useState(false);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState('');
 
@@ -21,10 +23,19 @@ export default function QuizSetup() {
     setPlayerInput('');
   };
 
-  // Photo upload is wired in the N4 task; for now we keep a local preview only.
-  const onPhoto = (e) => {
+  const onPhoto = async (e) => {
     const file = e.target.files?.[0];
-    if (file) setPhotoPreview(URL.createObjectURL(file));
+    if (!file) return;
+    setPhotoPreview(URL.createObjectURL(file));
+    setUploading(true);
+    try {
+      const resp = await quizUploadPhoto(file);
+      setPhotoId(resp.photo_id);
+    } catch {
+      /* keep the local preview even if upload failed */
+    } finally {
+      setUploading(false);
+    }
   };
 
   const start = async () => {
@@ -35,7 +46,7 @@ export default function QuizSetup() {
       const resp = await quizNewRound({ size, name: name.trim() });
       saveRound(resp.round_id, {
         ...resp,
-        setup: { name: name.trim(), playerNames: players, photoId: null },
+        setup: { name: name.trim(), playerNames: players, photoId },
       });
       navigate(`/quiz/play/${resp.round_id}`);
     } catch (e) {
@@ -95,9 +106,15 @@ export default function QuizSetup() {
             <div className="flex items-center gap-3">
               <button type="button" onClick={() => document.getElementById('photoCapture').click()}
                 className="inline-flex items-center gap-2 px-4 py-3 rounded-xl bg-zinc-900 ring-1 ring-zinc-800 text-zinc-200 active:scale-[0.98] transition-transform">
-                <Camera className="w-5 h-5" /> {photoPreview ? 'Neu aufnehmen' : 'Foto aufnehmen'}
+                {uploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Camera className="w-5 h-5" />}
+                {photoPreview ? 'Neu aufnehmen' : 'Foto aufnehmen'}
               </button>
-              {photoPreview && <img src={photoPreview} alt="" className="w-16 h-16 rounded-xl object-cover ring-1 ring-zinc-700" />}
+              {photoPreview && (
+                <div className="relative">
+                  <img src={photoPreview} alt="" className="w-16 h-16 rounded-xl object-cover ring-1 ring-zinc-700" />
+                  {photoId && <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center text-[10px] text-white">✓</span>}
+                </div>
+              )}
             </div>
           </div>
 
