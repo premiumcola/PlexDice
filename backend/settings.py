@@ -1,0 +1,103 @@
+"""Persistent settings storage backed by a JSON file in the data dir."""
+from __future__ import annotations
+
+import copy
+import json
+import logging
+import os
+import threading
+from typing import Any, Dict
+
+logger = logging.getLogger(__name__)
+
+
+def _default_settings() -> Dict[str, Any]:
+    return {
+        "plex": {"url": "", "token": "", "ssl": True, "libraries": []},
+        "ai": {"enabled": True},
+        "ui": {"last_filters": {}},
+    }
+
+
+def _deep_merge(base: Dict[str, Any], patch: Dict[str, Any]) -> Dict[str, Any]:
+    """Recursively merge ``patch`` into ``base`` (mutates and returns base)."""
+    for key, value in patch.items():
+        if isinstance(value, dict) and isinstance(base.get(key), dict):
+            _deep_merge(base[key], value)
+        else:
+            base[key] = value
+    return base
+
+
+class SettingsStore:
+    """Loads/saves settings.json, transparently reloading if changed on disk.
+
+    Reloading on disk-mtime change keeps multiple gunicorn workers consistent
+    without an external store.
+    """
+
+    def __init__(self, path: str) -> None:
+        self._path = path
+        self._lock = threading.RLock()
+        self._data: Dict[str, Any] = _default_settings()
+        self._mtime: float = 0.0
+        self._ensure_file()
+        self._reload()
+
+    def _ensure_file(self) -> None:
+        if not os.path.exists(self._path):
+            os.makedirs(os.path.dirname(self._path), exist_ok=True)
+            with open(self._path, "w", encoding="utf-8") as fh:
+                json.dump(_default_settings(), fh, indent=2)
+            logger.info("Created default settings at %s", self._path)
+
+    def _reload(self) -> None:
+        try:
+            mtime = os.path.getmtime(self._path)
+        except OSError:
+            return
+        if mtime == self._mtime:
+            return
+        try:
+            with open(self._path, "r", encoding="utf-8") as fh:
+                loaded = json.load(fh)
+            self._data = _deep_merge(_default_settings(), loaded)
+            self._mtime = mtime
+        except (OSError, json.JSONDecodeError) as exc:
+            logger.warning("Could not read settings, keeping current: %s", exc)
+
+    def all(self) -> Dict[str, Any]:
+        with self._lock:
+            self._reload()
+            return copy.deepcopy(self._data)
+
+    def get(self, section: str) -> Dict[str, Any]:
+        return self.all().get(section, {})
+
+    def save(self) -> None:
+        with open(self._path, "w", encoding="utf-8") as fh:
+            json.dump(self._data, fh, indent=2)
+        self._mtime = os.path.getmtime(self._path)
+
+    def update(self, patch: Dict[str, Any]) -> Dict[str, Any]:
+        """Deep-merge a partial settings dict and persist it."""
+        with self._lock:
+            self._reload()
+            patch = copy.deepcopy(patch)
+            plex_patch = patch.get("plex")
+            if isinstance(plex_patch, dict):
+                plex_patch.pop("tokenSet", None)
+                # An empty/absent token never overwrites the stored one
+                if not plex_patch.get("token"):
+                    plex_patch.pop("token", None)
+            _deep_merge(self._data, patch)
+            self.save()
+            return copy.deepcopy(self._data)
+
+    def redacted(self) -> Dict[str, Any]:
+        """Settings with the token stripped, plus a ``tokenSet`` flag for the UI."""
+        data = self.all()
+        plex = data.setdefault("plex", {})
+        plex["tokenSet"] = bool(plex.get("token"))
+        plex["token"] = ""
+        return data
