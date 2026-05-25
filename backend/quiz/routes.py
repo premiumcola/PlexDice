@@ -10,8 +10,14 @@ from flask import Blueprint, jsonify, request, send_file
 from quiz import photos
 from quiz.generator import QuizGenerator
 from quiz.history import History
+from quiz.modes import MODES
 from quiz.session import SessionStore
-from services import DATA_DIR, library_cache
+from services import DATA_DIR, library_cache, settings_store
+
+_CONFIG_KEYS = {
+    "default_difficulty", "default_size", "countdown_seconds", "sound_enabled",
+    "enabled_modes", "show_correct_on_wrong", "autoreveal_delay_ms",
+}
 
 logger = logging.getLogger(__name__)
 bp = Blueprint("quiz", __name__, url_prefix="/api/quiz")
@@ -44,9 +50,10 @@ def _readable(option: dict | None) -> str | None:
 @bp.post("/round/new")
 def new_round():
     body = request.get_json(silent=True) or {}
-    size = max(1, min(int(body.get("size") or 50), 200))
-    difficulty = body.get("difficulty") or "medium"
-    enabled_modes = body.get("enabled_modes") or body.get("modes")
+    cfg = settings_store.get("quiz")
+    size = max(1, min(int(body.get("size") or cfg.get("default_size") or 50), 200))
+    difficulty = body.get("difficulty") or cfg.get("default_difficulty") or "medium"
+    enabled_modes = body.get("enabled_modes") or body.get("modes") or (cfg.get("enabled_modes") or None)
     name = (body.get("name") or "").strip() or None
 
     status = library_cache.status()
@@ -175,6 +182,33 @@ def history_delete(round_id: str):
 @bp.get("/movie/<movie_key>/stats")
 def movie_stats(movie_key: str):
     return jsonify(history.movie_stats(movie_key))
+
+
+def _config_payload() -> dict:
+    cfg = settings_store.get("quiz")
+    all_ids = list(MODES.keys())
+    return {
+        **cfg,
+        "enabled_modes": cfg.get("enabled_modes") or all_ids,
+        "modes": [
+            {"id": m.id, "label": m.label, "description": m.description, "tier": m.tier}
+            for m in MODES.values()
+        ],
+    }
+
+
+@bp.get("/config")
+def get_config():
+    return jsonify(_config_payload())
+
+
+@bp.post("/config")
+def post_config():
+    body = request.get_json(silent=True) or {}
+    patch = {k: v for k, v in body.items() if k in _CONFIG_KEYS}
+    if patch:
+        settings_store.update({"quiz": patch})
+    return jsonify(_config_payload())
 
 
 @bp.post("/photo")

@@ -24,6 +24,15 @@ def _default_settings() -> Dict[str, Any]:
         },
         "ai": {"enabled": True},
         "ui": {"last_filters": {}},
+        "quiz": {
+            "default_difficulty": "medium",
+            "default_size": 50,
+            "countdown_seconds": 15,
+            "sound_enabled": True,
+            "enabled_modes": [],  # empty = all modes enabled
+            "show_correct_on_wrong": True,
+            "autoreveal_delay_ms": 1200,
+        },
     }
 
 

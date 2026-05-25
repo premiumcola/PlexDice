@@ -125,6 +125,12 @@ export function quizUploadPhoto(file) {
   fd.append('photo', file);
   return fetch('/api/quiz/photo', { method: 'POST', body: fd }).then(unwrap);
 }
+export function quizGetConfig() {
+  return fetch('/api/quiz/config').then(unwrap);
+}
+export function quizSaveConfig(patch) {
+  return postJson('/api/quiz/config', patch);
+}
 
 export function aiPlot(movie) {
   return postJson('/api/ai/plot', {
