@@ -38,7 +38,7 @@ function OptionButton({ option, multi, selected, locked, reveal, onTap }) {
       type="button"
       disabled={locked}
       onClick={() => onTap(option.id)}
-      className={`relative rounded-2xl overflow-hidden ${ring} ${bg} text-left transition-all active:scale-[0.97] disabled:active:scale-100 ${isImage ? 'h-24 sm:h-32' : 'min-h-[80px] p-3 flex flex-col justify-center'}`}
+      className={`relative rounded-2xl overflow-hidden ${ring} ${bg} text-left transition-all active:scale-[0.97] disabled:active:scale-100 ${isImage ? 'h-24 sm:h-32 md:h-40 xl:h-44' : 'min-h-[64px] md:min-h-[80px] p-3 md:p-4 flex flex-col justify-center'}`}
     >
       {isImage ? (
         <>
@@ -200,7 +200,7 @@ export default function QuizPlay({ roundId }) {
   const pct = (remaining / DURATION) * 100;
   const low = remaining <= 3000;
   const stemImage = q.stem.kind === 'image';
-  const gridCols = q.options.length > 4 ? 'grid-cols-3' : 'grid-cols-2';
+  const gridCols = q.options.length > 4 ? 'grid-cols-3 xl:grid-cols-6' : 'grid-cols-2 xl:grid-cols-4';
 
   const abort = async () => {
     clearTimeout(advanceRef.current);
@@ -232,14 +232,14 @@ export default function QuizPlay({ roundId }) {
         </div>
       </div>
 
-      <div className="shrink-0 px-4 sm:px-6 pt-3 text-center text-sm text-zinc-400">{MODE_PROMPT[q.mode] || 'Frage'}</div>
+      <div className="shrink-0 px-4 sm:px-6 pt-3 text-center text-sm md:text-base text-zinc-400">{MODE_PROMPT[q.mode] || 'Frage'}</div>
 
       <div className="flex-1 min-h-0 px-4 sm:px-6 py-3 flex items-center justify-center overflow-hidden">
         {stemImage ? (
-          <img src={q.stem.content} alt="" className="max-h-full max-w-full object-contain rounded-2xl shadow-xl" />
+          <img src={q.stem.content} alt="" className="max-h-full max-w-full md:max-w-md object-contain rounded-2xl shadow-xl" />
         ) : (
-          <div className="max-h-full overflow-auto rounded-2xl bg-zinc-900/60 ring-1 ring-zinc-800 p-5 text-center">
-            <p className="text-base sm:text-lg leading-relaxed text-zinc-200">{q.stem.content}</p>
+          <div className="max-h-full max-w-2xl overflow-auto rounded-2xl bg-zinc-900/60 ring-1 ring-zinc-800 p-5 md:p-6 text-center">
+            <p className="text-base sm:text-lg md:text-xl leading-relaxed text-zinc-200">{q.stem.content}</p>
           </div>
         )}
       </div>
@@ -252,7 +252,7 @@ export default function QuizPlay({ roundId }) {
         )}
       </div>
 
-      <div className="shrink-0 px-4 sm:px-6 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2">
+      <div className="shrink-0 px-4 sm:px-6 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2 w-full max-w-5xl mx-auto">
         <div className={`grid ${gridCols} gap-2 sm:gap-3`}>
           {q.options.map((o) => (
             <OptionButton key={o.id} option={o} multi={q.multi_select} selected={multiSel.includes(o.id)} locked={locked} reveal={reveal} onTap={onOption} />

@@ -62,7 +62,7 @@ export default function QuizReview({ roundId }) {
           </div>
         </header>
 
-        <div className="space-y-2">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-2">
           {(record.questions || []).map((q) => {
             const badge = learningBadge(stats[q.movie_key]);
             return (

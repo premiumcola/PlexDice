@@ -30,7 +30,7 @@ function RoundCard({ round }) {
       onClick={() => navigate(`/quiz/review/${round.id}`)}
       className="w-full flex items-center gap-3 rounded-2xl bg-zinc-900/60 ring-1 ring-zinc-800 p-3 text-left active:scale-[0.99] transition-transform"
     >
-      <div className="w-16 h-10 rounded-lg bg-zinc-800 overflow-hidden shrink-0 flex items-center justify-center">
+      <div className="w-20 h-12 md:w-24 md:h-14 rounded-lg bg-zinc-800 overflow-hidden shrink-0 flex items-center justify-center">
         {round.photo_id ? (
           <img src={`/api/quiz/photo/${round.photo_id}?w=200`} alt="" className="w-full h-full object-cover" />
         ) : (
@@ -75,7 +75,7 @@ export default function QuizHome() {
         <button
           type="button"
           onClick={() => navigate('/quiz/setup')}
-          className="w-full rounded-2xl p-6 sm:p-8 text-left active:scale-[0.99] transition-transform"
+          className="w-full md:w-3/5 rounded-2xl p-6 sm:p-8 lg:p-10 text-left active:scale-[0.99] transition-transform"
           style={{
             background: 'linear-gradient(135deg, #f5a623 0%, #ffaf3a 100%)',
             boxShadow: '0 8px 24px rgba(245,166,35,0.30)',
@@ -95,7 +95,7 @@ export default function QuizHome() {
         {recent.length > 0 && (
           <section className="mt-8">
             <div className="text-[11px] uppercase tracking-widest text-zinc-500 mb-3">Letzte Runden</div>
-            <div className="space-y-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
               {recent.map((r) => (
                 <RoundCard key={r.id} round={r} />
               ))}

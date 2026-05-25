@@ -93,7 +93,7 @@ export default function QuizResult({ roundId }) {
 
   return (
     <div className="min-h-[100dvh] bg-zinc-950 text-zinc-100">
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-24 sm:py-12">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-24 sm:py-12">
         <div className="text-center">
           <div className="text-[11px] uppercase tracking-widest text-zinc-500 mb-2">Ergebnis</div>
           <div
@@ -107,29 +107,30 @@ export default function QuizResult({ roundId }) {
           </div>
         </div>
 
-        {chips.length > 0 && (
-          <div className="mt-6 flex flex-wrap justify-center gap-2">
-            {chips.map((c, i) => (
-              <span key={i} className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm ring-1 ${toneClass[c.tone]}`}>
-                {c.icon} {c.text}
-              </span>
-            ))}
-          </div>
-        )}
-
-        <div className="mt-8 rounded-2xl bg-zinc-900/60 ring-1 ring-zinc-800 p-4 sm:p-5">
-          <div className="text-[11px] uppercase tracking-widest text-zinc-500 mb-3">Pro Modus</div>
-          <div className="space-y-2.5">
-            {Object.entries(byMode).map(([mode, v]) => (
-              <div key={mode} className="flex items-center gap-3">
-                <div className="w-36 sm:w-44 text-sm text-zinc-300 truncate shrink-0">{MODE_LABEL[mode] || mode}</div>
-                <div className="flex-1 h-2 rounded-full bg-zinc-800 overflow-hidden">
-                  <div className="h-full bg-amber-400" style={{ width: `${v.total ? (v.correct / v.total) * 100 : 0}%` }} />
+        <div className="mt-8 md:grid md:grid-cols-2 md:gap-6 md:items-start space-y-4 md:space-y-0">
+          <div className="rounded-2xl bg-zinc-900/60 ring-1 ring-zinc-800 p-4 sm:p-5">
+            <div className="text-[11px] uppercase tracking-widest text-zinc-500 mb-3">Pro Modus</div>
+            <div className="space-y-2.5">
+              {Object.entries(byMode).map(([mode, v]) => (
+                <div key={mode} className="flex items-center gap-3">
+                  <div className="w-36 sm:w-44 text-sm text-zinc-300 truncate shrink-0">{MODE_LABEL[mode] || mode}</div>
+                  <div className="flex-1 h-2 rounded-full bg-zinc-800 overflow-hidden">
+                    <div className="h-full bg-amber-400" style={{ width: `${v.total ? (v.correct / v.total) * 100 : 0}%` }} />
+                  </div>
+                  <div className="text-sm text-zinc-400 tabular-nums shrink-0">{v.correct}/{v.total}</div>
                 </div>
-                <div className="text-sm text-zinc-400 tabular-nums shrink-0">{v.correct}/{v.total}</div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
+          {chips.length > 0 && (
+            <div className="flex flex-wrap md:flex-col gap-2 justify-center md:justify-start">
+              {chips.map((c, i) => (
+                <span key={i} className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm ring-1 ${toneClass[c.tone]}`}>
+                  {c.icon} {c.text}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
         <button
