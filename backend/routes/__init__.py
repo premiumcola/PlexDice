@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from flask import Flask
 
+from quiz.routes import bp as quiz_bp
+
 from .ai import bp as ai_bp
 from .library import bp as library_bp
 from .plex import bp as plex_bp
@@ -16,3 +18,4 @@ def register_routes(app: Flask) -> None:
     app.register_blueprint(plex_auth_bp)
     app.register_blueprint(plex_bp)
     app.register_blueprint(ai_bp)
+    app.register_blueprint(quiz_bp)
