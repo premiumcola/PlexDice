@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { X, Check } from 'lucide-react';
+import { Timer, Check, X, ListChecks, Settings, Play, RotateCcw, LogOut } from 'lucide-react';
 import { navigate } from '../../router';
 import { quizAnswer, quizAbandon } from '../../api';
 import { loadRound, saveResults, clearRound } from './store';
@@ -12,6 +12,12 @@ function basePoints(timeMs) {
   if (timeMs <= 10000) return 80;
   if (timeMs <= 15000) return 60;
   return 0;
+}
+
+function mmss(secs) {
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
 function OptionButton({ option, multi, selected, locked, reveal, onTap }) {
@@ -67,13 +73,19 @@ export default function QuizPlay({ roundId }) {
 
   const [index, setIndex] = useState(0);
   const [score, setScore] = useState(0);
+  const [correctCount, setCorrectCount] = useState(0);
+  const [wrongCount, setWrongCount] = useState(0);
   const [locked, setLocked] = useState(false);
   const [reveal, setReveal] = useState(null);
   const [multiSel, setMultiSel] = useState([]);
   const [remaining, setRemaining] = useState(DURATION);
-  const [confirmExit, setConfirmExit] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
+  const [paused, setPaused] = useState(false);
 
   const startRef = useRef(Date.now());
+  const roundStartRef = useRef(Date.now());
+  const pausedRef = useRef(false);
+  const pauseRemainRef = useRef(DURATION);
   const answersRef = useRef([]);
   const multiRef = useRef([]);
   const advanceRef = useRef(null);
@@ -112,6 +124,8 @@ export default function QuizPlay({ roundId }) {
       }
       setReveal({ correctIds, chosenIds: chosenSet });
       setScore((s) => s + pts);
+      if (correct) setCorrectCount((c) => c + 1);
+      else setWrongCount((c) => c + 1);
       answersRef.current.push({ mode: q.mode, correct, points: pts, difficulty: q.difficulty });
       quizAnswer(roundId, payload).catch(() => {});
       advanceRef.current = setTimeout(() => {
@@ -129,7 +143,7 @@ export default function QuizPlay({ roundId }) {
   );
 
   const onOption = (id) => {
-    if (locked) return;
+    if (locked || pausedRef.current) return;
     if (q.multi_select) {
       setMultiSel((sel) => {
         const next = sel.includes(id) ? sel.filter((x) => x !== id) : [...sel, id];
@@ -141,12 +155,13 @@ export default function QuizPlay({ roundId }) {
     }
   };
 
-  // Per-question countdown.
+  // Per-question countdown (frozen while paused).
   useEffect(() => {
     if (locked || !q) return undefined;
     startRef.current = Date.now();
     setRemaining(DURATION);
     const iv = setInterval(() => {
+      if (pausedRef.current) return;
       const rem = DURATION - (Date.now() - startRef.current);
       if (rem <= 0) {
         setRemaining(0);
@@ -157,6 +172,12 @@ export default function QuizPlay({ roundId }) {
     }, 100);
     return () => clearInterval(iv);
   }, [index, locked, q, lockIn]);
+
+  // Round elapsed timer — keeps ticking even when paused.
+  useEffect(() => {
+    const iv = setInterval(() => setElapsed(Math.floor((Date.now() - roundStartRef.current) / 1000)), 1000);
+    return () => clearInterval(iv);
+  }, []);
 
   useEffect(() => {
     let lock;
@@ -176,13 +197,25 @@ export default function QuizPlay({ roundId }) {
     };
   }, []);
 
+  const doPause = useCallback(() => {
+    pauseRemainRef.current = remaining;
+    pausedRef.current = true;
+    setPaused(true);
+  }, [remaining]);
+
+  const resume = () => {
+    startRef.current = Date.now() - (DURATION - pauseRemainRef.current);
+    pausedRef.current = false;
+    setPaused(false);
+  };
+
   useEffect(() => {
     const onKey = (e) => {
-      if (e.key === 'Escape') setConfirmExit(true);
+      if (e.key === 'Escape') doPause();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  }, [doPause]);
 
   useEffect(() => () => clearTimeout(advanceRef.current), []);
 
@@ -201,8 +234,9 @@ export default function QuizPlay({ roundId }) {
   const low = remaining <= 3000;
   const stemImage = q.stem.kind === 'image';
   const gridCols = q.options.length > 4 ? 'grid-cols-3 xl:grid-cols-6' : 'grid-cols-2 xl:grid-cols-4';
+  const remainingCount = Math.max(0, questions.length - index - 1);
 
-  const abort = async () => {
+  const leave = async (to) => {
     clearTimeout(advanceRef.current);
     try {
       await quizAbandon(roundId);
@@ -210,23 +244,30 @@ export default function QuizPlay({ roundId }) {
       /* ignore */
     }
     clearRound(roundId);
-    navigate('/quiz');
+    navigate(to);
   };
 
   return (
     <div className="h-[100dvh] bg-zinc-950 text-zinc-100 flex flex-col overflow-hidden">
       <style>{`@keyframes quizTitleFade {0%{opacity:0;transform:translateY(6px)}100%{opacity:1;transform:translateY(0)}}`}</style>
 
-      <div className="shrink-0 px-4 sm:px-6 pt-[max(0.75rem,env(safe-area-inset-top))] pb-2 flex items-center justify-between gap-3">
-        <span className="text-sm text-zinc-400 tabular-nums">Frage {index + 1} von {questions.length}</span>
-        <span className="text-sm font-semibold text-amber-400 tabular-nums">✨ {fmt(score)}</span>
-        <button type="button" onClick={() => setConfirmExit(true)} aria-label="Runde abbrechen"
-          className="w-9 h-9 rounded-lg bg-zinc-900 ring-1 ring-zinc-800 flex items-center justify-center active:scale-95">
-          <X className="w-4 h-4 text-zinc-400" />
+      {/* HUD */}
+      <div
+        className="shrink-0 sticky top-0 z-30 flex items-center gap-2 sm:gap-3 px-3 sm:px-6 py-2 pt-[max(0.5rem,env(safe-area-inset-top))]"
+        style={{ background: 'rgba(9,9,11,0.7)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)' }}
+      >
+        <span className="flex items-center gap-1 font-mono tabular-nums text-sm text-zinc-200"><Timer className="w-4 h-4 text-zinc-400" /> {mmss(elapsed)}</span>
+        <span className="flex items-center gap-1 text-sm tabular-nums text-emerald-400"><Check className="w-4 h-4" /> {correctCount}</span>
+        <span className="flex items-center gap-1 text-sm tabular-nums text-rose-400"><X className="w-4 h-4" /> {wrongCount}</span>
+        <span className="flex items-center gap-1 text-sm tabular-nums text-zinc-300 ml-auto"><ListChecks className="w-4 h-4" /> {remainingCount}</span>
+        <span className="flex items-center gap-1 text-sm font-semibold tabular-nums text-amber-400">✨ {fmt(score)}</span>
+        <button type="button" onClick={doPause} aria-label="Pause" className="w-9 h-9 rounded-lg bg-zinc-800/80 flex items-center justify-center active:scale-95">
+          <Settings className="w-4 h-4 text-zinc-300" />
         </button>
       </div>
 
-      <div className="shrink-0 px-4 sm:px-6">
+      {/* Countdown bar */}
+      <div className="shrink-0 px-4 sm:px-6 pt-2">
         <div className="h-1.5 rounded-full bg-zinc-800 overflow-hidden">
           <div className="h-full rounded-full" style={{ width: `${pct}%`, background: low ? '#ef4444' : '#f5a623', transition: 'width 0.1s linear' }} />
         </div>
@@ -246,9 +287,7 @@ export default function QuizPlay({ roundId }) {
 
       <div className="shrink-0 h-6 text-center">
         {locked && (
-          <span className="text-sm font-medium text-zinc-300" style={{ animation: 'quizTitleFade 0.4s ease' }}>
-            {q.movie_title}
-          </span>
+          <span className="text-sm font-medium text-zinc-300" style={{ animation: 'quizTitleFade 0.4s ease' }}>{q.movie_title}</span>
         )}
       </div>
 
@@ -267,19 +306,15 @@ export default function QuizPlay({ roundId }) {
         )}
       </div>
 
-      {confirmExit && (
-        <div className="fixed inset-0 z-50 bg-zinc-950/80 flex items-center justify-center p-6">
+      {paused && (
+        <div className="fixed inset-0 z-50 bg-zinc-950/85 flex items-center justify-center p-6">
           <div className="w-full max-w-sm rounded-2xl bg-zinc-900 ring-1 ring-zinc-800 p-6 text-center">
-            <p className="text-lg font-semibold mb-1">Runde abbrechen?</p>
-            <p className="text-sm text-zinc-400 mb-5">Der Fortschritt geht verloren.</p>
-            <div className="flex gap-2">
-              <button type="button" onClick={() => setConfirmExit(false)}
-                className="flex-1 py-3 rounded-xl bg-zinc-800 text-zinc-200 font-medium active:scale-[0.98] flex items-center justify-center gap-1.5">
-                <Check className="w-4 h-4" /> Weiterspielen
-              </button>
-              <button type="button" onClick={abort} className="flex-1 py-3 rounded-xl bg-rose-500 text-white font-medium active:scale-[0.98]">
-                Abbrechen
-              </button>
+            <p className="font-display-tight text-2xl mb-1">Pausiert</p>
+            <p className="text-sm text-zinc-400 mb-5">Frage pausiert · Gesamtzeit läuft weiter.</p>
+            <div className="space-y-2">
+              <button type="button" onClick={resume} className="w-full py-3 rounded-xl bg-amber-400 text-zinc-950 font-semibold flex items-center justify-center gap-2"><Play className="w-4 h-4 fill-zinc-950" /> Weiter</button>
+              <button type="button" onClick={() => leave('/quiz/setup')} className="w-full py-3 rounded-xl bg-zinc-800 text-zinc-200 font-medium flex items-center justify-center gap-2"><RotateCcw className="w-4 h-4" /> Neu starten</button>
+              <button type="button" onClick={() => leave('/quiz')} className="w-full py-3 rounded-xl bg-rose-500/90 text-white font-medium flex items-center justify-center gap-2"><LogOut className="w-4 h-4" /> Beenden</button>
             </div>
           </div>
         </div>
