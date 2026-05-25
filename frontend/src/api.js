@@ -60,12 +60,25 @@ export function saveSettings(patch) {
   return postJson('/api/settings', patch);
 }
 
-export function discoverServers(token) {
-  return postJson('/api/plex/discover', { token });
+// Token lives server-side after OAuth login; these endpoints read it themselves.
+export function discoverServers() {
+  return postJson('/api/plex/discover', {});
 }
 
-export function testConnection({ url, token, ssl }) {
-  return postJson('/api/plex/test', { url, token, ssl });
+export function testConnection({ url, ssl }) {
+  return postJson('/api/plex/test', { url, ssl });
+}
+
+export function createPlexPin() {
+  return postJson('/api/plex/auth/pin', {});
+}
+
+export function checkPlexPin(id) {
+  return fetch(`/api/plex/auth/pin/${id}`).then(unwrap);
+}
+
+export function plexLogout() {
+  return postJson('/api/plex/auth/logout', {});
 }
 
 export function aiPlot(movie) {

@@ -40,3 +40,4 @@ def _seed_from_env() -> None:
 
 
 _seed_from_env()
+settings_store.ensure_client_id()

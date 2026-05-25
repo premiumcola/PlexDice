@@ -1,9 +1,12 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Server, RefreshCw, Loader2, Check, AlertCircle, Save, Library,
-  Settings as SettingsIcon, Info, Database,
+  Settings as SettingsIcon, Info, Database, Plug, LogOut,
 } from 'lucide-react';
-import { getSettings, saveSettings, discoverServers, testConnection, refreshLibrary } from '../api';
+import {
+  getSettings, saveSettings, discoverServers, testConnection, refreshLibrary,
+  createPlexPin, checkPlexPin, plexLogout,
+} from '../api';
 
 const TABS = [
   { id: 'allgemein', label: 'Allgemein' },
@@ -13,6 +16,8 @@ const TABS = [
 ];
 
 const DEFAULT_PORT = '32400';
+const POLL_INTERVAL = 2000;
+const LOGIN_TIMEOUT = 5 * 60 * 1000;
 
 function parseUrl(url) {
   if (!url) return { hostname: '', port: DEFAULT_PORT, ssl: true };
@@ -57,9 +62,8 @@ export default function Settings({ onConnected }) {
   const [activeTab, setActiveTab] = useState('plex');
   const [loaded, setLoaded] = useState(false);
 
-  const [token, setToken] = useState('');
-  const [tokenDirty, setTokenDirty] = useState(false);
-  const [tokenSet, setTokenSet] = useState(false);
+  const [clientId, setClientId] = useState('');
+  const [user, setUser] = useState(null);
 
   const [hostname, setHostname] = useState('');
   const [port, setPort] = useState(DEFAULT_PORT);
@@ -83,19 +87,33 @@ export default function Settings({ onConnected }) {
   const [syncResult, setSyncResult] = useState(null);
   const [syncError, setSyncError] = useState('');
 
+  const [polling, setPolling] = useState(false);
+  const [loginError, setLoginError] = useState('');
+  const [toast, setToast] = useState(null);
+
+  const pollRef = useRef(null);
+  const timeoutRef = useRef(null);
+  const popupRef = useRef(null);
+
+  const showToast = useCallback((type, msg) => {
+    setToast({ type, msg });
+    setTimeout(() => setToast(null), 3200);
+  }, []);
+
   useEffect(() => {
     (async () => {
       try {
         const s = await getSettings();
         const plex = s.plex || {};
         const parsed = parseUrl(plex.url);
+        setClientId(plex.client_id || '');
+        setUser(plex.user || null);
         setHostname(parsed.hostname);
         setPort(parsed.port);
         setSsl(plex.ssl != null ? plex.ssl : parsed.ssl);
-        setTokenSet(Boolean(plex.tokenSet));
         setSelectedLibraries(plex.libraries || []);
       } catch {
-        /* ignore — first run */
+        /* first run */
       } finally {
         setLoaded(true);
       }
@@ -107,32 +125,35 @@ export default function Settings({ onConnected }) {
     [ssl, hostname, port],
   );
 
-  // Token to send: the freshly typed one, else let the backend fall back to the stored one.
-  const tokenForRequest = tokenDirty ? token : '';
-
-  const doDiscover = async () => {
+  const doDiscover = useCallback(async () => {
     setDiscovering(true);
     setDiscoverError('');
     try {
-      const { servers: list } = await discoverServers(tokenForRequest);
+      const { servers: list } = await discoverServers();
       setServers(list || []);
       if (!list || list.length === 0) setDiscoverError('Keine Server gefunden');
+      else if (!hostname) {
+        // Auto-select the first server so the Bibliotheken tab works right after login.
+        const server = list[0];
+        const conn = server.connections.find((c) => c.https) || server.connections[0];
+        if (conn) {
+          try { setHostname(new URL(conn.uri).hostname); } catch { setHostname(conn.address); }
+          setPort(String(conn.port));
+          setSsl(Boolean(conn.https));
+        }
+      }
     } catch (e) {
-      setDiscoverError(e.message || 'Token ungültig');
+      setDiscoverError(e.message || 'Serversuche fehlgeschlagen');
     } finally {
       setDiscovering(false);
     }
-  };
+  }, [hostname]);
 
   const onSelectServer = (name) => {
     const server = servers.find((s) => s.name === name);
     if (!server || !server.connections.length) return;
     const conn = server.connections.find((c) => c.https) || server.connections[0];
-    try {
-      setHostname(new URL(conn.uri).hostname);
-    } catch {
-      setHostname(conn.address);
-    }
+    try { setHostname(new URL(conn.uri).hostname); } catch { setHostname(conn.address); }
     setPort(String(conn.port));
     setSsl(Boolean(conn.https));
   };
@@ -142,7 +163,7 @@ export default function Settings({ onConnected }) {
     setTestError('');
     setTestResult(null);
     try {
-      const res = await testConnection({ url: composeUrl(), token: tokenForRequest, ssl });
+      const res = await testConnection({ url: composeUrl(), ssl });
       setTestResult(res);
       setSections(res.library_sections || []);
     } catch (e) {
@@ -150,24 +171,17 @@ export default function Settings({ onConnected }) {
     } finally {
       setTesting(false);
     }
-  }, [composeUrl, tokenForRequest, ssl]);
+  }, [composeUrl, ssl]);
 
-  const buildPatch = (extra = {}) => {
-    const plex = { url: composeUrl(), ssl, libraries: selectedLibraries, ...extra };
-    if (tokenDirty && token) plex.token = token;
-    return { plex };
-  };
+  const buildPatch = () => ({ plex: { url: composeUrl(), ssl, libraries: selectedLibraries } });
 
   const doSave = async () => {
     setSaving(true);
     setSaved(false);
     try {
-      const s = await saveSettings(buildPatch());
-      setTokenSet(Boolean(s.plex?.tokenSet));
-      setTokenDirty(false);
-      setToken('');
+      await saveSettings(buildPatch());
       setSaved(true);
-      if (s.plex?.tokenSet && s.plex?.url) onConnected?.();
+      onConnected?.();
       setTimeout(() => setSaved(false), 2500);
     } catch (e) {
       setTestError(e.message || 'Speichern fehlgeschlagen');
@@ -185,7 +199,7 @@ export default function Settings({ onConnected }) {
     setSyncError('');
     setSyncResult(null);
     try {
-      await saveSettings(buildPatch()); // persist library selection first
+      await saveSettings(buildPatch());
       const res = await refreshLibrary();
       setSyncResult(res);
       onConnected?.();
@@ -196,17 +210,148 @@ export default function Settings({ onConnected }) {
     }
   };
 
-  // When opening the Bibliotheken tab without a section list yet, fetch it.
-  useEffect(() => {
-    if (activeTab === 'bibliotheken' && sections.length === 0 && !testing && (tokenSet || tokenDirty) && hostname) {
-      doTest();
-    }
-  }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
+  // ---- OAuth PIN login ----
+  const stopPolling = useCallback(() => {
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+    if (timeoutRef.current) { clearTimeout(timeoutRef.current); timeoutRef.current = null; }
+    setPolling(false);
+  }, []);
 
-  const canConnect = (tokenDirty && token) || tokenSet;
+  const handleLoginSuccess = useCallback((u) => {
+    stopPolling();
+    try { popupRef.current?.close(); } catch { /* cross-origin */ }
+    setUser(u);
+    showToast('success', '✓ Mit Plex verbunden');
+    setActiveTab('bibliotheken');
+    onConnected?.();
+  }, [stopPolling, showToast, onConnected]);
+
+  const startLogin = async () => {
+    setLoginError('');
+    let pin;
+    try {
+      pin = await createPlexPin();
+    } catch (e) {
+      showToast('error', 'Login fehlgeschlagen');
+      setLoginError(e.message || 'error');
+      return;
+    }
+    const params = [
+      `clientID=${encodeURIComponent(clientId)}`,
+      `code=${encodeURIComponent(pin.code)}`,
+      `context[device][product]=${encodeURIComponent('PlexDice')}`,
+    ].join('&');
+    popupRef.current = window.open(`https://app.plex.tv/auth#?${params}`, 'plexlogin', 'width=560,height=720');
+    setPolling(true);
+
+    pollRef.current = setInterval(async () => {
+      try {
+        const res = await checkPlexPin(pin.id);
+        if (res.ok) handleLoginSuccess(res.user);
+      } catch {
+        /* transient network error — keep polling */
+      }
+    }, POLL_INTERVAL);
+
+    timeoutRef.current = setTimeout(() => {
+      stopPolling();
+      showToast('error', 'Zeitüberschreitung – bitte erneut versuchen');
+      setLoginError('timeout');
+    }, LOGIN_TIMEOUT);
+  };
+
+  const cancelLogin = () => {
+    stopPolling();
+    try { popupRef.current?.close(); } catch { /* cross-origin */ }
+  };
+
+  const doLogout = async () => {
+    try { await plexLogout(); } catch { /* ignore */ }
+    setUser(null);
+    setServers([]);
+    setSections([]);
+    setTestResult(null);
+    showToast('success', 'Abgemeldet');
+  };
+
+  // Auto-discover servers once logged in (State 2 "on mount").
+  useEffect(() => {
+    if (user && servers.length === 0 && !discovering) doDiscover();
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Load movie sections when the Bibliotheken tab is shown and a host is known.
+  useEffect(() => {
+    if (activeTab === 'bibliotheken' && user && hostname && sections.length === 0 && !testing) doTest();
+  }, [activeTab, hostname, user]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Clean up timers on unmount.
+  useEffect(() => () => stopPolling(), [stopPolling]);
+
+  const serverFields = (
+    <div className="rounded-2xl bg-zinc-900/60 border border-zinc-800 px-4 divide-y divide-zinc-800/60">
+      <Row label="Server">
+        <div className="flex gap-2">
+          <select
+            onChange={(e) => onSelectServer(e.target.value)}
+            value=""
+            className="flex-1 min-w-0 px-3 py-2 rounded-xl bg-zinc-950 text-zinc-100 outline-none focus:ring-2 focus:ring-amber-400/60"
+          >
+            <option value="" disabled>{servers.length ? 'Server wählen' : 'Server werden geladen…'}</option>
+            {servers.map((s) => (
+              <option key={s.name} value={s.name}>{s.name}</option>
+            ))}
+          </select>
+          <button
+            onClick={doDiscover}
+            disabled={discovering}
+            className="px-3 py-2 rounded-xl bg-amber-400 text-zinc-950 font-medium flex items-center gap-1.5 disabled:opacity-40 active:scale-[0.97] transition-transform"
+            title="Verfügbare Server neu laden"
+          >
+            {discovering ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+          </button>
+        </div>
+        {discoverError && <p className="text-xs text-rose-300 mt-1.5">{discoverError}</p>}
+      </Row>
+
+      <Row label="Hostname oder IP-Adresse">
+        <div className="flex rounded-xl bg-zinc-950 overflow-hidden focus-within:ring-2 focus-within:ring-amber-400/60">
+          <span className="px-3 py-2 bg-zinc-800 text-zinc-400 text-sm select-none">{ssl ? 'https://' : 'http://'}</span>
+          <input
+            type="text"
+            value={hostname}
+            onChange={(e) => setHostname(e.target.value)}
+            placeholder="192.168.1.10"
+            className="flex-1 min-w-0 px-3 py-2 bg-transparent text-zinc-100 placeholder-zinc-500 outline-none"
+          />
+        </div>
+      </Row>
+
+      <Row label="Port">
+        <input
+          type="text"
+          inputMode="numeric"
+          value={port}
+          onChange={(e) => setPort(e.target.value.replace(/[^0-9]/g, ''))}
+          placeholder={DEFAULT_PORT}
+          className="w-32 px-3 py-2 rounded-xl bg-zinc-950 text-zinc-100 placeholder-zinc-500 outline-none focus:ring-2 focus:ring-amber-400/60"
+        />
+      </Row>
+
+      <Row label="SSL verwenden">
+        <Toggle checked={ssl} onChange={setSsl} />
+      </Row>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif' }}>
+      {toast && (
+        <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-[60] px-4 py-2.5 rounded-xl text-sm font-semibold shadow-lg flex items-center gap-2 text-white ${toast.type === 'success' ? 'bg-emerald-500' : 'bg-rose-500'}`}>
+          {toast.type === 'success' ? <Check className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+          {toast.msg}
+        </div>
+      )}
+
       <div className="max-w-3xl mx-auto px-4 pt-6 pb-28 sm:pb-12">
         <div className="flex items-center gap-3 mb-5">
           <div className="w-10 h-10 rounded-2xl bg-amber-400 flex items-center justify-center shadow-lg shadow-amber-400/20">
@@ -215,7 +360,6 @@ export default function Settings({ onConnected }) {
           <h1 className="text-2xl font-bold tracking-tight">Einstellungen</h1>
         </div>
 
-        {/* Tab strip */}
         <div className="flex gap-1 overflow-x-auto mb-6 p-1 rounded-2xl bg-zinc-900/60 border border-zinc-800">
           {TABS.map((t) => (
             <button
@@ -235,102 +379,81 @@ export default function Settings({ onConnected }) {
         {loaded && activeTab === 'plex' && (
           <section>
             <h2 className="text-lg font-semibold mb-1">Plex Einstellungen</h2>
-            <p className="text-sm text-zinc-400 mb-4">Verbinde deinen Plex Server. Der Token wird nur serverseitig gespeichert und nie an den Browser zurückgegeben.</p>
+            <p className="text-sm text-zinc-400 mb-4">Melde dich mit deinem Plex-Account an und wähle deinen Server.</p>
 
-            <div className="rounded-2xl bg-zinc-900/60 border border-zinc-800 px-4 divide-y divide-zinc-800/60">
-              <Row label="Plex Token" hint="X-Plex-Token deines Accounts">
-                <input
-                  type="password"
-                  value={tokenDirty ? token : ''}
-                  onChange={(e) => { setToken(e.target.value); setTokenDirty(true); }}
-                  placeholder={tokenSet ? '•••• gespeichert' : 'Token eingeben'}
-                  className="w-full px-3 py-2 rounded-xl bg-zinc-950 text-zinc-100 placeholder-zinc-500 outline-none focus:ring-2 focus:ring-amber-400/60"
-                  autoComplete="off"
-                />
-              </Row>
-
-              <Row label="Server">
-                <div className="flex gap-2">
-                  <select
-                    onChange={(e) => onSelectServer(e.target.value)}
-                    defaultValue=""
-                    className="flex-1 min-w-0 px-3 py-2 rounded-xl bg-zinc-950 text-zinc-100 outline-none focus:ring-2 focus:ring-amber-400/60"
-                  >
-                    <option value="" disabled>{servers.length ? 'Server wählen' : 'Erst Server laden →'}</option>
-                    {servers.map((s) => (
-                      <option key={s.name} value={s.name}>{s.name}</option>
-                    ))}
-                  </select>
+            {!user ? (
+              <div className="py-8 flex flex-col items-center text-center">
+                {!polling ? (
                   <button
-                    onClick={doDiscover}
-                    disabled={!canConnect || discovering}
-                    className="px-3 py-2 rounded-xl bg-amber-400 text-zinc-950 font-medium flex items-center gap-1.5 disabled:opacity-40 active:scale-[0.97] transition-transform"
-                    title="Verfügbare Server laden"
+                    onClick={startLogin}
+                    className="h-12 px-8 rounded-xl bg-amber-400 text-white font-semibold text-base flex items-center justify-center gap-2 active:scale-[0.98] transition-transform shadow-lg shadow-amber-400/20"
                   >
-                    {discovering ? <Loader2 className="w-4 h-4 animate-spin" /> : <Server className="w-4 h-4" />}
+                    <Plug className="w-5 h-5" /> Mit Plex anmelden
+                  </button>
+                ) : (
+                  <>
+                    <button disabled className="h-12 px-8 rounded-xl bg-amber-400/80 text-white font-semibold text-base flex items-center justify-center gap-2">
+                      <Loader2 className="w-5 h-5 animate-spin" /> Warte auf Anmeldung…
+                    </button>
+                    <button onClick={cancelLogin} className="mt-3 text-sm text-zinc-400 active:text-zinc-200">Abbrechen</button>
+                  </>
+                )}
+                {!polling && <p className="text-sm text-zinc-400 mt-3">Du wirst kurz zu plex.tv weitergeleitet.</p>}
+                {loginError === 'timeout' && (
+                  <button onClick={startLogin} className="mt-3 text-sm text-amber-400 font-medium">Erneut versuchen</button>
+                )}
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center gap-3 p-4 rounded-xl bg-zinc-900 mb-5">
+                  {user.thumb ? (
+                    <img src={user.thumb} alt="" referrerPolicy="no-referrer" className="w-12 h-12 rounded-full object-cover bg-zinc-800 shrink-0" />
+                  ) : (
+                    <div className="w-12 h-12 rounded-full bg-amber-400/20 flex items-center justify-center text-amber-400 font-bold shrink-0">
+                      {(user.username || '?').slice(0, 1).toUpperCase()}
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="font-semibold text-zinc-100 truncate">{user.username || 'Plex User'}</div>
+                    {user.email && <div className="text-xs text-zinc-500 truncate">{user.email}</div>}
+                  </div>
+                  <button onClick={doLogout} className="text-zinc-400 active:text-zinc-200 text-sm flex items-center gap-1.5 shrink-0">
+                    <LogOut className="w-4 h-4" /> Abmelden
                   </button>
                 </div>
-                {discoverError && <p className="text-xs text-rose-300 mt-1.5">{discoverError}</p>}
-              </Row>
 
-              <Row label="Hostname oder IP-Adresse">
-                <div className="flex rounded-xl bg-zinc-950 overflow-hidden focus-within:ring-2 focus-within:ring-amber-400/60">
-                  <span className="px-3 py-2 bg-zinc-800 text-zinc-400 text-sm select-none">{ssl ? 'https://' : 'http://'}</span>
-                  <input
-                    type="text"
-                    value={hostname}
-                    onChange={(e) => setHostname(e.target.value)}
-                    placeholder="192.168.1.10"
-                    className="flex-1 min-w-0 px-3 py-2 bg-transparent text-zinc-100 placeholder-zinc-500 outline-none"
-                  />
+                {serverFields}
+
+                {testResult && testResult.ok && (
+                  <div className="mt-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-200 text-sm flex items-center gap-2">
+                    <Check className="w-4 h-4" /> Verbunden mit <span className="font-semibold">{testResult.server_name}</span> (v{testResult.version}) · {testResult.library_sections?.length || 0} Film-Bibliotheken
+                  </div>
+                )}
+                {testError && (
+                  <div className="mt-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-200 text-sm flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4" /> {testError}
+                  </div>
+                )}
+
+                <div className="flex flex-wrap gap-2 mt-5">
+                  <button
+                    onClick={doTest}
+                    disabled={!hostname || testing}
+                    className="px-4 py-2.5 rounded-xl bg-zinc-800 text-zinc-100 font-medium flex items-center gap-2 disabled:opacity-40 active:scale-[0.98] transition-transform"
+                  >
+                    {testing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Server className="w-4 h-4" />} Verbindung testen
+                  </button>
+                  <button
+                    onClick={doSave}
+                    disabled={saving || !hostname}
+                    className="px-4 py-2.5 rounded-xl bg-amber-400 text-zinc-950 font-semibold flex items-center gap-2 disabled:opacity-40 active:scale-[0.98] transition-transform shadow-lg shadow-amber-400/20"
+                  >
+                    {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : saved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+                    {saved ? 'Gespeichert' : 'Speichern'}
+                  </button>
                 </div>
-              </Row>
-
-              <Row label="Port">
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={port}
-                  onChange={(e) => setPort(e.target.value.replace(/[^0-9]/g, ''))}
-                  placeholder={DEFAULT_PORT}
-                  className="w-32 px-3 py-2 rounded-xl bg-zinc-950 text-zinc-100 placeholder-zinc-500 outline-none focus:ring-2 focus:ring-amber-400/60"
-                />
-              </Row>
-
-              <Row label="SSL verwenden">
-                <Toggle checked={ssl} onChange={setSsl} />
-              </Row>
-            </div>
-
-            {/* Feedback */}
-            {testResult && testResult.ok && (
-              <div className="mt-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-200 text-sm flex items-center gap-2">
-                <Check className="w-4 h-4" /> Verbunden mit <span className="font-semibold">{testResult.server_name}</span> (v{testResult.version}) · {testResult.library_sections?.length || 0} Film-Bibliotheken
-              </div>
+              </>
             )}
-            {testError && (
-              <div className="mt-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-200 text-sm flex items-center gap-2">
-                <AlertCircle className="w-4 h-4" /> {testError}
-              </div>
-            )}
-
-            <div className="flex flex-wrap gap-2 mt-5">
-              <button
-                onClick={doTest}
-                disabled={!canConnect || !hostname || testing}
-                className="px-4 py-2.5 rounded-xl bg-zinc-800 text-zinc-100 font-medium flex items-center gap-2 disabled:opacity-40 active:scale-[0.98] transition-transform"
-              >
-                {testing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Server className="w-4 h-4" />} Verbindung testen
-              </button>
-              <button
-                onClick={doSave}
-                disabled={saving || !hostname}
-                className="px-4 py-2.5 rounded-xl bg-amber-400 text-zinc-950 font-semibold flex items-center gap-2 disabled:opacity-40 active:scale-[0.98] transition-transform shadow-lg shadow-amber-400/20"
-              >
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : saved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-                {saved ? 'Gespeichert' : 'Speichern'}
-              </button>
-            </div>
           </section>
         )}
 
@@ -339,51 +462,57 @@ export default function Settings({ onConnected }) {
             <h2 className="text-lg font-semibold mb-1">Plex Bibliotheken</h2>
             <p className="text-sm text-zinc-400 mb-4">Wähle die Film-Bibliotheken, aus denen PlexDice würfeln soll, und synchronisiere sie.</p>
 
-            {testing && (
+            {!user && (
+              <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-100 text-sm flex items-center gap-2">
+                <AlertCircle className="w-4 h-4" /> Bitte zuerst im Plex-Tab anmelden.
+              </div>
+            )}
+
+            {user && testing && (
               <div className="flex items-center gap-2 text-zinc-400 text-sm mb-3"><Loader2 className="w-4 h-4 animate-spin" /> Bibliotheken werden geladen…</div>
             )}
 
-            {!testing && sections.length === 0 && (
+            {user && !testing && sections.length === 0 && (
               <button
                 onClick={doTest}
-                disabled={!canConnect || !hostname}
+                disabled={!hostname}
                 className="w-full p-4 rounded-2xl bg-zinc-900/60 border border-zinc-800 text-zinc-300 text-sm flex items-center justify-center gap-2 active:scale-[0.99] transition-transform disabled:opacity-40"
               >
                 <RefreshCw className="w-4 h-4" /> Bibliotheken vom Server laden
               </button>
             )}
 
-            {sections.length > 0 && (
-              <div className="grid grid-cols-2 gap-3">
-                {sections.map((sec) => {
-                  const on = selectedLibraries.includes(sec.id);
-                  return (
-                    <button
-                      key={sec.id}
-                      onClick={() => toggleLibrary(sec.id)}
-                      className={`p-4 rounded-2xl text-left transition-colors active:scale-[0.98] ${on ? 'bg-amber-400/15 border-2 border-amber-400' : 'bg-zinc-900/60 border-2 border-zinc-800'}`}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <Library className={`w-5 h-5 ${on ? 'text-amber-400' : 'text-zinc-500'}`} />
-                        {on && <Check className="w-4 h-4 text-amber-400" />}
-                      </div>
-                      <div className="mt-2 font-medium text-zinc-100 truncate">{sec.title}</div>
-                      <div className="text-xs text-zinc-500">ID {sec.id}</div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+            {user && sections.length > 0 && (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  {sections.map((sec) => {
+                    const on = selectedLibraries.includes(sec.id);
+                    return (
+                      <button
+                        key={sec.id}
+                        onClick={() => toggleLibrary(sec.id)}
+                        className={`p-4 rounded-2xl text-left transition-colors active:scale-[0.98] ${on ? 'bg-amber-400/15 border-2 border-amber-400' : 'bg-zinc-900/60 border-2 border-zinc-800'}`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <Library className={`w-5 h-5 ${on ? 'text-amber-400' : 'text-zinc-500'}`} />
+                          {on && <Check className="w-4 h-4 text-amber-400" />}
+                        </div>
+                        <div className="mt-2 font-medium text-zinc-100 truncate">{sec.title}</div>
+                        <div className="text-xs text-zinc-500">ID {sec.id}</div>
+                      </button>
+                    );
+                  })}
+                </div>
 
-            {sections.length > 0 && (
-              <button
-                onClick={doSync}
-                disabled={syncing || selectedLibraries.length === 0}
-                className="w-full mt-5 py-3 rounded-xl bg-amber-400 text-zinc-950 font-semibold flex items-center justify-center gap-2 disabled:opacity-40 active:scale-[0.98] transition-transform shadow-lg shadow-amber-400/20"
-              >
-                {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Database className="w-4 h-4" />}
-                {syncing ? 'Synchronisiere…' : 'Bibliotheken synchronisieren'}
-              </button>
+                <button
+                  onClick={doSync}
+                  disabled={syncing || selectedLibraries.length === 0}
+                  className="w-full mt-5 py-3 rounded-xl bg-amber-400 text-zinc-950 font-semibold flex items-center justify-center gap-2 disabled:opacity-40 active:scale-[0.98] transition-transform shadow-lg shadow-amber-400/20"
+                >
+                  {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Database className="w-4 h-4" />}
+                  {syncing ? 'Synchronisiere…' : 'Bibliotheken synchronisieren'}
+                </button>
+              </>
             )}
 
             {syncResult && (

@@ -6,6 +6,7 @@ import json
 import logging
 import os
 import threading
+import uuid
 from typing import Any, Dict
 
 logger = logging.getLogger(__name__)
@@ -13,7 +14,14 @@ logger = logging.getLogger(__name__)
 
 def _default_settings() -> Dict[str, Any]:
     return {
-        "plex": {"url": "", "token": "", "ssl": True, "libraries": []},
+        "plex": {
+            "url": "",
+            "token": "",
+            "ssl": True,
+            "libraries": [],
+            "client_id": "",
+            "user": None,
+        },
         "ai": {"enabled": True},
         "ui": {"last_filters": {}},
     }
@@ -93,6 +101,23 @@ class SettingsStore:
             _deep_merge(self._data, patch)
             self.save()
             return copy.deepcopy(self._data)
+
+    def set_plex(self, **fields: Any) -> Dict[str, Any]:
+        """Set plex fields directly (no token-drop guard) — used by the auth flow."""
+        with self._lock:
+            self._reload()
+            self._data.setdefault("plex", {}).update(fields)
+            self.save()
+            return copy.deepcopy(self._data)
+
+    def ensure_client_id(self) -> str:
+        """Return a stable X-Plex-Client-Identifier, generating one on first use."""
+        client_id = self.get("plex").get("client_id")
+        if not client_id:
+            client_id = str(uuid.uuid4())
+            self.set_plex(client_id=client_id)
+            logger.info("Generated Plex client identifier")
+        return client_id
 
     def redacted(self) -> Dict[str, Any]:
         """Settings with the token stripped, plus a ``tokenSet`` flag for the UI."""
