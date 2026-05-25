@@ -3,6 +3,11 @@ export default {
   content: ['./index.html', './src/**/*.{js,jsx}'],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+        display: ['Fraunces', 'Georgia', 'serif'],
+        mono: ['ui-monospace', 'SFMono-Regular', 'monospace'],
+      },
       colors: {
         // PlexDice orange. Overriding Tailwind's `amber` ramp lets the ported
         // Filmwürfel UI become orange-accented with zero class churn.

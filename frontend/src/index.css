@@ -2,6 +2,23 @@
 @tailwind components;
 @tailwind utilities;
 
+html {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-feature-settings: 'cv11', 'ss01', 'ss03';
+  font-variation-settings: 'opsz' 18;
+}
+
+/* Fraunces display faces. font-family is included so `font-display-tight`
+   works standalone, not only stacked on Tailwind's `font-display` utility. */
+.font-display {
+  font-family: 'Fraunces', Georgia, serif;
+  font-variation-settings: 'opsz' 144, 'SOFT' 30, 'wght' 600;
+}
+.font-display-tight {
+  font-family: 'Fraunces', Georgia, serif;
+  font-variation-settings: 'opsz' 144, 'SOFT' 0, 'wght' 700;
+}
+
 html,
 body,
 #root {
