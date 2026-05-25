@@ -1,22 +1,38 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowLeft, X, Camera, Play, Loader2, AlertCircle } from 'lucide-react';
 import { navigate } from '../../router';
-import { quizNewRound, quizUploadPhoto } from '../../api';
+import { quizNewRound, quizUploadPhoto, quizGetConfig } from '../../api';
 import { saveRound } from './store';
 import { initAudio } from './audio';
 
 const SIZES = [20, 50, 100];
+const DIFFS = [
+  { v: 'easy', label: '🟢 Leicht' },
+  { v: 'medium', label: '🟡 Mittel' },
+  { v: 'hard', label: '🔴 Schwer' },
+  { v: 'mixed', label: '🎲 Mixed' },
+];
 
 export default function QuizSetup() {
   const [name, setName] = useState('');
   const [players, setPlayers] = useState([]);
   const [playerInput, setPlayerInput] = useState('');
   const [size, setSize] = useState(50);
+  const [difficulty, setDifficulty] = useState('medium');
   const [photoPreview, setPhotoPreview] = useState(null);
   const [photoId, setPhotoId] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    quizGetConfig()
+      .then((c) => {
+        if (c.default_difficulty) setDifficulty(c.default_difficulty);
+        if (c.default_size) setSize(c.default_size);
+      })
+      .catch(() => {});
+  }, []);
 
   const addPlayer = () => {
     const p = playerInput.trim();
@@ -45,7 +61,7 @@ export default function QuizSetup() {
     setStarting(true);
     setError('');
     try {
-      const resp = await quizNewRound({ size, name: name.trim() });
+      const resp = await quizNewRound({ size, difficulty, name: name.trim() });
       saveRound(resp.round_id, {
         ...resp,
         setup: { name: name.trim(), playerNames: players, photoId },
@@ -117,6 +133,18 @@ export default function QuizSetup() {
                   {photoId && <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center text-[10px] text-white">✓</span>}
                 </div>
               )}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium text-zinc-200 uppercase tracking-wide mb-2 block">Schwierigkeit</label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {DIFFS.map(({ v, label }) => (
+                <button key={v} type="button" onClick={() => setDifficulty(v)}
+                  className={`min-h-[44px] rounded-xl text-sm font-medium transition-colors ${difficulty === v ? 'bg-amber-400 text-zinc-950' : 'bg-zinc-800 text-zinc-300'}`}>
+                  {label}
+                </button>
+              ))}
             </div>
           </div>
 

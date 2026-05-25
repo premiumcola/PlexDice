@@ -11,7 +11,7 @@ function CastBanner({ progress }) {
   return (
     <div className="mb-5 rounded-2xl bg-amber-500/10 ring-1 ring-amber-500/20 p-4">
       <div className="text-sm text-amber-100">
-        Cast wird noch geladen — voller Modusumfang in ~{remainMin} min
+        Bibliothek wird angereichert — voller Modusumfang in ~{remainMin} min
       </div>
       <div className="mt-2 h-1.5 rounded-full bg-zinc-800 overflow-hidden">
         <div className="h-full bg-amber-400 transition-[width]" style={{ width: `${pct}%` }} />
@@ -60,7 +60,7 @@ export default function QuizHome() {
   const recent = [...rounds]
     .sort((a, b) => (b.finished_at || '').localeCompare(a.finished_at || ''))
     .slice(0, 3);
-  const castLoading = status && !status.cast_enriched;
+  const castLoading = status && !status.meta_enriched;
 
   return (
     <div className="min-h-[100dvh] bg-zinc-950 text-zinc-100">
@@ -70,7 +70,7 @@ export default function QuizHome() {
           <h1 className="font-display-tight text-3xl lg:text-4xl tracking-tight leading-none">Quiz</h1>
         </header>
 
-        {castLoading && <CastBanner progress={status.cast_progress} />}
+        {castLoading && <CastBanner progress={status.meta_progress} />}
 
         <button
           type="button"

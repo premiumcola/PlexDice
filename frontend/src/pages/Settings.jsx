@@ -7,11 +7,13 @@ import {
   getSettings, saveSettings, discoverServers, testConnection, refreshLibrary,
   createPlexPin, checkPlexPin, plexLogout,
 } from '../api';
+import QuizConfig from '../components/QuizConfig';
 
 const TABS = [
   { id: 'allgemein', label: 'Allgemein' },
   { id: 'plex', label: 'Plex' },
   { id: 'bibliotheken', label: 'Bibliotheken' },
+  { id: 'quiz', label: 'Quiz' },
   { id: 'ueber', label: 'Über' },
 ];
 
@@ -527,6 +529,8 @@ export default function Settings({ onConnected }) {
             )}
           </section>
         )}
+
+        {loaded && activeTab === 'quiz' && <QuizConfig />}
 
         {loaded && (activeTab === 'allgemein' || activeTab === 'ueber') && (
           <section className="p-6 rounded-2xl bg-zinc-900/60 border border-zinc-800 text-center">
