@@ -24,6 +24,13 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _readable(option: dict | None) -> str | None:
+    """Human-readable answer text from an option (title/name)."""
+    if not option:
+        return None
+    return option.get("content") if option.get("kind") == "text" else option.get("label")
+
+
 @bp.post("/round/new")
 def new_round():
     body = request.get_json(silent=True) or {}
@@ -74,14 +81,20 @@ def complete(round_id: str):
     questions_out = []
     for q in session.questions:
         ans = session.answers.get(q["id"], {})
+        options = {o["id"]: o for o in q.get("options", [])}
+        chosen_id = ans.get("chosen_option_id")
         questions_out.append(
             {
                 "id": q["id"],
                 "mode": q["mode"],
+                "difficulty": q.get("difficulty"),
                 "movie_key": q["movie_key"],
                 "movie_title": q.get("movie_title"),
+                "movie_year": q.get("movie_year"),
                 "correct": bool(ans.get("correct", False)),
-                "chosen_option_id": ans.get("chosen_option_id"),
+                "chosen_option_id": chosen_id,
+                "chosen_text": _readable(options.get(chosen_id)),
+                "correct_text": _readable(options.get(q.get("correct_option_id"))),
                 "time_ms": ans.get("time_ms"),
             }
         )
@@ -123,7 +136,9 @@ def history_get(round_id: str):
     record = history.get_round(round_id)
     if not record:
         return jsonify({"error": "not found"}), 404
-    return jsonify(record)
+    keys = {q.get("movie_key") for q in record.get("questions", [])}
+    stats = {k: history.movie_stats(k).get("attempts", []) for k in keys if k}
+    return jsonify({**record, "movie_stats": stats})
 
 
 @bp.delete("/history/<round_id>")

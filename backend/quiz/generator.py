@@ -127,6 +127,7 @@ class QuizGenerator:
             "correct_option_id": correct_id,
             "movie_key": str(movie.get("key")),
             "movie_title": movie.get("title"),
+            "movie_year": movie.get("year"),
             "actor_name": actor_name,
             "difficulty": _DIFFICULTY[mode],
         }

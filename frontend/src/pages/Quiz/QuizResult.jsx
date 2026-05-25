@@ -1,0 +1,151 @@
+import { useEffect, useMemo, useState } from 'react';
+import { Loader2, Save, Trophy, TrendingUp, AlertTriangle } from 'lucide-react';
+import { navigate } from '../../router';
+import { quizComplete, quizAbandon, quizHistory } from '../../api';
+import { loadResults, loadRound, clearRound } from './store';
+import { MODE_LABEL, fmt } from './util';
+
+export default function QuizResult({ roundId }) {
+  const results = useMemo(() => loadResults(roundId), [roundId]);
+  const round = useMemo(() => loadRound(roundId), [roundId]);
+  const [history, setHistory] = useState([]);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    quizHistory().then((d) => setHistory(d.rounds || [])).catch(() => {});
+  }, []);
+
+  if (!results) {
+    return (
+      <div className="min-h-[100dvh] bg-zinc-950 text-zinc-100 flex flex-col items-center justify-center gap-4 px-6 text-center">
+        <p className="text-zinc-400">Kein Rundenergebnis gefunden.</p>
+        <button type="button" onClick={() => navigate('/quiz')} className="px-5 py-3 rounded-xl bg-amber-400 text-zinc-950 font-semibold">Zum Quiz</button>
+      </div>
+    );
+  }
+
+  const answers = results.answers || [];
+  const size = results.size || answers.length;
+  const correct = answers.filter((a) => a.correct).length;
+  const maxScore = size * 100;
+  const accuracy = maxScore ? results.score / maxScore : 0;
+
+  const byMode = {};
+  answers.forEach((a) => {
+    const m = (byMode[a.mode] = byMode[a.mode] || { correct: 0, total: 0 });
+    m.total += 1;
+    if (a.correct) m.correct += 1;
+  });
+
+  // Callout chips
+  const chips = [];
+  const otherScores = history.filter((r) => r.id !== roundId).map((r) => r.score || 0);
+  if (otherScores.length === 0 || results.score >= Math.max(...otherScores)) {
+    chips.push({ icon: <Trophy className="w-4 h-4" />, text: 'Beste Runde bisher!', tone: 'amber' });
+  }
+  const prev = [...history]
+    .filter((r) => r.id !== roundId)
+    .sort((a, b) => (b.finished_at || '').localeCompare(a.finished_at || ''))[0];
+  if (prev && prev.size) {
+    const prevAcc = (prev.score || 0) / (prev.size * 100);
+    const delta = Math.round((accuracy - prevAcc) * 100);
+    if (delta > 0) chips.push({ icon: <TrendingUp className="w-4 h-4" />, text: `Lernkurve: +${delta}% ggü. letztem Mal`, tone: 'emerald' });
+  }
+  const worst = Object.entries(byMode)
+    .filter(([, v]) => v.total > 0)
+    .sort((a, b) => a[1].correct / a[1].total - b[1].correct / b[1].total)[0];
+  if (worst && worst[1].correct / worst[1].total < 0.6) {
+    chips.push({ icon: <AlertTriangle className="w-4 h-4" />, text: `Stolperfalle: ${MODE_LABEL[worst[0]] || worst[0]}`, tone: 'rose' });
+  }
+
+  const save = async () => {
+    if (saving) return;
+    setSaving(true);
+    const setup = round?.setup || {};
+    try {
+      await quizComplete(roundId, {
+        name: setup.name,
+        player_names: setup.playerNames || [],
+        photo_id: setup.photoId || null,
+      });
+      clearRound(roundId);
+      navigate(`/quiz/review/${roundId}`);
+    } catch {
+      setSaving(false);
+    }
+  };
+
+  const discard = async () => {
+    try {
+      await quizAbandon(roundId);
+    } catch {
+      /* ignore */
+    }
+    clearRound(roundId);
+    navigate('/quiz');
+  };
+
+  const toneClass = {
+    amber: 'bg-amber-400/15 text-amber-200 ring-amber-500/30',
+    emerald: 'bg-emerald-500/15 text-emerald-200 ring-emerald-500/30',
+    rose: 'bg-rose-500/15 text-rose-200 ring-rose-500/30',
+  };
+
+  return (
+    <div className="min-h-[100dvh] bg-zinc-950 text-zinc-100">
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-24 sm:py-12">
+        <div className="text-center">
+          <div className="text-[11px] uppercase tracking-widest text-zinc-500 mb-2">Ergebnis</div>
+          <div
+            className="font-display-tight text-6xl sm:text-7xl tabular-nums leading-none text-amber-400"
+            style={{ textShadow: '0 0 40px rgba(245,166,35,0.45)' }}
+          >
+            {fmt(results.score)}
+          </div>
+          <div className="mt-3 text-zinc-300 tabular-nums">
+            {correct} / {size} richtig
+          </div>
+        </div>
+
+        {chips.length > 0 && (
+          <div className="mt-6 flex flex-wrap justify-center gap-2">
+            {chips.map((c, i) => (
+              <span key={i} className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm ring-1 ${toneClass[c.tone]}`}>
+                {c.icon} {c.text}
+              </span>
+            ))}
+          </div>
+        )}
+
+        <div className="mt-8 rounded-2xl bg-zinc-900/60 ring-1 ring-zinc-800 p-4 sm:p-5">
+          <div className="text-[11px] uppercase tracking-widest text-zinc-500 mb-3">Pro Modus</div>
+          <div className="space-y-2.5">
+            {Object.entries(byMode).map(([mode, v]) => (
+              <div key={mode} className="flex items-center gap-3">
+                <div className="w-36 sm:w-44 text-sm text-zinc-300 truncate shrink-0">{MODE_LABEL[mode] || mode}</div>
+                <div className="flex-1 h-2 rounded-full bg-zinc-800 overflow-hidden">
+                  <div className="h-full bg-amber-400" style={{ width: `${v.total ? (v.correct / v.total) * 100 : 0}%` }} />
+                </div>
+                <div className="text-sm text-zinc-400 tabular-nums shrink-0">{v.correct}/{v.total}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={save}
+          disabled={saving}
+          className="mt-8 w-full py-4 rounded-2xl text-zinc-950 font-semibold text-lg tracking-wide flex items-center justify-center gap-2 active:scale-[0.985] transition-transform disabled:opacity-50"
+          style={{ background: 'linear-gradient(135deg, #f5a623 0%, #ffaf3a 100%)' }}
+        >
+          {saving ? <Loader2 className="w-6 h-6 animate-spin" /> : <Save className="w-6 h-6" />}
+          Runde speichern
+        </button>
+        <button type="button" onClick={discard} className="mt-3 w-full py-2 text-sm text-zinc-500 active:text-zinc-300">
+          Verwerfen
+        </button>
+      </div>
+    </div>
+  );
+}

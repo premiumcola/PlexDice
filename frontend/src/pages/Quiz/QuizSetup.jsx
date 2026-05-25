@@ -1,0 +1,136 @@
+import { useState } from 'react';
+import { ArrowLeft, X, Camera, Play, Loader2, AlertCircle } from 'lucide-react';
+import { navigate } from '../../router';
+import { quizNewRound } from '../../api';
+import { saveRound } from './store';
+
+const SIZES = [20, 50, 100];
+
+export default function QuizSetup() {
+  const [name, setName] = useState('');
+  const [players, setPlayers] = useState([]);
+  const [playerInput, setPlayerInput] = useState('');
+  const [size, setSize] = useState(50);
+  const [photoPreview, setPhotoPreview] = useState(null);
+  const [starting, setStarting] = useState(false);
+  const [error, setError] = useState('');
+
+  const addPlayer = () => {
+    const p = playerInput.trim();
+    if (p && !players.includes(p)) setPlayers([...players, p]);
+    setPlayerInput('');
+  };
+
+  // Photo upload is wired in the N4 task; for now we keep a local preview only.
+  const onPhoto = (e) => {
+    const file = e.target.files?.[0];
+    if (file) setPhotoPreview(URL.createObjectURL(file));
+  };
+
+  const start = async () => {
+    if (!name.trim() || starting) return;
+    setStarting(true);
+    setError('');
+    try {
+      const resp = await quizNewRound({ size, name: name.trim() });
+      saveRound(resp.round_id, {
+        ...resp,
+        setup: { name: name.trim(), playerNames: players, photoId: null },
+      });
+      navigate(`/quiz/play/${resp.round_id}`);
+    } catch (e) {
+      setError(e.message || 'Runde konnte nicht gestartet werden');
+      setStarting(false);
+    }
+  };
+
+  return (
+    <div className="min-h-[100dvh] bg-zinc-950 text-zinc-100">
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-24 sm:py-10">
+        <header className="mb-6 flex items-center gap-3">
+          <button type="button" onClick={() => navigate('/quiz')} aria-label="Zurück"
+            className="w-10 h-10 rounded-xl bg-zinc-900 ring-1 ring-zinc-800 flex items-center justify-center active:scale-95 transition-transform">
+            <ArrowLeft className="w-5 h-5 text-zinc-300" />
+          </button>
+          <h1 className="font-display-tight text-2xl lg:text-3xl tracking-tight leading-none">Neue Runde</h1>
+        </header>
+
+        <div className="space-y-6">
+          <div>
+            <label className="text-sm font-medium text-zinc-200 uppercase tracking-wide mb-2 block">Rundenname</label>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Filmabend bei Roman"
+              className="w-full px-4 py-3 rounded-xl bg-zinc-900 ring-1 ring-zinc-800 text-zinc-100 placeholder-zinc-600 outline-none focus:ring-2 focus:ring-amber-400/60"
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium text-zinc-200 uppercase tracking-wide mb-2 block">Spieler</label>
+            {players.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-2">
+                {players.map((p) => (
+                  <span key={p} className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1.5 rounded-full bg-amber-400/15 text-amber-200 text-sm">
+                    {p}
+                    <button type="button" onClick={() => setPlayers(players.filter((x) => x !== p))} aria-label={`${p} entfernen`}>
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <input
+              value={playerInput}
+              onChange={(e) => setPlayerInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addPlayer(); } }}
+              placeholder="Name + Enter"
+              className="w-full px-4 py-3 rounded-xl bg-zinc-900 ring-1 ring-zinc-800 text-zinc-100 placeholder-zinc-600 outline-none focus:ring-2 focus:ring-amber-400/60"
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium text-zinc-200 uppercase tracking-wide mb-2 block">Foto vom Abend</label>
+            <input id="photoCapture" type="file" accept="image/*" capture="user" className="hidden" onChange={onPhoto} />
+            <div className="flex items-center gap-3">
+              <button type="button" onClick={() => document.getElementById('photoCapture').click()}
+                className="inline-flex items-center gap-2 px-4 py-3 rounded-xl bg-zinc-900 ring-1 ring-zinc-800 text-zinc-200 active:scale-[0.98] transition-transform">
+                <Camera className="w-5 h-5" /> {photoPreview ? 'Neu aufnehmen' : 'Foto aufnehmen'}
+              </button>
+              {photoPreview && <img src={photoPreview} alt="" className="w-16 h-16 rounded-xl object-cover ring-1 ring-zinc-700" />}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium text-zinc-200 uppercase tracking-wide mb-2 block">Anzahl Fragen</label>
+            <div className="grid grid-cols-3 gap-2">
+              {SIZES.map((s) => (
+                <button key={s} type="button" onClick={() => setSize(s)}
+                  className={`min-h-[48px] rounded-xl text-sm font-semibold tabular-nums transition-colors ${size === s ? 'bg-amber-400 text-zinc-950' : 'bg-zinc-800 text-zinc-300'}`}>
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {error && (
+            <div className="p-3 rounded-xl bg-rose-500/10 ring-1 ring-rose-500/30 text-rose-200 text-sm flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0" /> {error}
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={start}
+            disabled={!name.trim() || starting}
+            className="w-full py-4 rounded-2xl text-zinc-950 font-semibold text-lg tracking-wide flex items-center justify-center gap-2 active:scale-[0.985] transition-transform disabled:opacity-40"
+            style={{ background: 'linear-gradient(135deg, #f5a623 0%, #ffaf3a 100%)' }}
+          >
+            {starting ? <Loader2 className="w-6 h-6 animate-spin" /> : <Play className="w-6 h-6 fill-zinc-950" />}
+            Los geht's
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

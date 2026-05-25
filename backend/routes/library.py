@@ -35,6 +35,12 @@ def get_library():
     )
 
 
+@bp.get("/status")
+def library_status():
+    """Lightweight cast-enrichment status without shipping the whole movie list."""
+    return jsonify(library_cache.status())
+
+
 @bp.post("/refresh")
 def refresh_library():
     try:

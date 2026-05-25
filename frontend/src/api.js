@@ -84,6 +84,43 @@ export function plexLogout() {
   return postJson('/api/plex/auth/logout', {});
 }
 
+export function getLibraryStatus() {
+  return fetch('/api/library/status').then(unwrap);
+}
+
+function del(url) {
+  return fetch(url, { method: 'DELETE' }).then(unwrap);
+}
+
+// ---- Quiz ----
+export function quizNewRound(body) {
+  return postJson('/api/quiz/round/new', body);
+}
+export function quizAnswer(roundId, body) {
+  return postJson(`/api/quiz/round/${roundId}/answer`, body);
+}
+export function quizComplete(roundId, body) {
+  return postJson(`/api/quiz/round/${roundId}/complete`, body);
+}
+export function quizAbandon(roundId) {
+  return del(`/api/quiz/round/${roundId}`);
+}
+export function quizHistory() {
+  return fetch('/api/quiz/history').then(unwrap);
+}
+export function quizRound(roundId) {
+  return fetch(`/api/quiz/history/${roundId}`).then(unwrap);
+}
+export function quizDeleteRound(roundId) {
+  return del(`/api/quiz/history/${roundId}`);
+}
+export function quizTopMovies() {
+  return fetch('/api/quiz/history/top').then(unwrap);
+}
+export function quizMovieStats(movieKey) {
+  return fetch(`/api/quiz/movie/${movieKey}/stats`).then(unwrap);
+}
+
 export function aiPlot(movie) {
   return postJson('/api/ai/plot', {
     title: movie.title || movie.t,
