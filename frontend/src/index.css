@@ -19,6 +19,14 @@ html {
   font-variation-settings: 'opsz' 144, 'SOFT' 0, 'wght' 700;
 }
 
+/* Optical-size helpers for Inter body text (html baseline is opsz 18). */
+.opsz-14 {
+  font-variation-settings: 'opsz' 14;
+}
+.opsz-20 {
+  font-variation-settings: 'opsz' 20;
+}
+
 html,
 body,
 #root {

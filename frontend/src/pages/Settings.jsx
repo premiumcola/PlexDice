@@ -344,7 +344,7 @@ export default function Settings({ onConnected }) {
   );
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif' }}>
+    <div className="min-h-screen bg-zinc-950 text-zinc-100">
       {toast && (
         <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-[60] px-4 py-2.5 rounded-xl text-sm font-semibold shadow-lg flex items-center gap-2 text-white ${toast.type === 'success' ? 'bg-emerald-500' : 'bg-rose-500'}`}>
           {toast.type === 'success' ? <Check className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
@@ -357,7 +357,7 @@ export default function Settings({ onConnected }) {
           <div className="w-10 h-10 rounded-2xl bg-amber-400 flex items-center justify-center shadow-lg shadow-amber-400/20">
             <SettingsIcon className="w-5 h-5 text-zinc-950" strokeWidth={2.5} />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight">Einstellungen</h1>
+          <h1 className="font-display text-3xl lg:text-4xl tracking-tight">Einstellungen</h1>
         </div>
 
         <div className="flex gap-1 overflow-x-auto mb-6 p-1 rounded-2xl bg-zinc-900/60 border border-zinc-800">
@@ -365,7 +365,7 @@ export default function Settings({ onConnected }) {
             <button
               key={t.id}
               onClick={() => setActiveTab(t.id)}
-              className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-colors ${activeTab === t.id ? 'bg-amber-400 text-zinc-950' : 'text-zinc-400 active:text-zinc-200'}`}
+              className={`px-4 py-2 rounded-xl text-base font-medium whitespace-nowrap transition-colors ${activeTab === t.id ? 'bg-amber-400 text-zinc-950' : 'text-zinc-400 active:text-zinc-200'}`}
             >
               {t.label}
             </button>

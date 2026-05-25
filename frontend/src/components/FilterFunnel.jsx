@@ -66,7 +66,7 @@ export default function FilterFunnel({ stages, total, onOpenStage, onResetStage 
 
   // Horizontal geometry.
   const SRC_W = 14;
-  const TARGET_W = W < 420 ? 80 : 98;
+  const TARGET_W = W < 420 ? 84 : 104;
   const flowStart = SRC_W;
   const flowEnd = W - TARGET_W;
   const span = Math.max(flowEnd - flowStart, 40);
@@ -209,7 +209,7 @@ export default function FilterFunnel({ stages, total, onOpenStage, onResetStage 
                     type="button"
                     onClick={guarded(() => onOpenStage(s.drawer_target))}
                     {...hover(s, i, 'gate')}
-                    className="absolute -translate-x-1/2 pointer-events-auto flex items-center gap-1 text-[11px] text-zinc-300 tabular-nums whitespace-nowrap transition-colors hover:text-amber-300"
+                    className="absolute -translate-x-1/2 pointer-events-auto flex items-center gap-1 text-xs text-zinc-300 tabular-nums whitespace-nowrap transition-colors hover:text-amber-300"
                     style={{ left: gateX[i], top: 4 }}
                   >
                     <Icon className="w-3.5 h-3.5 text-amber-400/90" />
@@ -229,7 +229,7 @@ export default function FilterFunnel({ stages, total, onOpenStage, onResetStage 
                     type="button"
                     onClick={guarded(() => confirmReset(s))}
                     {...hover(s, i, 'exit')}
-                    className={`absolute -translate-x-1/2 pointer-events-auto flex items-center gap-1 text-[10px] sm:text-[11px] text-zinc-400 whitespace-nowrap transition-colors hover:text-amber-300 ${hideSmall}`}
+                    className={`absolute -translate-x-1/2 pointer-events-auto flex items-center gap-1 text-[11px] text-zinc-400 whitespace-nowrap transition-colors hover:text-amber-300 ${hideSmall}`}
                     style={{ left: gateX[i] + 6, top: termTop + TERM_H + 3 }}
                   >
                     <Icon className="w-3 h-3 shrink-0" />
@@ -243,8 +243,8 @@ export default function FilterFunnel({ stages, total, onOpenStage, onResetStage 
                 className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center text-white"
                 style={{ left: flowEnd + TARGET_W / 2, top: yTop + targetH / 2 }}
               >
-                <span className="text-2xl font-extrabold leading-none tabular-nums" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.35)' }}>{fmt(finalCount)}</span>
-                <span className="text-[10px] font-bold uppercase tracking-wider mt-0.5">Treffer</span>
+                <span className="font-display-tight text-3xl lg:text-4xl leading-none tabular-nums" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.35)' }}>{fmt(finalCount)}</span>
+                <span className="text-xs font-semibold uppercase tracking-widest mt-0.5">Treffer</span>
               </div>
 
               {/* Tooltip */}

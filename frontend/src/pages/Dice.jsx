@@ -451,7 +451,7 @@ export default function Dice({ onNeedSettings }) {
         .dual-range-input::-webkit-slider-runnable-track { background: transparent; height: 36px; }
         .dual-range-input::-moz-range-track { background: transparent; height: 36px; }
       `}</style>
-      <div className="min-h-screen bg-zinc-950 text-zinc-100 relative overflow-hidden" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif' }}>
+      <div className="min-h-screen bg-zinc-950 text-zinc-100 relative overflow-hidden">
         <div className="fixed inset-0 pointer-events-none" style={{
           background: 'radial-gradient(ellipse 80% 50% at 50% 0%, rgba(245, 166, 35, 0.08), transparent 70%), radial-gradient(ellipse 60% 40% at 50% 100%, rgba(124, 58, 237, 0.06), transparent 70%)',
         }} />
@@ -466,8 +466,8 @@ export default function Dice({ onNeedSettings }) {
                 <Dices className="w-5 h-5 text-zinc-950" strokeWidth={2.5} />
               </div>
               <div className="min-w-0 flex-1">
-                <h1 className="text-2xl font-bold tracking-tight" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>PlexDice</h1>
-                <p className="text-sm">
+                <h1 className="font-display text-3xl lg:text-4xl tracking-tight leading-none">PlexDice</h1>
+                <p className="text-sm tabular-nums opsz-14">
                   <span className={activeFilterCount > 0 ? 'text-amber-400 font-bold' : 'text-zinc-200 font-medium'}>{filtered.length.toLocaleString('de-DE')}</span>
                   <span className="text-zinc-400"> von {movies.length.toLocaleString('de-DE')} Filmen{activeFilterCount > 0 ? ' (gefiltert)' : ''}</span>
                 </p>
@@ -539,7 +539,7 @@ export default function Dice({ onNeedSettings }) {
             <div className="mb-4 p-4 rounded-2xl bg-zinc-900/60 border border-zinc-800 space-y-5">
               <div id="filter-genre" className={sectionClass('genre')}>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-sm font-medium text-zinc-300 flex items-center gap-2">
+                  <label className="text-sm font-medium text-zinc-300 flex items-center gap-2 uppercase tracking-wide">
                     <Tag className="w-3.5 h-3.5" /> Genres
                   </label>
                   {selectedGenres.length > 0 && (
@@ -566,7 +566,7 @@ export default function Dice({ onNeedSettings }) {
               </div>
 
               <div id="filter-watched" className={sectionClass('watched')}>
-                <label className="text-sm font-medium text-zinc-200 flex items-center gap-2 mb-2">
+                <label className="text-sm font-medium text-zinc-200 flex items-center gap-2 mb-2 uppercase tracking-wide">
                   <Eye className="w-3.5 h-3.5" /> Gesehen
                 </label>
                 <div className="grid grid-cols-3 gap-2">
@@ -590,8 +590,8 @@ export default function Dice({ onNeedSettings }) {
               </div>
 
               <div id="filter-year" className={sectionClass('year')}>
-                <label className="text-sm font-medium text-zinc-200 flex items-center gap-2 mb-2">
-                  <Calendar className="w-3.5 h-3.5" /> Jahr: <span className="text-amber-400 font-mono">{effYearMin}</span> – <span className="text-amber-400 font-mono">{effYearMax}</span>
+                <label className="text-sm font-medium text-zinc-200 flex items-center gap-2 mb-2 uppercase tracking-wide">
+                  <Calendar className="w-3.5 h-3.5" /> Jahr: <span className="text-amber-400 font-mono normal-case">{effYearMin}</span> – <span className="text-amber-400 font-mono normal-case">{effYearMax}</span>
                 </label>
                 <HistogramRange
                   data={movies.map((m) => m.y).filter(Boolean)}
@@ -603,8 +603,8 @@ export default function Dice({ onNeedSettings }) {
               </div>
 
               <div id="filter-runtime" className={sectionClass('runtime')}>
-                <label className="text-sm font-medium text-zinc-200 flex items-center gap-2 mb-2">
-                  <Clock className="w-3.5 h-3.5" /> Spielzeit: <span className="text-amber-400 font-mono">{formatRuntime(runtimeMin)}</span> – <span className="text-amber-400 font-mono">{formatRuntime(runtimeMax)}</span>
+                <label className="text-sm font-medium text-zinc-200 flex items-center gap-2 mb-2 uppercase tracking-wide">
+                  <Clock className="w-3.5 h-3.5" /> Spielzeit: <span className="text-amber-400 font-mono normal-case">{formatRuntime(runtimeMin)}</span> – <span className="text-amber-400 font-mono normal-case">{formatRuntime(runtimeMax)}</span>
                 </label>
                 <HistogramRange
                   data={movies.map((m) => m.r).filter(Boolean)}
@@ -616,7 +616,7 @@ export default function Dice({ onNeedSettings }) {
               </div>
 
               <div id="filter-fsk" className={sectionClass('fsk')}>
-                <label className="text-sm font-medium text-zinc-200 flex items-center gap-2 mb-2">
+                <label className="text-sm font-medium text-zinc-200 flex items-center gap-2 mb-2 uppercase tracking-wide">
                   <ShieldAlert className="w-3.5 h-3.5" /> FSK: <span className="text-amber-400 font-mono">{fskMin}</span> – <span className="text-amber-400 font-mono">{fskMax}</span>
                 </label>
                 {(() => {
@@ -661,7 +661,7 @@ export default function Dice({ onNeedSettings }) {
               </div>
 
               <div id="filter-rating" className={sectionClass('rating')}>
-                <label className="text-sm font-medium text-zinc-200 flex items-center gap-2 mb-2">
+                <label className="text-sm font-medium text-zinc-200 flex items-center gap-2 mb-2 uppercase tracking-wide">
                   <Star className="w-3.5 h-3.5" /> Bewertung: <span className="text-amber-400 font-mono">{ratingMin.toFixed(1)}</span> – <span className="text-amber-400 font-mono">{ratingMax.toFixed(1)}</span>
                 </label>
                 <HistogramRange
@@ -703,7 +703,7 @@ export default function Dice({ onNeedSettings }) {
           <button
             onClick={pick}
             disabled={filtered.length === 0 || rolling}
-            className={`w-full py-5 rounded-2xl bg-amber-400 text-zinc-950 font-bold text-lg flex items-center justify-center gap-3 active:scale-[0.98] transition-transform disabled:opacity-40 disabled:active:scale-100 ${rolling ? 'glow-pulse' : 'shadow-xl shadow-amber-400/30'}`}
+            className={`w-full py-5 rounded-2xl bg-amber-400 text-zinc-950 font-semibold text-lg tracking-wide flex items-center justify-center gap-3 active:scale-[0.98] transition-transform disabled:opacity-40 disabled:active:scale-100 ${rolling ? 'glow-pulse' : 'shadow-xl shadow-amber-400/30'}`}
           >
             <span className={rolling ? 'dice-shake' : 'inline-block'}>
               <Dices className="w-6 h-6" strokeWidth={2.5} />
@@ -723,7 +723,7 @@ export default function Dice({ onNeedSettings }) {
             <article className="mt-6 rounded-3xl bg-gradient-to-br from-amber-500/15 to-zinc-900/40 border border-amber-400/30 overflow-hidden">
               <div className="p-6 sm:p-8 text-center">
                 <span className="text-xs uppercase tracking-widest text-amber-400 font-medium block mb-3">Würfle…</span>
-                <h2 className="text-2xl sm:text-3xl font-bold leading-tight tracking-tight text-zinc-300 truncate" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
+                <h2 className="font-display-tight text-2xl sm:text-3xl leading-tight tracking-tight text-zinc-300 truncate">
                   {ticker.t}
                 </h2>
                 <p className="text-sm text-zinc-500 mt-2">{ticker.y} · {(ticker.g || []).slice(0, 2).join(', ')}</p>
@@ -751,13 +751,13 @@ export default function Dice({ onNeedSettings }) {
                       <span className="text-xs uppercase tracking-widest text-amber-400/80 font-medium">Dein Film für heute</span>
                       <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
                     </div>
-                    <h2 className="text-3xl sm:text-4xl font-bold leading-tight tracking-tight mt-1" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
+                    <h2 className="font-display-tight text-3xl sm:text-4xl lg:text-5xl leading-tight tracking-tight mt-1">
                       {picked.t}
                     </h2>
                     {picked.o && picked.o !== picked.t && (
                       <p className="text-sm text-zinc-400 mt-1 italic">{picked.o}</p>
                     )}
-                    <div className="flex flex-wrap items-center gap-2 mt-3">
+                    <div className="flex flex-wrap items-center gap-2 mt-3 tabular-nums">
                       {picked.y && (
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-800/60 text-zinc-300 text-sm">
                           <Calendar className="w-3.5 h-3.5" /> {picked.y}
@@ -793,7 +793,7 @@ export default function Dice({ onNeedSettings }) {
 
                 {/* Plex summary */}
                 {picked.summary && (
-                  <p className="text-sm text-zinc-300 leading-relaxed mt-4 line-clamp-5">{picked.summary}</p>
+                  <p className="text-base text-zinc-300 leading-relaxed mt-4 line-clamp-5 opsz-20">{picked.summary}</p>
                 )}
 
                 {/* AI enrichment */}
@@ -818,11 +818,11 @@ export default function Dice({ onNeedSettings }) {
                   {aiInfo && !aiInfo.disabled && !aiInfo.error && (
                     <div className="space-y-3">
                       {!picked.summary && aiInfo.plot && (
-                        <p className="text-sm text-zinc-300 leading-relaxed">{aiInfo.plot}</p>
+                        <p className="text-base text-zinc-300 leading-relaxed opsz-20">{aiInfo.plot}</p>
                       )}
                       {aiInfo.hot_take && (
                         <div className="rounded-2xl bg-zinc-900 p-4 space-y-3">
-                          <h3 className="text-xl text-white leading-snug" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
+                          <h3 className="font-display text-xl text-white leading-snug">
                             {aiInfo.hot_take}
                           </h3>
                           {(aiInfo.pros || []).length > 0 && (
