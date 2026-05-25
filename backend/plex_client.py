@@ -65,10 +65,14 @@ class PlexClient:
         ]
 
     def fetch_all_movies(
-        self, server: PlexServer, section_ids: Optional[List[str]] = None
+        self,
+        server: PlexServer,
+        section_ids: Optional[List[str]] = None,
+        base_url: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         wanted = {str(s) for s in section_ids} if section_ids else None
         machine_id = server.machineIdentifier
+        base = (base_url or getattr(server, "_baseurl", "") or "").rstrip("/")
         movies: List[Dict[str, Any]] = []
         for section in server.library.sections():
             if section.type != "movie":
@@ -76,22 +80,23 @@ class PlexClient:
             if wanted is not None and str(section.key) not in wanted:
                 continue
             for movie in section.all():
-                movies.append(self._movie_dict(movie, machine_id))
+                movies.append(self._movie_dict(movie, machine_id, base))
         logger.info("Fetched %d movies from Plex", len(movies))
         return movies
 
     @staticmethod
-    def _movie_dict(movie: Any, machine_id: str) -> Dict[str, Any]:
+    def _movie_dict(movie: Any, machine_id: str, base_url: str) -> Dict[str, Any]:
         rating_key = str(movie.ratingKey)
         duration = getattr(movie, "duration", None)
         duration_min = int(duration / 60000) if duration else None
         genres = [g.tag for g in (getattr(movie, "genres", None) or [])]
         rating = getattr(movie, "rating", None) or getattr(movie, "audienceRating", None)
-        key = getattr(movie, "key", "") or f"/library/metadata/{rating_key}"
-        # Universal web/app deep link — opens in a browser tab and the Plex app on mobile
+        metadata_key = f"/library/metadata/{rating_key}"
+        # Deep-link into the LOCAL Plex Web client (configured server URL) so playback
+        # starts directly on the LAN instead of round-tripping through app.plex.tv.
         plex_url = (
-            f"https://app.plex.tv/desktop/#!/server/{machine_id}"
-            f"/details?key={quote(key, safe='')}"
+            f"{base_url}/web/index.html#!/server/{machine_id}"
+            f"/details?key={quote(metadata_key, safe='')}"
         )
         return {
             "key": rating_key,

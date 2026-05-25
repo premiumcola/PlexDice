@@ -71,10 +71,12 @@ class LibraryCache:
             raise ValueError("Plex is not configured")
         server = plex_client.connect(url, token)
         section_ids = plex.get("libraries") or None
-        movies = plex_client.fetch_all_movies(server, section_ids)
+        movies = plex_client.fetch_all_movies(server, section_ids, base_url=url)
+        machine_id = getattr(server, "machineIdentifier", None)
         with self._lock:
             self._data = {
                 "movies": movies,
+                "server": {"machine_id": machine_id},
                 "refreshed_at": datetime.now(timezone.utc).isoformat(),
             }
             self.save()
