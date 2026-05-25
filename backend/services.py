@@ -20,7 +20,6 @@ DATA_DIR = os.environ.get("DATA_DIR", "/data")
 settings_store = SettingsStore(os.path.join(DATA_DIR, "settings.json"))
 library_cache = LibraryCache(os.path.join(DATA_DIR, "library_cache.json"))
 plex_client = PlexClient()
-AI_CACHE_PATH = os.path.join(DATA_DIR, "ai_cache.json")
 
 
 def _seed_from_env() -> None:

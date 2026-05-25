@@ -14,7 +14,7 @@ name — only the display name changed.)
 ## Quick start (local, Docker)
 
 ```bash
-cp .env.example .env          # optional: pre-fill PLEX_URL/PLEX_TOKEN/ANTHROPIC_API_KEY
+cp .env.example .env          # optional: pre-fill PLEX_URL/PLEX_TOKEN
 docker compose up --build -d
 docker logs plexdice --tail 50
 ```
@@ -30,19 +30,20 @@ Then open <http://localhost:8090> and go to **Einstellungen → Plex**:
 You can also pre-seed the connection by filling `PLEX_URL` and `PLEX_TOKEN`
 in `.env` before the first start — the settings page works either way.
 
-### AI enrichment (optional)
+### Movie info (keyless)
 
-Set `ANTHROPIC_API_KEY` in `.env` to enable the "Lohnt sich der Film?" button
-(plot, verdict, cast via Claude Haiku). Results are cached in
-`data/ai_cache.json` for 24h. Without a key the button stays disabled — the app
-works fully without it.
+The "Erzähl mir was über den Film" button needs **no API key**. It builds real
+facts (director, cast, writers, studio, country, collection, tagline, rating…)
+from the cached Plex metadata, and crawls a synopsis from German Wikipedia's
+public REST API per movie. Results are cached in `data/movie_info_cache.json`
+for 24h.
 
 ## Quick start (Unraid)
 
 _Placeholder._ Add the PlexDice container via Community Apps / a custom
 template: image built from this repo, host port **8090 → 8080**, and map a
-host path to **/data** for persistent settings + cache. Provide `PLEX_URL`,
-`PLEX_TOKEN` and (optionally) `ANTHROPIC_API_KEY` as container variables.
+host path to **/data** for persistent settings + cache. Provide `PLEX_URL`
+and `PLEX_TOKEN` as container variables.
 
 ## Getting your Plex token
 
@@ -57,7 +58,7 @@ thumbnails are proxied through the backend so the token never leaves it).
 
 - **Backend** — Python 3.11 + Flask + [python-plexapi](https://github.com/pkkid/python-plexapi),
   served by gunicorn. Stores everything as JSON in `/data`
-  (`settings.json`, `library_cache.json`, `ai_cache.json`).
+  (`settings.json`, `library_cache.json`, `movie_info_cache.json`, quiz data).
 - **Frontend** — Vite + React + Tailwind, built to static files and served by
   Flask in production (SPA fallback for client routes).
 - **Docker** — multi-stage build (Node builds the frontend, Python runtime
@@ -73,7 +74,7 @@ thumbnails are proxied through the backend so the token never leaves it).
 | GET/POST | `/api/settings` | Read (redacted) / save settings |
 | POST | `/api/plex/discover` | List account servers from plex.tv |
 | POST | `/api/plex/test` | Test a connection, list movie sections |
-| POST | `/api/ai/plot` | AI plot/verdict/cast (cached 24h) |
+| POST | `/api/movie/info` | Keyless facts + Wikipedia synopsis (cached 24h) |
 
 ## Icons
 
