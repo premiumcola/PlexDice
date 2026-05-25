@@ -23,12 +23,18 @@ def score_for(correct: bool, time_ms: Optional[int]) -> int:
 
 class Session:
     def __init__(
-        self, round_id: str, questions: List[Dict[str, Any]], name: Optional[str], modes: List[str]
+        self,
+        round_id: str,
+        questions: List[Dict[str, Any]],
+        name: Optional[str],
+        modes: List[str],
+        difficulty: str = "medium",
     ) -> None:
         self.round_id = round_id
         self.questions = questions
         self.name = name
         self.modes = modes
+        self.difficulty = difficulty
         self.created_at = datetime.now(timezone.utc).isoformat()
         self.answers: Dict[str, Dict[str, Any]] = {}
         self.score = 0
@@ -84,9 +90,15 @@ class SessionStore:
         self._sessions: Dict[str, Session] = {}
         self._lock = threading.Lock()
 
-    def create(self, questions: List[Dict[str, Any]], name: Optional[str], modes: List[str]) -> Session:
+    def create(
+        self,
+        questions: List[Dict[str, Any]],
+        name: Optional[str],
+        modes: List[str],
+        difficulty: str = "medium",
+    ) -> Session:
         round_id = uuid.uuid4().hex
-        session = Session(round_id, questions, name, modes)
+        session = Session(round_id, questions, name, modes, difficulty)
         with self._lock:
             self._sessions[round_id] = session
         return session

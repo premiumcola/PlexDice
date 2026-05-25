@@ -11,10 +11,21 @@ logger = logging.getLogger(__name__)
 
 
 class History:
-    def __init__(self, history_path: str, stats_path: str) -> None:
+    def __init__(self, history_path: str, stats_path: str, recent_path: str) -> None:
         self._history_path = history_path
         self._stats_path = stats_path
+        self._recent_path = recent_path
         self._lock = threading.Lock()
+
+    def recent_signatures(self) -> set:
+        """(mode:movie_key) signatures from recent rounds, to avoid repeats."""
+        return set(self._read(self._recent_path, []))
+
+    def push_signatures(self, signatures: List[str]) -> None:
+        with self._lock:
+            recent = self._read(self._recent_path, [])
+            recent.extend(signatures)
+            self._write(self._recent_path, recent[-100:])
 
     @staticmethod
     def _read(path: str, default: Any) -> Any:
@@ -63,6 +74,7 @@ class History:
                 "created_at": r.get("created_at"),
                 "score": r.get("score", 0),
                 "size": r.get("size", 0),
+                "difficulty": r.get("difficulty"),
                 "photo_id": r.get("photo_id"),
                 "player_names": r.get("player_names", []),
                 "modes": r.get("modes", []),

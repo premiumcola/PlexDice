@@ -20,6 +20,7 @@ sessions = SessionStore()
 history = History(
     os.path.join(DATA_DIR, "quiz_history.json"),
     os.path.join(DATA_DIR, "quiz_movie_stats.json"),
+    os.path.join(DATA_DIR, "quiz_recent.json"),
 )
 
 # Remove photo files no round references anymore (runs once on boot).
@@ -44,22 +45,30 @@ def _readable(option: dict | None) -> str | None:
 def new_round():
     body = request.get_json(silent=True) or {}
     size = max(1, min(int(body.get("size") or 50), 200))
-    modes = body.get("modes")
+    difficulty = body.get("difficulty") or "medium"
+    enabled_modes = body.get("enabled_modes") or body.get("modes")
     name = (body.get("name") or "").strip() or None
 
     status = library_cache.status()
     generator = QuizGenerator(library_cache.movies(), status)
-    questions, meta = generator.build_round(size, modes)
+    questions, meta = generator.build_round(
+        size,
+        difficulty=difficulty,
+        enabled_modes=enabled_modes,
+        avoid=history.recent_signatures(),
+    )
     if not questions:
         return jsonify({"error": "Nicht genug Daten für ein Quiz"}), 400
 
-    session = sessions.create(questions, name, meta["modes"])
+    session = sessions.create(questions, name, meta["modes"], meta["difficulty"])
+    history.push_signatures([f"{q['mode']}:{q['movie_key']}" for q in questions])
     return jsonify(
         {
             "round_id": session.round_id,
             "questions": questions,
             "created_at": session.created_at,
             "size": len(questions),
+            "difficulty": meta["difficulty"],
             "modes": meta["modes"],
             "insufficient_cast": meta["insufficient_cast"],
         }
@@ -119,6 +128,7 @@ def complete(round_id: str):
         "finished_at": _now(),
         "size": len(session.questions),
         "score": session.score,
+        "difficulty": session.difficulty,
         "modes": session.modes,
         "questions": questions_out,
     }
