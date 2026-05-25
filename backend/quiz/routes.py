@@ -48,7 +48,7 @@ def new_round():
     name = (body.get("name") or "").strip() or None
 
     status = library_cache.status()
-    generator = QuizGenerator(library_cache.movies(), cast_enriched=status.get("cast_enriched", False))
+    generator = QuizGenerator(library_cache.movies(), status)
     questions, meta = generator.build_round(size, modes)
     if not questions:
         return jsonify({"error": "Nicht genug Daten für ein Quiz"}), 400
@@ -73,7 +73,10 @@ def answer(round_id: str):
         return jsonify({"error": "round not found"}), 404
     body = request.get_json(silent=True) or {}
     result = session.record(
-        body.get("question_id"), body.get("chosen_option_id"), body.get("time_ms")
+        body.get("question_id"),
+        body.get("chosen_option_id"),
+        body.get("time_ms"),
+        chosen_ids=body.get("chosen_option_ids"),
     )
     if result is None:
         return jsonify({"error": "question not found"}), 404

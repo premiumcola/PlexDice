@@ -35,18 +35,37 @@ class Session:
         self._by_id = {q["id"]: q for q in questions}
 
     def record(
-        self, question_id: str, chosen_option_id: Optional[str], time_ms: Optional[int]
+        self,
+        question_id: str,
+        chosen_option_id: Optional[str],
+        time_ms: Optional[int],
+        chosen_ids: Optional[List[str]] = None,
     ) -> Optional[Dict[str, Any]]:
         question = self._by_id.get(question_id)
         if not question:
             return None
-        correct = chosen_option_id is not None and chosen_option_id == question["correct_option_id"]
-        points = score_for(correct, time_ms)
+
+        if question.get("multi_select"):
+            correct_set = set(question.get("correct_option_ids") or [])
+            chosen = set(chosen_ids or ([] if chosen_option_id is None else [chosen_option_id]))
+            denom = len(correct_set) or 1
+            net = len(chosen & correct_set) - len(chosen - correct_set)
+            frac = max(0, net) / denom
+            base = score_for(True, time_ms)
+            points = int(round(base * frac))
+            correct = frac >= 1.0
+            chosen_value: Any = sorted(chosen)
+        else:
+            correct = chosen_option_id is not None and chosen_option_id == question["correct_option_id"]
+            points = score_for(correct, time_ms)
+            chosen_value = chosen_option_id
+
         previous = self.answers.get(question_id)
         if previous:
             self.score -= previous["points"]
         self.answers[question_id] = {
-            "chosen_option_id": chosen_option_id,
+            "chosen_option_id": chosen_value if not question.get("multi_select") else None,
+            "chosen_option_ids": chosen_value if question.get("multi_select") else None,
             "time_ms": time_ms,
             "correct": correct,
             "points": points,
@@ -54,7 +73,8 @@ class Session:
         self.score += points
         return {
             "correct": correct,
-            "correct_option_id": question["correct_option_id"],
+            "correct_option_id": question.get("correct_option_id"),
+            "correct_option_ids": question.get("correct_option_ids"),
             "current_score": self.score,
         }
 
