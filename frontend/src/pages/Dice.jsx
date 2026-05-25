@@ -351,6 +351,13 @@ export default function Dice({ onNeedSettings }) {
     }
   };
 
+  // Swap one shown fact for an unused one from the pool (per-fact reroll).
+  const rerollFact = (slot) => {
+    const shown = new Set(factView.map((f) => f.category));
+    const spare = (aiInfo?.facts || []).find((f) => !shown.has(f.category));
+    if (spare) setFactView((view) => view.map((f, i) => (i === slot ? spare : f)));
+  };
+
   const toggleGenre = (g) => {
     setSelectedGenres((prev) => (prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]));
   };
@@ -855,7 +862,13 @@ export default function Dice({ onNeedSettings }) {
                   )}
                   {aiInfo && !aiInfo.error && (factView.length > 0 || aiInfo.plot) && (
                     <div className="rounded-2xl bg-zinc-900/60 ring-1 ring-amber-500/10 p-5 sm:p-6 space-y-4">
-                      <div className="text-[11px] uppercase tracking-widest text-amber-400">Wissenswert</div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] uppercase tracking-widest text-amber-400">Wissenswert</span>
+                        <button type="button" onClick={() => fetchInfo(true)} title="Neue Infos würfeln"
+                          className="w-8 h-8 rounded-lg bg-zinc-800 flex items-center justify-center text-zinc-400 hover:text-amber-300 active:scale-95 transition">
+                          <RefreshCw className="w-4 h-4" />
+                        </button>
+                      </div>
                       {aiInfo.source === 'wikipedia' && aiInfo.plot && (
                         <p className="text-base text-zinc-300 leading-relaxed opsz-20">{aiInfo.plot}</p>
                       )}
@@ -867,9 +880,24 @@ export default function Dice({ onNeedSettings }) {
                               <div className="text-[11px] tracking-widest uppercase text-amber-400 mb-1">{f.category}</div>
                               <div className="text-base leading-relaxed text-zinc-200">{f.text}</div>
                             </div>
+                            {(aiInfo.facts || []).length > factView.length && (
+                              <button type="button" onClick={() => rerollFact(i)} title="Diesen Fakt austauschen"
+                                className="shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-zinc-600 hover:text-amber-300 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                                <RefreshCw className="w-3.5 h-3.5" />
+                              </button>
+                            )}
                           </div>
                         ))}
                       </div>
+                      <p className="text-[10px] text-zinc-500">
+                        Fakten aus deiner Plex-Bibliothek{aiInfo.source === 'wikipedia' ? ' · Inhalt von Wikipedia' : ''}
+                        {aiInfo.wiki_url && (
+                          <>
+                            {' · '}
+                            <a href={aiInfo.wiki_url} target="_blank" rel="noopener noreferrer" className="underline hover:text-zinc-300">Quelle</a>
+                          </>
+                        )}
+                      </p>
                     </div>
                   )}
                 </div>
