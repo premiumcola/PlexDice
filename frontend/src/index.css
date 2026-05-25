@@ -46,3 +46,21 @@ body {
 .safe-top {
   padding-top: env(safe-area-inset-top);
 }
+
+/* Desktop scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: #27272a;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3f3f46;
+}
+
+/* Text selection */
+::selection {
+  background: rgba(245, 166, 35, 0.3);
+  color: #fff;
+}

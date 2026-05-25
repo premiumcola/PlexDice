@@ -459,18 +459,29 @@ export default function Dice({ onNeedSettings }) {
         {rolling && <div className="fixed inset-0 pointer-events-none rolling-bg" />}
         {fireworks && <Fireworks key={fireworksKey} />}
 
-        <div className="relative max-w-2xl mx-auto px-4 pt-6 pb-24 sm:py-10">
-          <header className="mb-6">
-            <div className="flex items-center gap-3 mb-1">
-              <div className="w-10 h-10 rounded-2xl bg-amber-400 flex items-center justify-center shadow-lg shadow-amber-400/20">
-                <Dices className="w-5 h-5 text-zinc-950" strokeWidth={2.5} />
-              </div>
-              <div className="min-w-0 flex-1">
-                <h1 className="font-display text-3xl lg:text-4xl tracking-tight leading-none">PlexDice</h1>
-                <p className="text-sm tabular-nums opsz-14">
-                  <span className={activeFilterCount > 0 ? 'text-amber-400 font-bold' : 'text-zinc-200 font-medium'}>{filtered.length.toLocaleString('de-DE')}</span>
-                  <span className="text-zinc-400"> von {movies.length.toLocaleString('de-DE')} Filmen{activeFilterCount > 0 ? ' (gefiltert)' : ''}</span>
-                </p>
+        <div className="relative max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-24 sm:py-10">
+          <header className="mb-6 pb-4 border-b border-zinc-900">
+            <div className="flex items-center gap-3">
+              <svg viewBox="0 0 200 200" className="w-8 h-8 shrink-0" aria-hidden="true">
+                <defs>
+                  <linearGradient id="die-t" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#f5a623" /><stop offset="1" stopColor="#e08e15" /></linearGradient>
+                  <linearGradient id="die-l" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#c97a10" /><stop offset="1" stopColor="#8a5208" /></linearGradient>
+                  <linearGradient id="die-r" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#b46c0c" /><stop offset="1" stopColor="#704206" /></linearGradient>
+                </defs>
+                <path d="M 100 30 L 170 70 L 100 110 L 30 70 Z" fill="url(#die-t)" stroke="#000" strokeWidth="2" />
+                <path d="M 30 70 L 100 110 L 100 180 L 30 140 Z" fill="url(#die-l)" stroke="#000" strokeWidth="2" />
+                <path d="M 170 70 L 100 110 L 100 180 L 170 140 Z" fill="url(#die-r)" stroke="#000" strokeWidth="2" />
+                <path d="M 88 55 L 100 75 L 88 95 L 96 95 L 108 75 L 96 55 Z" fill="#0a0a0a" opacity="0.85" />
+                <circle cx="50" cy="100" r="4" fill="#0a0a0a" opacity="0.7" />
+                <circle cx="65" cy="120" r="4" fill="#0a0a0a" opacity="0.7" />
+                <circle cx="80" cy="140" r="4" fill="#0a0a0a" opacity="0.7" />
+                <circle cx="125" cy="105" r="4" fill="#0a0a0a" opacity="0.7" />
+                <circle cx="155" cy="135" r="4" fill="#0a0a0a" opacity="0.7" />
+              </svg>
+              <h1 className="font-display-tight text-3xl lg:text-4xl tracking-tight leading-none flex-1 min-w-0">PlexDice</h1>
+              <div className="text-right shrink-0 tabular-nums opsz-14">
+                <span className={`text-lg font-semibold ${activeFilterCount > 0 ? 'text-amber-400' : 'text-zinc-200'}`}>{filtered.length.toLocaleString('de-DE')}</span>
+                <span className="text-sm text-zinc-400"> von {movies.length.toLocaleString('de-DE')}</span>
               </div>
             </div>
           </header>
@@ -703,10 +714,16 @@ export default function Dice({ onNeedSettings }) {
           <button
             onClick={pick}
             disabled={filtered.length === 0 || rolling}
-            className={`w-full py-5 rounded-2xl bg-amber-400 text-zinc-950 font-semibold text-lg tracking-wide flex items-center justify-center gap-3 active:scale-[0.98] transition-transform disabled:opacity-40 disabled:active:scale-100 ${rolling ? 'glow-pulse' : 'shadow-xl shadow-amber-400/30'}`}
+            style={{
+              background: 'linear-gradient(135deg, #f5a623 0%, #ffaf3a 100%)',
+              boxShadow: rolling
+                ? undefined
+                : '0 8px 24px rgba(245,166,35,0.35), 0 16px 48px rgba(245,166,35,0.15), inset 0 1px 0 rgba(255,255,255,0.20)',
+            }}
+            className={`w-full py-5 rounded-2xl text-zinc-950 font-semibold text-lg tracking-wide flex items-center justify-center gap-3 active:scale-[0.985] transition-transform disabled:opacity-40 disabled:active:scale-100 ${rolling ? 'glow-pulse' : ''}`}
           >
             <span className={rolling ? 'dice-shake' : 'inline-block'}>
-              <Dices className="w-6 h-6" strokeWidth={2.5} />
+              <Dices className="w-7 h-7" strokeWidth={2.5} />
             </span>
             {rolling ? 'Würfle…' : picked ? 'Nochmal würfeln' : 'Film würfeln'}
           </button>
@@ -733,7 +750,7 @@ export default function Dice({ onNeedSettings }) {
 
           {/* Picked movie card */}
           {picked && !rolling && (
-            <article key={picked.key} className="mt-6 rounded-3xl bg-gradient-to-br from-zinc-900 to-zinc-900/40 border border-zinc-800 overflow-hidden reveal-card">
+            <article key={picked.key} className="mt-6 rounded-3xl bg-gradient-to-br from-zinc-900 to-zinc-900/40 ring-1 ring-amber-500/10 overflow-hidden reveal-card">
               <div className="p-5 sm:p-7">
                 <div className="flex gap-4">
                   {picked.thumb_url && (
@@ -748,7 +765,7 @@ export default function Dice({ onNeedSettings }) {
                   )}
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-3 mb-1">
-                      <span className="text-xs uppercase tracking-widest text-amber-400/80 font-medium">Dein Film für heute</span>
+                      <span className="text-xs uppercase tracking-[0.2em] text-amber-400/80 font-medium">Dein Film für heute</span>
                       <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
                     </div>
                     <h2 className="font-display-tight text-3xl sm:text-4xl lg:text-5xl leading-tight tracking-tight mt-1">
