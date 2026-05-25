@@ -1,0 +1,22 @@
+# Build artifacts & deps
+**/node_modules
+frontend/dist
+**/__pycache__
+*.py[cod]
+.venv
+venv
+
+# Local data & secrets
+data/
+.env
+
+# VCS & docs
+.git
+.gitignore
+reference/
+*.md
+
+# Editor
+.idea
+.vscode
+.DS_Store

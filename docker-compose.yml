@@ -1,0 +1,10 @@
+services:
+  plexdice:
+    build: .
+    container_name: plexdice
+    ports:
+      - "8090:8080"
+    volumes:
+      - ./data:/data
+    env_file: .env
+    restart: unless-stopped
