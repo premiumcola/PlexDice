@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import {
   Dices, SlidersHorizontal, ChevronDown, ChevronUp, Clock, Calendar, Star,
   ShieldAlert, Tag, Film, X, AlertCircle, History as HistoryIcon, Youtube,
-  ExternalLink, Globe, Sparkles, Play, Loader2,
+  ExternalLink, Tv2, Sparkles, Play, Loader2,
 } from 'lucide-react';
 import { getLibrary, aiPlot } from '../api';
 import { HistogramRange, MiniHistogram } from '../components/HistogramRange';
@@ -753,11 +753,11 @@ export default function Dice({ onNeedSettings }) {
                       <ExternalLink className="w-4 h-4" /> IMDb
                     </a>
                     <a
-                      href={`https://www.filmstarts.de/suche/?q=${encodeURIComponent(picked.t)}`}
+                      href={`https://thetvdb.com/search?query=${encodeURIComponent(picked.o && picked.o !== picked.t ? picked.o : picked.t)}`}
                       target="_blank" rel="noopener noreferrer"
                       className="py-3 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-200 text-sm font-medium flex items-center justify-center gap-1.5 active:scale-[0.98] transition-transform"
                     >
-                      <Globe className="w-4 h-4" /> Filmstarts
+                      <Tv2 className="w-4 h-4" /> TheTVDB
                     </a>
                   </div>
                 </div>
