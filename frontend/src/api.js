@@ -132,10 +132,6 @@ export function quizSaveConfig(patch) {
   return postJson('/api/quiz/config', patch);
 }
 
-export function aiPlot(movie) {
-  return postJson('/api/ai/plot', {
-    title: movie.title || movie.t,
-    original_title: movie.originalTitle || movie.o,
-    year: movie.year || movie.y,
-  });
+export function movieInfo(key, force = false) {
+  return postJson('/api/movie/info', { key, force });
 }

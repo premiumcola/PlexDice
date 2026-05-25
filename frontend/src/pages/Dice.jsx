@@ -2,10 +2,9 @@ import { useState, useMemo, useEffect } from 'react';
 import {
   Dices, SlidersHorizontal, ChevronDown, ChevronUp, Clock, Calendar, Star,
   ShieldAlert, Tag, Film, X, AlertCircle, History as HistoryIcon, Youtube,
-  ExternalLink, Tv2, Sparkles, Play, Loader2, Eye, EyeOff, Check, Shield,
-  CheckCircle2, AlertTriangle,
+  ExternalLink, Tv2, Sparkles, Play, Loader2, Eye, EyeOff, Check, Shield, RefreshCw,
 } from 'lucide-react';
-import { getLibrary, aiPlot, getSettings, saveSettings } from '../api';
+import { getLibrary, movieInfo, getSettings, saveSettings } from '../api';
 import { HistogramRange } from '../components/HistogramRange';
 import FilterFunnel from '../components/FilterFunnel';
 
@@ -14,6 +13,8 @@ const RUNTIME_MIN_BOUND = 60;
 const RUNTIME_MAX_BOUND = 240;
 const PREFS_KEY = 'plexdice:prefs:v1';
 const FSK_VALUES = [0, 6, 12, 16, 18];
+const LOADING_VERBS = ['ausgegraben', 'zusammengetragen', 'hochgeholt'];
+const FACT_SHOW = 4;
 
 function fskColor(f) {
   if (f === 0) return 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30';
@@ -141,6 +142,8 @@ export default function Dice({ onNeedSettings }) {
 
   const [aiInfo, setAiInfo] = useState(null);
   const [aiLoading, setAiLoading] = useState(false);
+  const [loadingVerb, setLoadingVerb] = useState('zusammengetragen');
+  const [factView, setFactView] = useState([]);
 
   // Library bounds derived from the fetched movies.
   const yearBounds = useMemo(() => {
@@ -333,11 +336,14 @@ export default function Dice({ onNeedSettings }) {
     }, 2400);
   };
 
-  const fetchAi = async () => {
+  const fetchInfo = async (force = false) => {
     if (!picked) return;
+    setLoadingVerb(LOADING_VERBS[Math.floor(Math.random() * LOADING_VERBS.length)]);
     setAiLoading(true);
     try {
-      setAiInfo(await aiPlot(picked));
+      const data = await movieInfo(picked.key, force);
+      setAiInfo(data);
+      setFactView((data.facts || []).slice(0, FACT_SHOW));
     } catch (e) {
       setAiInfo({ error: e.message || 'Fehler' });
     } finally {
@@ -829,55 +835,41 @@ export default function Dice({ onNeedSettings }) {
                 {/* AI enrichment */}
                 <div className="mt-5">
                   {!aiInfo && !aiLoading && (
-                    <button onClick={fetchAi}
+                    <button onClick={() => fetchInfo()}
                       className="w-full py-3 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-200 text-sm font-medium flex items-center justify-center gap-2 active:scale-[0.98] transition-transform">
-                      <Sparkles className="w-4 h-4" /> Lohnt sich der Film?
+                      <Sparkles className="w-4 h-4" /> Erzähl mir was über den Film
                     </button>
                   )}
                   {aiLoading && (
                     <div className="flex items-center gap-2 text-sm text-zinc-400 py-2">
-                      <Loader2 className="w-4 h-4 animate-spin" /> KI denkt nach…
+                      <Loader2 className="w-4 h-4 animate-spin" /> Fakten werden {loadingVerb}…
                     </div>
                   )}
-                  {aiInfo && aiInfo.disabled && (
-                    <p className="text-xs text-zinc-500">KI-Anreicherung ist nicht konfiguriert.</p>
-                  )}
                   {aiInfo && aiInfo.error && (
-                    <p className="text-xs text-rose-300">KI-Fehler: {aiInfo.error}</p>
+                    <p className="text-xs text-rose-300 italic">Konnte keine Infos laden: {aiInfo.error}</p>
                   )}
-                  {aiInfo && !aiInfo.disabled && !aiInfo.error && (
-                    <div className="space-y-3">
-                      {!picked.summary && aiInfo.plot && (
+                  {aiInfo && !aiInfo.error && factView.length === 0 && !aiInfo.plot && (
+                    <p className="text-sm text-zinc-400 italic">
+                      Zu diesem Film habe ich keine Hintergrundinfos — manche Perlen müssen ein Geheimnis bleiben.
+                    </p>
+                  )}
+                  {aiInfo && !aiInfo.error && (factView.length > 0 || aiInfo.plot) && (
+                    <div className="rounded-2xl bg-zinc-900/60 ring-1 ring-amber-500/10 p-5 sm:p-6 space-y-4">
+                      <div className="text-[11px] uppercase tracking-widest text-amber-400">Wissenswert</div>
+                      {aiInfo.source === 'wikipedia' && aiInfo.plot && (
                         <p className="text-base text-zinc-300 leading-relaxed opsz-20">{aiInfo.plot}</p>
                       )}
-                      {aiInfo.hot_take && (
-                        <div className="rounded-2xl bg-zinc-900 p-4 space-y-3">
-                          <h3 className="font-display text-xl text-white leading-snug">
-                            {aiInfo.hot_take}
-                          </h3>
-                          {(aiInfo.pros || []).length > 0 && (
-                            <div className="space-y-1.5">
-                              {aiInfo.pros.map((p, i) => (
-                                <div key={i} className="flex items-start gap-2 text-sm text-zinc-200">
-                                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                                  <span>{p}</span>
-                                </div>
-                              ))}
+                      <div className="space-y-4">
+                        {factView.map((f, i) => (
+                          <div key={f.category + i} className="flex items-start gap-3 group">
+                            <div className="w-10 h-10 rounded-full bg-zinc-800 ring-2 ring-transparent group-hover:ring-amber-500/30 transition flex items-center justify-center text-[22px] leading-none shrink-0">{f.emoji}</div>
+                            <div className="min-w-0 flex-1">
+                              <div className="text-[11px] tracking-widest uppercase text-amber-400 mb-1">{f.category}</div>
+                              <div className="text-base leading-relaxed text-zinc-200">{f.text}</div>
                             </div>
-                          )}
-                          {aiInfo.caveat && (
-                            <div className="flex items-start gap-2 text-sm text-zinc-200">
-                              <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                              <span>{aiInfo.caveat}</span>
-                            </div>
-                          )}
-                          {aiInfo.fit && (
-                            <p className="text-sm italic text-zinc-400 pt-1">
-                              Passt zu dir, wenn {aiInfo.fit.replace(/^passt zu dir,?\s*wenn\s+/i, '')}
-                            </p>
-                          )}
-                        </div>
-                      )}
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>
