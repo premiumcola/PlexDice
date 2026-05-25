@@ -91,6 +91,7 @@ class PlexClient:
         duration_min = int(duration / 60000) if duration else None
         genres = [g.tag for g in (getattr(movie, "genres", None) or [])]
         rating = getattr(movie, "rating", None) or getattr(movie, "audienceRating", None)
+        last_viewed = getattr(movie, "lastViewedAt", None)
         metadata_key = f"/library/metadata/{rating_key}"
         # Deep-link into the LOCAL Plex Web client (configured server URL) so playback
         # starts directly on the LAN instead of round-tripping through app.plex.tv.
@@ -108,6 +109,8 @@ class PlexClient:
             "contentRating": getattr(movie, "contentRating", None),
             "fsk": parse_fsk(getattr(movie, "contentRating", None)),
             "rating": round(float(rating), 1) if rating is not None else None,
+            "view_count": int(getattr(movie, "viewCount", 0) or 0),
+            "last_viewed_at": last_viewed.isoformat() if last_viewed else None,
             "summary": getattr(movie, "summary", "") or "",
             "thumb_url": f"/api/library/thumb/{rating_key}",
             "art_url": f"/api/library/thumb/{rating_key}?art=1",

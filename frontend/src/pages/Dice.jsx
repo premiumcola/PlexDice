@@ -2,9 +2,9 @@ import { useState, useMemo, useEffect } from 'react';
 import {
   Dices, SlidersHorizontal, ChevronDown, ChevronUp, Clock, Calendar, Star,
   ShieldAlert, Tag, Film, X, AlertCircle, History as HistoryIcon, Youtube,
-  ExternalLink, Tv2, Sparkles, Play, Loader2,
+  ExternalLink, Tv2, Sparkles, Play, Loader2, Eye, EyeOff, Check,
 } from 'lucide-react';
-import { getLibrary, aiPlot } from '../api';
+import { getLibrary, aiPlot, getSettings, saveSettings } from '../api';
 import { HistogramRange, MiniHistogram } from '../components/HistogramRange';
 
 const ACCENT = '#f5a623';
@@ -124,6 +124,8 @@ export default function Dice({ onNeedSettings }) {
   const [fskMax, setFskMax] = useState(16);
   const [ratingMin, setRatingMin] = useState(6.0);
   const [ratingMax, setRatingMax] = useState(10.0);
+  const [watched, setWatched] = useState('all'); // 'all' | 'unseen' | 'seen'
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
 
   const [picked, setPicked] = useState(null);
   const [rolling, setRolling] = useState(false);
@@ -203,6 +205,27 @@ export default function Dice({ onNeedSettings }) {
     }
   }, [prefsLoaded, selectedGenres, yearMin, yearMax, runtimeMin, runtimeMax, fskMin, fskMax, ratingMin, ratingMax]);
 
+  // Load the persisted watched-status choice from server settings (ui.last_filters).
+  useEffect(() => {
+    (async () => {
+      try {
+        const s = await getSettings();
+        const w = s?.ui?.last_filters?.watched;
+        if (w === 'all' || w === 'unseen' || w === 'seen') setWatched(w);
+      } catch {
+        /* settings unavailable — keep default */
+      } finally {
+        setSettingsLoaded(true);
+      }
+    })();
+  }, []);
+
+  // Persist the watched-status choice back to server settings once loaded.
+  useEffect(() => {
+    if (!settingsLoaded) return;
+    saveSettings({ ui: { last_filters: { watched } } }).catch(() => {});
+  }, [settingsLoaded, watched]);
+
   const effYearMin = yearMin ?? yearBounds.min;
   const effYearMax = yearMax ?? yearBounds.max;
 
@@ -213,9 +236,11 @@ export default function Dice({ onNeedSettings }) {
       if (m.r && (m.r < runtimeMin || m.r > runtimeMax)) return false;
       if (m.f != null && (m.f < fskMin || m.f > fskMax)) return false;
       if (m.s != null && (m.s < ratingMin || m.s > ratingMax)) return false;
+      if (watched === 'unseen' && (m.view_count || 0) > 0) return false;
+      if (watched === 'seen' && (m.view_count || 0) === 0) return false;
       return true;
     });
-  }, [movies, selectedGenres, effYearMin, effYearMax, runtimeMin, runtimeMax, fskMin, fskMax, ratingMin, ratingMax]);
+  }, [movies, selectedGenres, effYearMin, effYearMax, runtimeMin, runtimeMax, fskMin, fskMax, ratingMin, ratingMax, watched]);
 
   const pick = () => {
     if (filtered.length === 0) return;
@@ -268,6 +293,7 @@ export default function Dice({ onNeedSettings }) {
     setFskMax(16);
     setRatingMin(6.0);
     setRatingMax(10.0);
+    setWatched('all');
   };
 
   const activeFilterCount =
@@ -275,7 +301,8 @@ export default function Dice({ onNeedSettings }) {
     (effYearMin !== yearBounds.min || effYearMax !== yearBounds.max ? 1 : 0) +
     (runtimeMin !== RUNTIME_MIN_BOUND || runtimeMax !== RUNTIME_MAX_BOUND ? 1 : 0) +
     (fskMin > 0 || fskMax < 18 ? 1 : 0) +
-    (ratingMin > 0 || ratingMax < 10 ? 1 : 0);
+    (ratingMin > 0 || ratingMax < 10 ? 1 : 0) +
+    (watched !== 'all' ? 1 : 0);
 
   const selectPicked = (m) => {
     setPicked(m);
@@ -485,7 +512,31 @@ export default function Dice({ onNeedSettings }) {
                 )}
               </div>
 
-              <div>
+              <div id="filter-watched">
+                <label className="text-sm font-medium text-zinc-200 flex items-center gap-2 mb-2">
+                  <Eye className="w-3.5 h-3.5" /> Gesehen
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { v: 'all', label: 'Alle', Icon: Eye },
+                    { v: 'unseen', label: 'Ungesehen', Icon: EyeOff },
+                    { v: 'seen', label: 'Gesehen', Icon: Check },
+                  ].map(({ v, label, Icon }) => {
+                    const on = watched === v;
+                    return (
+                      <button
+                        key={v}
+                        onClick={() => setWatched(v)}
+                        className={`min-h-[44px] px-2 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-1.5 active:scale-[0.97] transition-colors ${on ? 'bg-amber-400 text-zinc-950' : 'bg-zinc-800 text-zinc-300'}`}
+                      >
+                        <Icon className="w-4 h-4 shrink-0" /> <span className="truncate">{label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div id="filter-year">
                 <label className="text-sm font-medium text-zinc-200 flex items-center gap-2 mb-2">
                   <Calendar className="w-3.5 h-3.5" /> Jahr: <span className="text-amber-400 font-mono">{effYearMin}</span> – <span className="text-amber-400 font-mono">{effYearMax}</span>
                 </label>
