@@ -69,12 +69,13 @@ class LibraryCache:
         plex = settings.get("plex")
         token = plex.get("token")
         # Deep-links and fetch alike prefer the manual LAN URL when one is configured.
-        base = (plex.get("plex_server_url") or plex.get("url") or "").rstrip("/")
+        manual = (plex.get("plex_server_url") or "").strip() or None
+        base = (manual or plex.get("url") or "").rstrip("/")
         if not base or not token:
             raise ValueError("Plex is not configured")
         server = plex_client.connect_from_settings(plex)
         section_ids = plex.get("libraries") or None
-        movies = plex_client.fetch_all_movies(server, section_ids, base_url=base)
+        movies = plex_client.fetch_all_movies(server, section_ids, base_url=base, manual_url=manual)
         machine_id = getattr(server, "machineIdentifier", None)
         with self._lock:
             self._data = {

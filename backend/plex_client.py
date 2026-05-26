@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any, Dict, List, Optional
 from urllib.parse import quote
 
@@ -29,6 +30,28 @@ def parse_fsk(content_rating: Optional[str]) -> Optional[int]:
                 return bucket
         return 0
     return _US_RATINGS.get(content_rating.strip().upper())
+
+
+_PLEX_DIRECT = re.compile(r"^https?://([\d-]+)\.[a-f0-9]+\.plex\.direct(:\d+)?$")
+
+
+def _lan_link_base(base_url: str, manual_url: Optional[str] = None) -> str:
+    """Return a browser-friendly base URL for Plex Web deep links.
+
+    Preference order:
+    1. ``manual_url`` from settings, when set (already a clean LAN URL)
+    2. ``base_url`` with the plex.direct hostname rewritten to its encoded LAN IP
+       over plain HTTP — Plex on the LAN accepts http://<ip>:32400 without a cert
+    3. ``base_url`` unchanged (fallback when nothing else applies)
+    """
+    if manual_url:
+        return manual_url.rstrip("/")
+    m = _PLEX_DIRECT.match((base_url or "").rstrip("/"))
+    if m:
+        ip = m.group(1).replace("-", ".")
+        port = m.group(2) or ":32400"
+        return f"http://{ip}{port}"
+    return (base_url or "").rstrip("/")
 
 
 class PlexClient:
@@ -112,10 +135,14 @@ class PlexClient:
         server: PlexServer,
         section_ids: Optional[List[str]] = None,
         base_url: Optional[str] = None,
+        manual_url: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         wanted = {str(s) for s in section_ids} if section_ids else None
         machine_id = server.machineIdentifier
-        base = (base_url or getattr(server, "_baseurl", "") or "").rstrip("/")
+        api_base = (base_url or getattr(server, "_baseurl", "") or "").rstrip("/")
+        # Browser-friendly deep-link base: manual URL, else plex.direct → LAN IP.
+        link_base = _lan_link_base(api_base, manual_url)
+        logger.info("Deep-link base: %s", link_base)
         movies: List[Dict[str, Any]] = []
         for section in server.library.sections():
             if section.type != "movie":
@@ -123,7 +150,7 @@ class PlexClient:
             if wanted is not None and str(section.key) not in wanted:
                 continue
             for movie in section.all():
-                movies.append(self._movie_dict(movie, machine_id, base))
+                movies.append(self._movie_dict(movie, machine_id, link_base))
         logger.info("Fetched %d movies from Plex", len(movies))
         return movies
 
@@ -174,7 +201,7 @@ class PlexClient:
         return {"actors": actors, "meta": meta, "thumbs": thumbs}
 
     @staticmethod
-    def _movie_dict(movie: Any, machine_id: str, base_url: str) -> Dict[str, Any]:
+    def _movie_dict(movie: Any, machine_id: str, link_base: str) -> Dict[str, Any]:
         rating_key = str(movie.ratingKey)
         duration = getattr(movie, "duration", None)
         duration_min = int(duration / 60000) if duration else None
@@ -185,7 +212,7 @@ class PlexClient:
         # Deep-link into the LOCAL Plex Web client (configured server URL) so playback
         # starts directly on the LAN instead of round-tripping through app.plex.tv.
         plex_url = (
-            f"{base_url}/web/index.html#!/server/{machine_id}"
+            f"{link_base}/web/index.html#!/server/{machine_id}"
             f"/details?key={quote(metadata_key, safe='')}"
         )
         return {
