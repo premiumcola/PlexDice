@@ -7,6 +7,7 @@ from urllib.parse import urljoin
 import requests
 from flask import Blueprint, Response, jsonify
 
+from plex_client import _lan_link_base
 from services import library_cache, plex_client, settings_store
 
 logger = logging.getLogger(__name__)
@@ -23,6 +24,7 @@ def connection_info():
     manual = (plex.get("plex_server_url") or "").strip()
     url = manual or (plex.get("url") or "")
     mode = "manual" if manual else "auto"
+    link_base = _lan_link_base(plex.get("url") or "", manual or None)
     reachable = False
     if url and plex.get("token"):
         try:
@@ -30,7 +32,7 @@ def connection_info():
             reachable = True
         except Exception as exc:  # noqa: BLE001 — unreachable is a normal, reported state
             logger.info("connection-info: Plex unreachable (%s)", exc)
-    return jsonify({"mode": mode, "url": url, "reachable": reachable})
+    return jsonify({"mode": mode, "url": url, "reachable": reachable, "link_base": link_base})
 
 
 @bp.get("/thumb/<kind>/<key>")

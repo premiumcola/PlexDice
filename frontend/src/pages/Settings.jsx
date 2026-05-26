@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Server, RefreshCw, Loader2, Check, AlertCircle, Save, Library,
-  Settings as SettingsIcon, Info, Database, Plug, LogOut,
+  Settings as SettingsIcon, Info, Database, Plug, LogOut, Clipboard,
 } from 'lucide-react';
 import {
   getSettings, saveSettings, discoverServers, testConnection, refreshLibrary,
@@ -112,6 +112,14 @@ export default function Settings({ onConnected }) {
     setToast({ type, msg });
     setTimeout(() => setToast(null), 3200);
   }, []);
+
+  const copyText = useCallback((text) => {
+    if (!navigator.clipboard) { showToast('error', 'Kopieren nicht verfügbar'); return; }
+    navigator.clipboard.writeText(text).then(
+      () => showToast('success', 'Kopiert'),
+      () => showToast('error', 'Kopieren fehlgeschlagen'),
+    );
+  }, [showToast]);
 
   const refreshConnInfo = useCallback(async () => {
     try {
@@ -420,6 +428,20 @@ export default function Settings({ onConnected }) {
           <div className="text-xs font-mono text-zinc-500 mt-1.5 truncate">
             Aktiv: <span className={connInfo.reachable ? 'text-emerald-400' : 'text-rose-300'}>{connInfo.url}</span>
             <span className="text-zinc-600"> · {connInfo.mode === 'manual' ? 'manuell' : 'automatisch'}</span>
+          </div>
+        )}
+        {connInfo?.link_base && (
+          <div className="text-xs font-mono text-zinc-500 mt-1 flex items-center gap-1">
+            <span className="truncate">Deep-link Basis: <span className="text-zinc-300">{connInfo.link_base}</span></span>
+            <button
+              type="button"
+              onClick={() => copyText(connInfo.link_base)}
+              aria-label="Deep-link Basis kopieren"
+              title="Kopieren"
+              className="shrink-0 p-3.5 -my-2 rounded-lg text-zinc-400 active:text-amber-300 active:scale-95"
+            >
+              <Clipboard className="w-4 h-4" />
+            </button>
           </div>
         )}
       </Row>
