@@ -5,14 +5,17 @@ const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
 async function unwrap(res) {
   if (!res.ok) {
-    let detail = res.statusText;
+    let detail = '';
     try {
       const data = await res.json();
-      detail = data.error || detail;
+      detail = data.error || '';
     } catch {
       /* non-JSON error body */
     }
-    throw new Error(detail || `HTTP ${res.status}`);
+    const err = new Error(detail || res.statusText || `HTTP ${res.status}`);
+    err.status = res.status;
+    err.detail = detail; // backend-provided message, empty when none
+    throw err;
   }
   return res.json();
 }

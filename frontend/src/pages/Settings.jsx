@@ -35,6 +35,15 @@ function parseUrl(url) {
   }
 }
 
+function loginErrorMessage(e) {
+  // The backend returns a specific German reason for connection/timeout/HTTP
+  // errors; prefer it, then fall back to status-based wording.
+  if (e?.detail) return e.detail;
+  if (e?.status === 504) return 'Zeitüberschreitung beim Plex-Login';
+  if (e?.status === 502) return 'plex.tv nicht erreichbar — DNS-Problem?';
+  return e?.message || 'Login fehlgeschlagen';
+}
+
 function Toggle({ checked, onChange }) {
   return (
     <button
@@ -287,7 +296,7 @@ export default function Settings({ onConnected }) {
       pin = await createPlexPin();
     } catch (e) {
       try { popup.close(); } catch { /* ignore */ }
-      showToast('error', 'Login fehlgeschlagen');
+      showToast('error', loginErrorMessage(e));
       setLoginError(e.message || 'error');
       return;
     }

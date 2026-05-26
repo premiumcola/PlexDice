@@ -39,6 +39,15 @@ def create_pin():
         resp.raise_for_status()
         data = resp.json()
         return jsonify({"id": data["id"], "code": data["code"]})
+    except requests.exceptions.Timeout as exc:
+        logger.warning("Plex pin creation timed out: %s", exc)
+        return jsonify({"error": "Zeitüberschreitung beim Plex-Login"}), 504
+    except requests.exceptions.ConnectionError as exc:
+        logger.warning("Plex pin creation could not reach plex.tv: %s", exc)
+        return jsonify({"error": "plex.tv nicht erreichbar — DNS-Problem?"}), 502
+    except requests.exceptions.HTTPError as exc:
+        logger.warning("Plex pin creation rejected by plex.tv: %s", exc)
+        return jsonify({"error": "plex.tv hat die Anfrage abgelehnt"}), 502
     except requests.RequestException as exc:
         logger.warning("Plex pin creation failed: %s", exc)
         return jsonify({"error": str(exc)}), 502
