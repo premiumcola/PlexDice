@@ -9,6 +9,7 @@ import { HistogramRange } from '../components/HistogramRange';
 import FilterFunnel from '../components/FilterFunnel';
 import GenrePicker from '../components/GenrePicker';
 import AppHeader from '../components/AppHeader';
+import Fireworks from '../components/Fireworks';
 
 const ACCENT = '#f5a623';
 const RUNTIME_MIN_BOUND = 60;
@@ -52,76 +53,6 @@ function loadPrefs() {
   } catch {
     return null;
   }
-}
-
-function Fireworks() {
-  const particles = useMemo(() => {
-    const colors = ['#f5a623', '#f472b6', '#a78bfa', '#22d3ee', '#fb7185', '#34d399', '#fde047'];
-    const out = [];
-    const bursts = [
-      { x: 50, y: 35 },
-      { x: 25, y: 55 },
-      { x: 75, y: 50 },
-    ];
-    bursts.forEach((burst, bi) => {
-      const count = 22;
-      for (let i = 0; i < count; i++) {
-        const angle = (i / count) * Math.PI * 2 + Math.random() * 0.3;
-        const distance = 80 + Math.random() * 140;
-        out.push({
-          id: `${bi}-${i}`,
-          x: burst.x,
-          y: burst.y,
-          dx: Math.cos(angle) * distance,
-          dy: Math.sin(angle) * distance,
-          color: colors[Math.floor(Math.random() * colors.length)],
-          size: 2 + Math.random() * 4,
-          delay: bi * 0.15 + Math.random() * 0.1,
-          duration: 0.9 + Math.random() * 0.5,
-        });
-      }
-    });
-    return out;
-  }, []);
-
-  return (
-    <div className="pointer-events-none fixed inset-0 z-50 overflow-hidden">
-      <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-        {particles.map((p) => (
-          <circle
-            key={p.id}
-            cx={p.x}
-            cy={p.y}
-            r={p.size / 10}
-            fill={p.color}
-            style={{
-              animation: `firework ${p.duration}s ease-out ${p.delay}s forwards`,
-              transformOrigin: `${p.x}px ${p.y}px`,
-              '--dx': `${p.dx / 10}px`,
-              '--dy': `${p.dy / 10}px`,
-            }}
-          />
-        ))}
-      </svg>
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className="relative w-full h-full">
-          {['✨', '⭐', '✨'].map((emoji, i) => (
-            <div
-              key={i}
-              className="absolute text-4xl"
-              style={{
-                left: `${20 + i * 30}%`,
-                top: `${30 + (i % 2) * 15}%`,
-                animation: `starPop 0.8s ease-out ${i * 0.1}s both`,
-              }}
-            >
-              {emoji}
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
 }
 
 export default function Dice({ onNeedSettings }) {
@@ -442,17 +373,6 @@ export default function Dice({ onNeedSettings }) {
           40% { transform: rotate(14deg) translateY(1px); }
           60% { transform: rotate(-12deg); }
           80% { transform: rotate(18deg); }
-        }
-        @keyframes firework {
-          0% { transform: translate(0, 0) scale(0); opacity: 1; }
-          15% { transform: translate(0, 0) scale(1.4); opacity: 1; }
-          100% { transform: translate(var(--dx), var(--dy)) scale(0); opacity: 0; }
-        }
-        @keyframes starPop {
-          0% { transform: scale(0) rotate(0deg); opacity: 0; }
-          30% { transform: scale(1.6) rotate(180deg); opacity: 1; }
-          60% { transform: scale(1.1) rotate(280deg); opacity: 0.9; }
-          100% { transform: scale(2.4) rotate(360deg); opacity: 0; }
         }
         @keyframes revealCard {
           0% { transform: scale(0.92); opacity: 0; filter: blur(8px); }
