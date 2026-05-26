@@ -63,3 +63,10 @@ export const MODE_LABEL = {
 };
 
 export const TIER_LABEL = { 1: 'Leicht', 2: 'Mittel', 3: 'Schwer' };
+
+// Modes whose image stem is a person photo (anchor the crop to the top → faces).
+export const STEM_IS_PERSON = new Set([
+  'actor_to_movie', 'director_to_movie', 'writer_to_movie', 'actor_filmography_multi',
+]);
+// Modes whose image options are person photos (top-anchor + keep the name label).
+export const OPTIONS_ARE_PERSONS = new Set(['movie_to_actor', 'movie_to_director']);

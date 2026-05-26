@@ -3,7 +3,7 @@ import { Timer, Check, X, Settings, Play, RotateCcw, LogOut } from 'lucide-react
 import { navigate } from '../../router';
 import { quizAnswer, quizAbandon } from '../../api';
 import { loadRound, saveResults, clearRound } from './store';
-import { MODE_PROMPT, TIER_LABEL, fmt } from './util';
+import { MODE_PROMPT, TIER_LABEL, STEM_IS_PERSON, OPTIONS_ARE_PERSONS, fmt } from './util';
 
 const TIER_DOT = { 1: '#34d399', 2: '#f5a623', 3: '#fb7185' }; // emerald / amber / rose
 
@@ -45,7 +45,7 @@ function mmss(secs) {
 
 // Dark-Panel option. Unselected = zinc; selected (not locked) = amber outline;
 // reveal = emerald (correct) / rose (wrong chosen).
-function OptionButton({ option, selected, locked, reveal, onTap }) {
+function OptionButton({ option, mode, selected, locked, reveal, onTap }) {
   let cls = 'border border-zinc-700 bg-zinc-800/60 text-zinc-100';
   let anim;
   if (!locked && selected) {
@@ -71,12 +71,12 @@ function OptionButton({ option, selected, locked, reveal, onTap }) {
       disabled={locked}
       onClick={() => onTap(option.id)}
       style={{ animation: anim || 'none' }}
-      className={`relative rounded-2xl overflow-hidden ${cls} text-left transition-all active:scale-[0.97] disabled:active:scale-100 ${isImage ? 'h-24 sm:h-28 md:h-32' : 'min-h-[64px] p-3 md:p-4 flex flex-col justify-center'}`}
+      className={`relative rounded-2xl overflow-hidden ${cls} text-left transition-all active:scale-[0.97] disabled:active:scale-100 ${isImage ? 'aspect-[2/3] w-full' : 'min-h-[64px] p-3 md:p-4 flex flex-col justify-center'}`}
     >
       {isImage ? (
         <>
           {option.content ? (
-            <img src={option.content} alt="" className="absolute inset-0 w-full h-full object-cover" />
+            <img src={option.content} alt="" className={`absolute inset-0 w-full h-full object-cover ${OPTIONS_ARE_PERSONS.has(mode) ? 'object-top' : 'object-center'}`} />
           ) : (
             <div className="absolute inset-0 bg-zinc-800" />
           )}
@@ -337,19 +337,21 @@ export default function QuizPlay({ roundId }) {
         {/* Stem + radial countdown */}
         <div className="flex-1 min-h-0 px-4 sm:px-6 py-3 flex items-center justify-center overflow-hidden relative">
           {stemImage ? (
-            <img
-              src={q.stem.content}
-              alt=""
-              className="max-h-full max-w-full md:max-w-md object-contain rounded-2xl shadow-2xl"
-              style={
-                q.mode === 'cover_to_title'
-                  ? {
-                      WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, transparent 18%, black 28%, black 100%)',
-                      maskImage: 'linear-gradient(to bottom, transparent 0%, transparent 18%, black 28%, black 100%)',
-                    }
-                  : undefined
-              }
-            />
+            <div className="aspect-[2/3] max-h-full max-w-[min(70vw,360px)] landscape:max-h-[60vh] rounded-2xl overflow-hidden shadow-2xl">
+              <img
+                src={q.stem.content}
+                alt=""
+                className={`w-full h-full object-cover ${STEM_IS_PERSON.has(q.mode) ? 'object-top' : 'object-center'}`}
+                style={
+                  q.mode === 'cover_to_title'
+                    ? {
+                        WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, transparent 18%, black 28%, black 100%)',
+                        maskImage: 'linear-gradient(to bottom, transparent 0%, transparent 18%, black 28%, black 100%)',
+                      }
+                    : undefined
+                }
+              />
+            </div>
           ) : (
             <div className="max-h-full max-w-2xl overflow-auto rounded-2xl bg-white ring-1 ring-zinc-300 p-5 md:p-6 text-center">
               <p className="text-base sm:text-lg md:text-xl leading-relaxed text-zinc-900">{q.stem.content}</p>
@@ -374,7 +376,7 @@ export default function QuizPlay({ roundId }) {
         <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 pt-3">
           <div key={index} className={`grid ${gridCols} gap-2 sm:gap-3`} style={{ animation: 'pfSlideUp 0.25s ease' }}>
             {q.options.map((o) => (
-              <OptionButton key={o.id} option={o} selected={selectedIds.includes(o.id)} locked={locked} reveal={reveal} onTap={onOption} />
+              <OptionButton key={o.id} option={o} mode={q.mode} selected={selectedIds.includes(o.id)} locked={locked} reveal={reveal} onTap={onOption} />
             ))}
           </div>
         </div>
