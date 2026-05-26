@@ -1,4 +1,4 @@
-import { Fragment, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { Link2, X, Plus } from 'lucide-react';
 import {
   DndContext, DragOverlay, PointerSensor, useSensor, useSensors, useDraggable, useDroppable,
@@ -61,7 +61,7 @@ function GenreChip({ genre, single, activeId, overId, connectMode, onTap, onRemo
           aria-label={`${genre} aus Gruppe entfernen`}
           onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => { e.stopPropagation(); onRemove(genre); }}
-          className="w-5 h-5 rounded-full flex items-center justify-center text-zinc-950/70 active:bg-zinc-950/15"
+          className="h-11 w-7 -mr-0.5 flex items-center justify-center text-zinc-950/70 active:bg-zinc-950/15"
         >
           <X className="w-3.5 h-3.5" />
         </span>
@@ -79,7 +79,14 @@ export default function GenrePicker({ groups, allGenres, onChange }) {
   const [activeId, setActiveId] = useState(null);
   const [overId, setOverId] = useState(null);
   const [connectMode, setConnectMode] = useState(null);
+  const [hintDismissed, setHintDismissed] = useState(false);
+  const [hasMadeGroup, setHasMadeGroup] = useState(false);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+
+  // Once an AND-group exists (incl. a migrated one), the drag hint is gone for good.
+  useEffect(() => {
+    if (groups.some((g) => g.length > 1)) setHasMadeGroup(true);
+  }, [groups]);
 
   const selected = new Set(groups.flat());
   const unselected = allGenres.filter((g) => !selected.has(g));
@@ -125,6 +132,7 @@ export default function GenrePicker({ groups, allGenres, onChange }) {
   };
 
   const chipProps = { activeId, overId, connectMode, onTap: tapGenre, onRemove: removeGenre, onLongPress: longPress };
+  const showHint = selected.size > 0 && !hasMadeGroup && !hintDismissed;
 
   return (
     <div>
@@ -170,6 +178,14 @@ export default function GenrePicker({ groups, allGenres, onChange }) {
 
       {connectMode && (
         <p className="text-xs text-amber-300 mb-2">Tippe ein weiteres Genre zum Verbinden — oder hier zum Abbrechen.</p>
+      )}
+      {showHint && !connectMode && (
+        <div className="mb-2 flex items-start gap-2 text-xs text-zinc-400">
+          <p className="flex-1">Tipp: Ziehe ein Genre auf ein anderes, um sie mit UND zu verbinden. Mehrere Gruppen sind ODER-verknüpft.</p>
+          <button type="button" onClick={() => setHintDismissed(true)} aria-label="Tipp ausblenden" className="shrink-0 w-6 h-6 flex items-center justify-center text-zinc-500 active:text-zinc-300">
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
       )}
 
       <div className="flex flex-wrap gap-2">
