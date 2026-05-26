@@ -48,34 +48,6 @@ function stemIsShortText(q) {
   return q.stem?.kind === 'text' && q.mode === 'two_actors_to_shared';
 }
 
-// Two-layer "blur curtain": a blurred, slightly-scaled copy of the poster fills the
-// frame while a sharp copy on top is masked away at one edge, letting the blur show
-// through there. Hides on-art text (title at top / release year at bottom) as
-// atmospheric haze rather than a hard white block. Parent must be `relative`.
-function MaskedPoster({ src, direction }) {
-  const gradient =
-    direction === 'bottom'
-      ? 'linear-gradient(to top, transparent 0%, transparent 18%, black 28%, black 100%)'
-      : 'linear-gradient(to bottom, transparent 0%, transparent 18%, black 28%, black 100%)';
-  return (
-    <>
-      <img
-        src={src}
-        alt=""
-        aria-hidden="true"
-        className="absolute inset-0 w-full h-full object-cover object-center"
-        style={{ filter: 'blur(14px) brightness(0.85)', transform: 'scale(1.06)' }}
-      />
-      <img
-        src={src}
-        alt=""
-        className="absolute inset-0 w-full h-full object-cover object-center"
-        style={{ WebkitMaskImage: gradient, maskImage: gradient }}
-      />
-    </>
-  );
-}
-
 // Backend marks each redacted plot word as ⁣[REDACT:n]⁣ (invisible separators
 // as parser anchors). Split on that and render each as a fixed-width bar sized to the
 // hidden word — a deliberate redaction, never a missing-font tofu box.
@@ -563,9 +535,6 @@ export default function QuizPlay({ roundId }) {
   }
 
   const stemImage = q.stem.kind === 'image';
-  // Which poster edge to blur away (hides on-art title/year); null renders it sharp.
-  const stemMaskDir =
-    q.mode === 'cover_to_title' ? 'top' : q.mode === 'movie_to_year_exact' ? 'bottom' : null;
   // md+ only: tall image options claim the full-height stage on the right so covers
   // never clip; text-chip trays / multi-select sit below. Below md it is always
   // bottom (CSS handles the breakpoint).
@@ -657,15 +626,12 @@ export default function QuizPlay({ roundId }) {
         <div className={`${shortStage ? 'shrink-0' : 'flex-1 min-h-0'} px-4 sm:px-6 py-3 flex items-center justify-center overflow-hidden relative`}>
           {stemImage ? (
             <div className={`relative h-full w-auto ${STEM_IS_PERSON.has(q.mode) ? 'aspect-square' : 'aspect-[2/3]'} rounded-2xl overflow-hidden shadow-2xl`}>
-              {stemMaskDir ? (
-                <MaskedPoster src={q.stem.content} direction={stemMaskDir} />
-              ) : (
-                <img
-                  src={q.stem.content}
-                  alt=""
-                  className={`w-full h-full object-cover ${STEM_IS_PERSON.has(q.mode) ? 'object-top' : 'object-center'}`}
-                />
-              )}
+              <img
+                src={q.stem.content}
+                alt=""
+                className={`w-full h-full object-cover ${STEM_IS_PERSON.has(q.mode) ? 'object-top' : 'object-center'}`}
+                style={q.mode === 'cover_to_title' ? { filter: 'blur(18px) brightness(0.85) saturate(1.15)', transform: 'scale(1.04)' } : undefined}
+              />
             </div>
           ) : (
             <div className="max-h-full max-w-2xl overflow-auto rounded-2xl bg-white ring-1 ring-zinc-300 p-5 md:p-6 text-center">
