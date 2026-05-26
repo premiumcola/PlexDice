@@ -94,8 +94,14 @@ function OptionButton({ option, mode, fill, selected, locked, reveal, onTap, hin
     }
   }
   const isImage = option.kind === 'image';
-  // Headshots are square/4:5 — a 2:3 cell bottom-crops chins. Posters stay 2:3.
-  const imageBox = OPTIONS_ARE_PERSONS.has(mode) ? 'aspect-square w-full' : 'aspect-[2/3] w-full';
+  // Aspect from the option (16/9 art, 1/1 face, 2/3 poster); else square for person
+  // options (headshots bottom-crop in a 2:3 cell), 2/3 for everything else.
+  const imageBox =
+    option.aspect === '16/9' ? 'aspect-video w-full'
+      : option.aspect === '1/1' ? 'aspect-square w-full'
+        : option.aspect === '2/3' ? 'aspect-[2/3] w-full'
+          : OPTIONS_ARE_PERSONS.has(mode) ? 'aspect-square w-full'
+            : 'aspect-[2/3] w-full';
   // Text options: in a text-only grid they stretch to fill the cell (big, centered);
   // otherwise (a rare text fallback among images) they stay compact and left-aligned.
   const textBox = fill
@@ -116,7 +122,7 @@ function OptionButton({ option, mode, fill, selected, locked, reveal, onTap, hin
           ) : (
             <div className="absolute inset-0 bg-zinc-800" />
           )}
-          {OPTIONS_ARE_PERSONS.has(mode) && (
+          {(OPTIONS_ARE_PERSONS.has(mode) || option.show_label) && (
             <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-zinc-950/90 to-transparent px-2 py-1.5">
               <div className="text-xs sm:text-sm font-medium text-white truncate">{option.label}</div>
             </div>

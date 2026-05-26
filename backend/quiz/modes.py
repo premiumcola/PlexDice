@@ -17,12 +17,31 @@ from quiz.library import QuizLibrary, decade_of
 FSK_VALUES = [0, 6, 12, 16, 18]
 
 
-def _opt(kind: str, content: Optional[str], label: Optional[str]) -> Dict[str, Any]:
-    return {"id": uuid.uuid4().hex, "kind": kind, "content": content or "", "label": label or ""}
+def _opt(
+    kind: str,
+    content: Optional[str],
+    label: Optional[str],
+    aspect: Optional[str] = None,
+    show_label: bool = False,
+) -> Dict[str, Any]:
+    opt = {"id": uuid.uuid4().hex, "kind": kind, "content": content or "", "label": label or ""}
+    if aspect:
+        opt["aspect"] = aspect
+    if show_label:
+        opt["show_label"] = True
+    return opt
 
 
 def _poster(m):
     return _opt("image", m.get("thumb_url"), m.get("title"))
+
+
+def _movie_art_option(m: Dict[str, Any]) -> Dict[str, Any]:
+    # Landscape art + title label so four options fit the visible area without
+    # scrolling. art_url is always set, so key off _art to dodge a 404; movies
+    # without a backdrop fall back to the poster cropped into the same 16/9 cell.
+    art = m["art_url"] if m.get("_art") else m.get("thumb_url")
+    return _opt("image", art, m.get("title"), aspect="16/9", show_label=True)
 
 
 def _title(m):
@@ -354,7 +373,8 @@ def b_two_actors_to_shared(m, lib):
     if len(distract) < 3:
         return None
     stem = _text_stem(f"{a1['name']} & {a2['name']}")
-    return {"stem": stem, "actor_name": a1.get("name"), **_single(_poster(m), [_poster(x) for x in distract])}
+    return {"stem": stem, "actor_name": a1.get("name"),
+            **_single(_movie_art_option(m), [_movie_art_option(x) for x in distract])}
 
 
 def b_collection_member(m, lib):
