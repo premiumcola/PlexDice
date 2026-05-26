@@ -20,27 +20,25 @@ function mmss(secs) {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-function OptionButton({ option, multi, selected, locked, reveal, onTap }) {
-  let ring = 'ring-1 ring-zinc-700';
-  let bg = 'bg-zinc-800/90';
+// Dark-Panel option. Unselected = zinc; selected (not locked) = amber outline;
+// reveal = emerald (correct) / rose (wrong chosen).
+function OptionButton({ option, selected, locked, reveal, onTap }) {
+  let cls = 'border border-zinc-700 bg-zinc-800/60 text-zinc-100';
   let anim;
-  if (!locked && multi && selected) {
-    ring = 'ring-2 ring-amber-400';
-    bg = 'bg-amber-400/20';
+  if (!locked && selected) {
+    cls = 'border-2 border-amber-400 bg-amber-400/12 text-amber-300';
   }
   if (locked && reveal) {
     const isCorrect = reveal.correctIds.includes(option.id);
     const isChosen = reveal.chosenIds.has(option.id);
     if (isCorrect) {
-      ring = 'ring-2 ring-emerald-400';
-      bg = 'bg-emerald-500/25';
+      cls = 'border-2 border-emerald-400 bg-emerald-500/20 text-zinc-100';
       if (isChosen) anim = 'pfCorrect 0.4s ease';
     } else if (isChosen) {
-      ring = 'ring-2 ring-rose-500';
-      bg = 'bg-rose-500/25';
+      cls = 'border-2 border-rose-500 bg-rose-500/20 text-zinc-100';
       anim = 'pfWrong 0.3s ease';
     } else {
-      bg = 'bg-zinc-800/80 opacity-50';
+      cls = 'border border-zinc-700 bg-zinc-800/60 text-zinc-100 opacity-50';
     }
   }
   const isImage = option.kind === 'image';
@@ -50,7 +48,7 @@ function OptionButton({ option, multi, selected, locked, reveal, onTap }) {
       disabled={locked}
       onClick={() => onTap(option.id)}
       style={{ animation: anim || 'none' }}
-      className={`relative rounded-2xl overflow-hidden ${ring} ${bg} backdrop-blur-sm text-left transition-all active:scale-[0.97] disabled:active:scale-100 ${isImage ? 'h-24 sm:h-32 md:h-40 xl:h-44' : 'min-h-[64px] md:min-h-[80px] p-3 md:p-4 flex flex-col justify-center'}`}
+      className={`relative rounded-2xl overflow-hidden ${cls} text-left transition-all active:scale-[0.97] disabled:active:scale-100 ${isImage ? 'h-24 sm:h-28 md:h-32' : 'min-h-[64px] p-3 md:p-4 flex flex-col justify-center'}`}
     >
       {isImage ? (
         <>
@@ -59,13 +57,14 @@ function OptionButton({ option, multi, selected, locked, reveal, onTap }) {
           ) : (
             <div className="absolute inset-0 bg-zinc-800" />
           )}
+          {selected && !locked && <div className="absolute inset-0 ring-2 ring-amber-400 rounded-2xl pointer-events-none" />}
           <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-zinc-950/90 to-transparent px-2 py-1.5">
             <div className="text-xs sm:text-sm font-medium text-white truncate">{option.label}</div>
           </div>
         </>
       ) : (
         <>
-          <div className="font-semibold text-zinc-100 text-base sm:text-lg leading-tight">{option.content}</div>
+          <div className="font-semibold text-base sm:text-lg leading-tight">{option.content}</div>
           {option.label && <div className="text-xs text-zinc-400 tabular-nums mt-0.5">{option.label}</div>}
         </>
       )}
@@ -255,7 +254,7 @@ export default function QuizPlay({ roundId }) {
   }
 
   const stemImage = q.stem.kind === 'image';
-  const gridCols = q.options.length > 4 ? 'grid-cols-3 xl:grid-cols-6' : 'grid-cols-2 xl:grid-cols-4';
+  const gridCols = q.options.length > 4 ? 'grid-cols-3' : 'grid-cols-2';
   const remainingCount = Math.max(0, questions.length - index - 1);
   const vignette = remaining <= 5000 && !locked;
 
@@ -271,27 +270,14 @@ export default function QuizPlay({ roundId }) {
   };
 
   return (
-    <div className="h-[100dvh] bg-zinc-950 text-zinc-100 overflow-hidden relative">
+    <div className="h-[100dvh] flex flex-col overflow-hidden relative">
       <style>{`
         @keyframes quizTitleFade {0%{opacity:0;transform:translateY(6px)}100%{opacity:1;transform:translateY(0)}}
         @keyframes pfVignette {0%,100%{opacity:0.6}50%{opacity:1}}
-        @keyframes pfFade {from{opacity:0}to{opacity:1}}
         @keyframes pfSlideUp {from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
         @keyframes pfCorrect {0%,100%{transform:scale(1)}40%{transform:scale(1.05)}}
         @keyframes pfWrong {0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
       `}</style>
-
-      {/* Cinematic blurred backdrop (heavy blur — atmospheric, not a spoiler) */}
-      <img
-        key={q.movie_key}
-        src={`/api/library/thumb/${q.movie_key}?art=1`}
-        alt=""
-        aria-hidden
-        className="absolute inset-0 w-full h-full object-cover z-0"
-        style={{ filter: 'blur(40px) brightness(0.35) saturate(1.2)', animation: 'pfFade 0.25s ease' }}
-        onError={(e) => { e.currentTarget.style.display = 'none'; }}
-      />
-      <div className="absolute inset-0 z-0" style={{ background: 'radial-gradient(ellipse at center, rgba(9,9,11,0.25), rgba(9,9,11,0.88))' }} />
 
       {vignette && (
         <div className="pointer-events-none fixed inset-0 z-40" style={{
@@ -301,23 +287,21 @@ export default function QuizPlay({ roundId }) {
       )}
       {flash && <div className="pointer-events-none fixed inset-0 z-40" style={{ background: 'rgba(185,28,28,0.35)' }} />}
 
-      <div className="relative z-10 flex flex-col h-full">
+      {/* Stage — light neutral surface */}
+      <div className="relative flex flex-col h-[55%] bg-zinc-100 text-zinc-900">
         {/* HUD */}
-        <div
-          className="shrink-0 sticky top-0 z-30 flex items-center gap-2 sm:gap-3 px-3 sm:px-6 py-2 pt-[max(0.5rem,env(safe-area-inset-top))]"
-          style={{ background: 'rgba(9,9,11,0.7)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)' }}
-        >
-          <span className="flex items-center gap-1 font-mono tabular-nums text-sm text-zinc-200"><Timer className="w-4 h-4 text-zinc-400" /> {mmss(elapsed)}</span>
-          <span className="flex items-center gap-1 text-sm tabular-nums text-emerald-400"><Check className="w-4 h-4" /> {correctCount}</span>
-          <span className="flex items-center gap-1 text-sm tabular-nums text-rose-400"><X className="w-4 h-4" /> {wrongCount}</span>
-          <span className="flex items-center gap-1 text-sm tabular-nums text-zinc-300 ml-auto"><ListChecks className="w-4 h-4" /> {remainingCount}</span>
-          <span className="flex items-center gap-1 text-sm font-semibold tabular-nums text-amber-400">✨ {fmt(score)}</span>
-          <button type="button" onClick={doPause} aria-label="Pause" className="w-9 h-9 rounded-lg bg-zinc-800/80 flex items-center justify-center active:scale-95">
-            <Settings className="w-4 h-4 text-zinc-300" />
+        <div className="shrink-0 flex items-center gap-2 sm:gap-3 px-3 sm:px-6 py-2 pt-[max(0.5rem,env(safe-area-inset-top))] text-sm">
+          <span className="flex items-center gap-1 font-mono tabular-nums text-zinc-900"><Timer className="w-4 h-4 text-zinc-500" /> {mmss(elapsed)}</span>
+          <span className="flex items-center gap-1 tabular-nums text-emerald-600"><Check className="w-4 h-4" /> {correctCount}</span>
+          <span className="flex items-center gap-1 tabular-nums text-rose-600"><X className="w-4 h-4" /> {wrongCount}</span>
+          <span className="flex items-center gap-1 tabular-nums text-zinc-600 ml-auto"><ListChecks className="w-4 h-4" /> {remainingCount}</span>
+          <span className="flex items-center gap-1 font-semibold tabular-nums text-amber-600">✨ {fmt(score)}</span>
+          <button type="button" onClick={doPause} aria-label="Pause" className="w-9 h-9 rounded-lg bg-zinc-200 flex items-center justify-center active:scale-95">
+            <Settings className="w-4 h-4 text-zinc-700" />
           </button>
         </div>
 
-        <div className="shrink-0 px-4 sm:px-6 pt-3 text-center font-display text-lg md:text-2xl lg:text-3xl text-zinc-100">
+        <div className="shrink-0 px-4 sm:px-6 pt-1 text-center font-display text-lg md:text-2xl lg:text-3xl text-zinc-900">
           {MODE_PROMPT[q.mode] || 'Frage'}
         </div>
 
@@ -326,8 +310,8 @@ export default function QuizPlay({ roundId }) {
           {stemImage ? (
             <img src={q.stem.content} alt="" className="max-h-full max-w-full md:max-w-md object-contain rounded-2xl shadow-2xl" />
           ) : (
-            <div className="max-h-full max-w-2xl overflow-auto rounded-2xl bg-zinc-900/70 ring-1 ring-zinc-800 p-5 md:p-6 text-center backdrop-blur-sm">
-              <p className="text-base sm:text-lg md:text-xl leading-relaxed text-zinc-100">{q.stem.content}</p>
+            <div className="max-h-full max-w-2xl overflow-auto rounded-2xl bg-white ring-1 ring-zinc-300 p-5 md:p-6 text-center">
+              <p className="text-base sm:text-lg md:text-xl leading-relaxed text-zinc-900">{q.stem.content}</p>
             </div>
           )}
           {!locked && (
@@ -339,24 +323,28 @@ export default function QuizPlay({ roundId }) {
 
         <div className="shrink-0 h-6 text-center">
           {locked && (
-            <span className="text-sm font-medium text-zinc-200" style={{ animation: 'quizTitleFade 0.4s ease' }}>{q.movie_title}</span>
+            <span className="text-sm font-medium text-zinc-700" style={{ animation: 'quizTitleFade 0.4s ease' }}>{q.movie_title}</span>
           )}
         </div>
+      </div>
 
-        <div className="shrink-0 px-4 sm:px-6 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2 w-full max-w-5xl mx-auto">
+      {/* Panel — dark surface, edge-to-edge, single hairline divider against the Stage */}
+      <div className="flex flex-col h-[45%] bg-zinc-950 text-zinc-100 border-t border-amber-500/50">
+        <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 pt-3">
           <div key={index} className={`grid ${gridCols} gap-2 sm:gap-3`} style={{ animation: 'pfSlideUp 0.25s ease' }}>
             {q.options.map((o) => (
-              <OptionButton key={o.id} option={o} multi={q.multi_select} selected={multiSel.includes(o.id)} locked={locked} reveal={reveal} onTap={onOption} />
+              <OptionButton key={o.id} option={o} selected={multiSel.includes(o.id)} locked={locked} reveal={reveal} onTap={onOption} />
             ))}
           </div>
-          {q.multi_select && !locked && (
-            <button type="button" onClick={() => lockIn(multiSel)}
-              className="mt-3 w-full py-3 rounded-xl bg-amber-400 text-zinc-950 font-semibold active:scale-[0.98] transition-transform disabled:opacity-40"
-              disabled={multiSel.length === 0}>
+        </div>
+        {q.multi_select && (
+          <div className="shrink-0 px-4 sm:px-6 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+            <button type="button" onClick={() => lockIn(multiSel)} disabled={locked || multiSel.length === 0}
+              className="w-full rounded-xl py-3 font-semibold bg-amber-400 text-zinc-950 active:scale-[0.98] transition-transform disabled:opacity-40 disabled:cursor-not-allowed">
               Bestätigen ({multiSel.length})
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {paused && (
