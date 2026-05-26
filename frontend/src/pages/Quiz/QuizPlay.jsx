@@ -94,7 +94,10 @@ function OptionButton({ option, mode, fill, selected, locked, reveal, onTap }) {
   let cls = 'border border-zinc-700 bg-zinc-800/60 text-zinc-100';
   let anim;
   if (!locked && selected) {
-    cls = 'border-2 border-amber-400 bg-amber-400/12 text-amber-300';
+    // Unmistakable selection: thick amber ring, deeper fill, outer glow and a subtle
+    // lift. The lift rides on transform so neighbour chips never reflow.
+    cls =
+      'ring-[3px] ring-amber-400 bg-amber-400/22 text-amber-200 shadow-[0_0_24px_rgba(245,166,35,0.45)] scale-[1.025]';
   }
   if (locked && reveal) {
     const isCorrect = reveal.correctIds.includes(option.id);
@@ -123,7 +126,7 @@ function OptionButton({ option, mode, fill, selected, locked, reveal, onTap }) {
       disabled={locked}
       onClick={() => onTap(option.id)}
       style={{ animation: anim || 'none' }}
-      className={`relative rounded-2xl overflow-hidden ${cls} transition-all active:scale-[0.97] disabled:active:scale-100 ${isImage ? imageBox : textBox}`}
+      className={`relative rounded-2xl overflow-hidden ${cls} transition-all duration-[120ms] ease-out active:scale-[0.97] disabled:active:scale-100 ${isImage ? imageBox : textBox}`}
     >
       {isImage ? (
         <>
@@ -132,7 +135,6 @@ function OptionButton({ option, mode, fill, selected, locked, reveal, onTap }) {
           ) : (
             <div className="absolute inset-0 bg-zinc-800" />
           )}
-          {selected && !locked && <div className="absolute inset-0 ring-2 ring-amber-400 rounded-2xl pointer-events-none" />}
           {OPTIONS_ARE_PERSONS.has(mode) && (
             <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-zinc-950/90 to-transparent px-2 py-1.5">
               <div className="text-xs sm:text-sm font-medium text-white truncate">{option.label}</div>
