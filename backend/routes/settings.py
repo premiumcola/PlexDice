@@ -39,12 +39,15 @@ def discover():
 @bp.post("/plex/test")
 def test_connection():
     body = request.get_json(silent=True) or {}
-    url = body.get("url") or settings_store.get("plex").get("url")
-    token = body.get("token") or settings_store.get("plex").get("token")
-    if not url or not token:
+    plex = settings_store.get("plex")
+    url = body.get("url") or plex.get("url")
+    token = body.get("token") or plex.get("token")
+    # An explicit body url tests exactly that; otherwise honour a saved manual override.
+    manual = None if body.get("url") else (plex.get("plex_server_url") or None)
+    if not (url or manual) or not token:
         return jsonify({"ok": False, "error": "url and token required"}), 400
     try:
-        server = plex_client.connect(url, token)
+        server = plex_client.connect(url, token, manual_url=manual)
         return jsonify(
             {
                 "ok": True,

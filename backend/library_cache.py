@@ -67,12 +67,14 @@ class LibraryCache:
     def refresh(self, plex_client: PlexClient, settings: SettingsStore) -> Dict[str, Any]:
         """Fetch all movies from Plex and overwrite the cache."""
         plex = settings.get("plex")
-        url, token = plex.get("url"), plex.get("token")
-        if not url or not token:
+        token = plex.get("token")
+        # Deep-links and fetch alike prefer the manual LAN URL when one is configured.
+        base = (plex.get("plex_server_url") or plex.get("url") or "").rstrip("/")
+        if not base or not token:
             raise ValueError("Plex is not configured")
-        server = plex_client.connect(url, token)
+        server = plex_client.connect_from_settings(plex)
         section_ids = plex.get("libraries") or None
-        movies = plex_client.fetch_all_movies(server, section_ids, base_url=url)
+        movies = plex_client.fetch_all_movies(server, section_ids, base_url=base)
         machine_id = getattr(server, "machineIdentifier", None)
         with self._lock:
             self._data = {
@@ -139,7 +141,7 @@ class LibraryCache:
         """Fetch cast + crew/studio/country/tagline/collections per movie, batched."""
         try:
             plex = settings.get("plex")
-            server = plex_client.connect(plex.get("url"), plex.get("token"))
+            server = plex_client.connect_from_settings(plex)
         except Exception as exc:  # noqa: BLE001 — Plex unreachable → leave un-enriched
             logger.warning("Enrichment could not connect: %s", exc)
             with self._enrich_lock:

@@ -5,8 +5,11 @@ import logging
 from typing import Any, Dict, List, Optional
 from urllib.parse import quote
 
+import requests
+import urllib3
 from plexapi.myplex import MyPlexAccount
 from plexapi.server import PlexServer
+from urllib3.exceptions import InsecureRequestWarning
 
 logger = logging.getLogger(__name__)
 
@@ -31,10 +34,50 @@ def parse_fsk(content_rating: Optional[str]) -> Optional[int]:
 class PlexClient:
     """Stateless helpers; every call connects fresh from the given credentials."""
 
-    def connect(self, url: str, token: str) -> PlexServer:
+    def connect(
+        self,
+        url: str,
+        token: str,
+        manual_url: Optional[str] = None,
+        timeout: Optional[float] = None,
+    ) -> PlexServer:
+        """Open a PlexServer connection.
+
+        With ``manual_url`` set (a LAN override from settings) connect straight to that
+        address over a no-verify session — LAN servers carry self-signed certs and the
+        raw IP sidesteps ``*.plex.direct`` DNS entirely. Otherwise connect to the
+        discovered ``url`` via python-plexapi's normal flow (plex.tv → plex.direct).
+        """
+        manual = (manual_url or "").strip()
+        if manual:
+            if not token:
+                raise ValueError("Plex token is required")
+            # Scope the warning suppression to this path; LAN certs are self-signed.
+            urllib3.disable_warnings(InsecureRequestWarning)
+            session = requests.Session()
+            session.verify = False
+            # A failing manual URL must not hang startup → default to a 10s timeout.
+            server = PlexServer(
+                baseurl=manual.rstrip("/"), token=token, session=session, timeout=timeout or 10
+            )
+            logger.info("Connected to Plex via manual URL %s", manual)
+            return server
         if not url or not token:
             raise ValueError("Plex URL and token are required")
-        return PlexServer(baseurl=url.rstrip("/"), token=token)
+        server = PlexServer(baseurl=url.rstrip("/"), token=token, timeout=timeout)
+        logger.info("Connected to Plex via plex.tv discovery")
+        return server
+
+    def connect_from_settings(
+        self, plex: Dict[str, Any], timeout: Optional[float] = None
+    ) -> PlexServer:
+        """Connect using a stored ``plex`` settings dict, honouring a manual URL override."""
+        return self.connect(
+            plex.get("url", ""),
+            plex.get("token", ""),
+            manual_url=plex.get("plex_server_url"),
+            timeout=timeout,
+        )
 
     def discover_servers(self, token: str) -> List[Dict[str, Any]]:
         """Query plex.tv for the account's servers and their connection URIs."""
