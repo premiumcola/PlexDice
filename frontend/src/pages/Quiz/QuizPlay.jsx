@@ -204,7 +204,7 @@ function QuestionTimeline({ questions, statusMap, currentQid, layout, remainingM
       className={
         rail
           ? `hidden md:flex absolute inset-y-0 left-0 z-20 w-16 flex-col items-center justify-center ${gap} bg-zinc-950 border-r border-amber-500/40 py-3`
-          : `md:hidden shrink-0 flex items-center justify-center ${gap} px-3 py-1.5 bg-zinc-100 border-b border-zinc-300`
+          : `md:hidden shrink-0 flex items-center justify-center ${gap} px-3 pt-0 pb-1.5 bg-zinc-100 border-b border-amber-500/50`
       }
     >
       {questions.map((qq, i) => {
@@ -612,6 +612,9 @@ export default function QuizPlay({ roundId }) {
       <>
       {/* Stage — light neutral surface */}
       <div className={`relative flex flex-col w-full bg-zinc-100 text-zinc-900 ${shortStage ? 'shrink-0 h-auto' : `h-[55%] ${wantsRight ? 'md:h-full md:w-[62%]' : ''}`}`}>
+        {/* md+ connector: a short amber tick at the Stage's left edge continues the
+            rail's amber line up into the HUD, tying the band to the vertical timeline. */}
+        <span aria-hidden="true" className="hidden md:block absolute left-0 top-2 w-0.5 h-12 rounded-full bg-amber-500/50" />
         {/* HUD — three readable groups: progress · status · actions */}
         <div className="shrink-0 flex items-center gap-1 px-3 sm:px-6 py-1.5 pt-[max(0.5rem,env(safe-area-inset-top))] text-base sm:text-lg min-h-[56px]">
           {/* Group A · progress */}
