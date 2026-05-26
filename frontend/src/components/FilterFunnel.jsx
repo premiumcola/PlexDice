@@ -260,7 +260,7 @@ export default function FilterFunnel({ stages, total, onOpenStage, onResetStage 
                   style={{ left: tipX, top: yTop - 10 }}
                 >
                   <div className="relative max-w-[240px] rounded-xl bg-zinc-900/95 backdrop-blur-md ring-1 ring-zinc-800 shadow-xl p-3">
-                    <div className="text-xs font-semibold text-zinc-100">
+                    <div className="text-xs font-semibold text-zinc-100 break-words line-clamp-2">
                       {tip.stage.label} · <span className="text-amber-400">{tip.stage.summary}</span>
                     </div>
                     <div className="text-[11px] text-zinc-400 tabular-nums whitespace-nowrap mt-0.5">
