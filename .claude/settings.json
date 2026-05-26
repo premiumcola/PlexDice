@@ -1,0 +1,44 @@
+{
+  "permissions": {
+    "defaultMode": "acceptEdits",
+    "allow": [
+      "Read",
+      "Glob",
+      "Grep",
+      "Bash(git *)",
+      "Bash(docker *)",
+      "Bash(docker compose *)",
+      "Bash(python *)",
+      "Bash(python3 *)",
+      "Bash(pip *)",
+      "Bash(npm *)",
+      "Bash(npx *)",
+      "Bash(node *)",
+      "Bash(yarn *)",
+      "Bash(pnpm *)",
+      "Bash(rm *)",
+      "Bash(mv *)",
+      "Bash(cp *)",
+      "Bash(mkdir *)",
+      "Bash(touch *)",
+      "Bash(sed *)",
+      "Bash(awk *)",
+      "Bash(tr *)",
+      "Bash(sort *)",
+      "Bash(uniq *)",
+      "Bash(xargs *)"
+    ],
+    "deny": [
+      "Bash(sudo *)",
+      "Bash(rm -rf /)",
+      "Bash(rm -rf /*)",
+      "Bash(rm -rf ~)",
+      "Bash(rm -rf ~/*)",
+      "Bash(curl * | bash *)",
+      "Bash(curl * | sh *)",
+      "Bash(wget * | bash *)",
+      "Bash(wget * | sh *)",
+      "Bash(eval *)"
+    ]
+  }
+}
