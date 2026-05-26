@@ -630,13 +630,25 @@ export default function QuizPlay({ roundId }) {
         {/* Stem + radial countdown */}
         <div className={`${shortStage ? 'shrink-0' : 'flex-1 min-h-0'} px-4 sm:px-6 py-3 flex items-center justify-center overflow-hidden relative`}>
           {stemImage ? (
-            <div className={`relative ${stemLandscape ? 'w-full h-auto max-h-full' : 'h-full w-auto'} ${stemAspectClass} rounded-2xl overflow-hidden shadow-2xl`}>
-              <img
-                src={q.stem.content}
-                alt=""
-                className={`w-full h-full object-cover ${STEM_IS_PERSON.has(q.mode) ? 'object-top' : 'object-center'}`}
-                style={q.mode === 'cover_to_title' ? { filter: 'blur(18px) brightness(0.85) saturate(1.15)', transform: 'scale(1.04)' } : undefined}
-              />
+            <div className="flex h-full w-full flex-col items-center justify-center gap-2 overflow-hidden">
+              <div className={`relative ${stemLandscape ? 'w-full h-auto max-h-full' : q.stem.caption ? 'min-h-0 flex-1 w-auto max-w-full' : 'h-full w-auto'} ${stemAspectClass} rounded-2xl overflow-hidden shadow-2xl`}>
+                <img
+                  src={q.stem.content}
+                  alt=""
+                  className={`w-full h-full object-cover ${STEM_IS_PERSON.has(q.mode) ? 'object-top' : 'object-center'}`}
+                  style={q.mode === 'cover_to_title' ? { filter: 'blur(18px) brightness(0.85) saturate(1.15)', transform: 'scale(1.04)' } : undefined}
+                />
+              </div>
+              {q.stem.caption && (
+                <div className="mt-2 shrink-0 text-center">
+                  <div className="text-xs uppercase tracking-wide text-zinc-500">
+                    {q.mode === 'director_to_movie' ? 'Regie' : 'Schauspiel'}
+                  </div>
+                  <div className="text-base sm:text-lg font-semibold text-zinc-900">
+                    {q.stem.caption}
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <div className="max-h-full max-w-2xl overflow-auto rounded-2xl bg-white ring-1 ring-zinc-300 p-5 md:p-6 text-center">

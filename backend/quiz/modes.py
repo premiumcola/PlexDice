@@ -60,6 +60,19 @@ def _person_stem(p):
     return {"kind": "text", "content": p.get("name")}
 
 
+def _person_image_stem(p: Dict[str, Any]) -> Dict[str, Any]:
+    # Face + name caption: a lesser-known director's photo alone is unanswerable,
+    # so the mode becomes "which film by THIS named person". No photo → text fallback.
+    if not p.get("thumb_url"):
+        return {"kind": "text", "content": p.get("name") or ""}
+    return {
+        "kind": "image",
+        "content": p["thumb_url"],
+        "aspect": "1/1",
+        "caption": p.get("name") or "",
+    }
+
+
 def _single(correct, distractors):
     options = [correct] + list(distractors)
     random.shuffle(options)
@@ -127,7 +140,7 @@ def b_actor_to_movie(m, lib):
     d = lib.movie_distractors(m, "genre_adjacent", 3, exclude=exclude)
     if len(d) < 3:
         return None
-    return {"stem": _person_stem(actor), "actor_name": actor.get("name"),
+    return {"stem": _person_image_stem(actor), "actor_name": actor.get("name"),
             **_single(_poster(m), [_poster(x) for x in d])}
 
 
@@ -173,7 +186,7 @@ def b_director_to_movie(m, lib):
     d = lib.movie_distractors(m, "genre_adjacent", 3, exclude=exclude)
     if len(d) < 3:
         return None
-    return {"stem": _person_stem(director), **_single(_poster(m), [_poster(x) for x in d])}
+    return {"stem": _person_image_stem(director), **_single(_poster(m), [_poster(x) for x in d])}
 
 
 def b_movie_to_fsk(m, lib):
