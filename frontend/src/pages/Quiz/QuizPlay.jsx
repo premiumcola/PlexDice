@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Timer, Check, X, Pause, Play, RotateCcw, LogOut } from 'lucide-react';
+import { Timer, Check, X, Pause, Play, RotateCcw, LogOut, MousePointerClick } from 'lucide-react';
 import { navigate } from '../../router';
 import { quizAnswer, quizAbandon } from '../../api';
 import { loadRound, saveResults, clearRound } from './store';
@@ -176,6 +176,7 @@ export default function QuizPlay({ roundId }) {
   const lastTickRef = useRef(0);
   const answersRef = useRef([]);
   const selectedRef = useRef([]);
+  const lastTapRef = useRef({ id: null, ts: 0 });
   const advanceRef = useRef(null);
 
   const q = questions[index];
@@ -238,15 +239,27 @@ export default function QuizPlay({ roundId }) {
   const onOption = (id) => {
     if (locked || pausedRef.current) return;
     initAudio();
-    setSelectedIds((sel) => {
-      const next = q.multi_select
-        ? sel.includes(id)
-          ? sel.filter((x) => x !== id)
-          : [...sel, id]
-        : [id]; // single-select: tap replaces, never locks
-      selectedRef.current = next;
-      return next;
-    });
+    if (q.multi_select) {
+      setSelectedIds((sel) => {
+        const next = sel.includes(id) ? sel.filter((x) => x !== id) : [...sel, id];
+        selectedRef.current = next;
+        return next;
+      });
+      return;
+    }
+    // Single-select: first tap marks the option, a second tap on the SAME option
+    // confirms (this replaces the old Bestätigen button). Ignore a second tap within
+    // 120 ms of the first as an accidental fat-finger double-tap.
+    const now = Date.now();
+    const isMarked = selectedRef.current.length === 1 && selectedRef.current[0] === id;
+    if (isMarked) {
+      if (now - lastTapRef.current.ts < 120) return;
+      lockIn([id]);
+      return;
+    }
+    lastTapRef.current = { id, ts: now };
+    selectedRef.current = [id];
+    setSelectedIds([id]);
   };
 
   useEffect(() => {
@@ -362,6 +375,7 @@ export default function QuizPlay({ roundId }) {
         @keyframes pfSlideUp {from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
         @keyframes pfCorrect {0%,100%{transform:scale(1)}40%{transform:scale(1.05)}}
         @keyframes pfWrong {0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+        @keyframes pfHintIn {from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
       `}</style>
 
       {vignette && (
@@ -431,19 +445,29 @@ export default function QuizPlay({ roundId }) {
 
       {/* Panel — dark surface, edge-to-edge, single hairline divider against the Stage */}
       <div className={`flex flex-col h-[45%] w-full bg-zinc-950 text-zinc-100 border-t border-amber-500/50 ${wantsRight ? 'md:h-full md:w-[38%] md:border-t-0 md:border-l' : ''}`}>
-        <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 pt-3">
+        {!locked && (q.multi_select || selectedIds.length > 0) && (
+          <div role="status" aria-live="polite" className="shrink-0 px-4 sm:px-6 pt-3 flex justify-center" style={{ animation: 'pfHintIn 0.15s ease' }}>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-zinc-800/80 text-zinc-200 px-3 py-1.5 text-xs sm:text-sm">
+              <MousePointerClick className="w-4 h-4 text-amber-400 shrink-0" />
+              {q.multi_select ? 'Alle Passenden wählen, dann Bestätigen' : 'Nochmal tippen zum Bestätigen'}
+            </span>
+          </div>
+        )}
+        <div className={`flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 pt-3 ${q.multi_select ? '' : 'pb-[max(0.75rem,env(safe-area-inset-bottom))]'}`}>
           <div key={index} className={`grid ${gridCols} gap-2 sm:gap-3 ${textOptions ? 'h-full auto-rows-fr' : ''}`} style={{ animation: 'pfSlideUp 0.25s ease' }}>
             {q.options.map((o) => (
               <OptionButton key={o.id} option={o} mode={q.mode} fill={textOptions} selected={selectedIds.includes(o.id)} locked={locked} reveal={reveal} onTap={onOption} />
             ))}
           </div>
         </div>
-        <div className="shrink-0 px-4 sm:px-6 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-          <button type="button" onClick={() => lockIn(selectedIds)} disabled={locked || selectedIds.length === 0}
-            className="w-full rounded-xl py-3 font-semibold bg-amber-400 text-zinc-950 active:scale-[0.98] transition-transform disabled:opacity-40 disabled:cursor-not-allowed">
-            {q.multi_select ? `Bestätigen (${selectedIds.length})` : 'Bestätigen'}
-          </button>
-        </div>
+        {q.multi_select && (
+          <div className="shrink-0 px-4 sm:px-6 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+            <button type="button" onClick={() => lockIn(selectedIds)} disabled={locked || selectedIds.length === 0}
+              className="w-full rounded-xl py-3 font-semibold bg-amber-400 text-zinc-950 active:scale-[0.98] transition-transform disabled:opacity-40 disabled:cursor-not-allowed">
+              Bestätigen ({selectedIds.length})
+            </button>
+          </div>
+        )}
       </div>
 
       {paused && (
