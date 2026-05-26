@@ -19,6 +19,7 @@ def _default_settings() -> Dict[str, Any]:
     return {
         "plex": {
             "url": "",
+            "plex_server_url": "",
             "token": "",
             "ssl": True,
             "libraries": [],

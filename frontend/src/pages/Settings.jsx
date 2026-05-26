@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import {
   getSettings, saveSettings, discoverServers, testConnection, refreshLibrary,
-  createPlexPin, checkPlexPin, plexLogout,
+  createPlexPin, checkPlexPin, plexLogout, getPlexConnectionInfo,
 } from '../api';
 import QuizConfig from '../components/QuizConfig';
 
@@ -70,6 +70,8 @@ export default function Settings({ onConnected }) {
   const [hostname, setHostname] = useState('');
   const [port, setPort] = useState(DEFAULT_PORT);
   const [ssl, setSsl] = useState(true);
+  const [manualUrl, setManualUrl] = useState('');
+  const [connInfo, setConnInfo] = useState(null);
 
   const [servers, setServers] = useState([]);
   const [discovering, setDiscovering] = useState(false);
@@ -102,6 +104,14 @@ export default function Settings({ onConnected }) {
     setTimeout(() => setToast(null), 3200);
   }, []);
 
+  const refreshConnInfo = useCallback(async () => {
+    try {
+      setConnInfo(await getPlexConnectionInfo());
+    } catch {
+      setConnInfo(null);
+    }
+  }, []);
+
   useEffect(() => {
     (async () => {
       try {
@@ -114,13 +124,15 @@ export default function Settings({ onConnected }) {
         setPort(parsed.port);
         setSsl(plex.ssl != null ? plex.ssl : parsed.ssl);
         setSelectedLibraries(plex.libraries || []);
+        setManualUrl(plex.plex_server_url || '');
+        refreshConnInfo();
       } catch {
         /* first run */
       } finally {
         setLoaded(true);
       }
     })();
-  }, []);
+  }, [refreshConnInfo]);
 
   const composeUrl = useCallback(
     () => `${ssl ? 'https' : 'http'}://${hostname.trim()}:${(port || DEFAULT_PORT).toString().trim()}`,
@@ -175,7 +187,9 @@ export default function Settings({ onConnected }) {
     }
   }, [composeUrl, ssl]);
 
-  const buildPatch = () => ({ plex: { url: composeUrl(), ssl, libraries: selectedLibraries } });
+  const buildPatch = () => ({
+    plex: { url: composeUrl(), ssl, libraries: selectedLibraries, plex_server_url: manualUrl.trim() },
+  });
 
   const doSave = async () => {
     setSaving(true);
@@ -184,6 +198,7 @@ export default function Settings({ onConnected }) {
       await saveSettings(buildPatch());
       setSaved(true);
       onConnected?.();
+      refreshConnInfo();
       setTimeout(() => setSaved(false), 2500);
     } catch (e) {
       setTestError(e.message || 'Speichern fehlgeschlagen');
@@ -341,6 +356,25 @@ export default function Settings({ onConnected }) {
 
       <Row label="SSL verwenden">
         <Toggle checked={ssl} onChange={setSsl} />
+      </Row>
+
+      <Row label="Server-URL (manuell)">
+        <input
+          type="url"
+          value={manualUrl}
+          onChange={(e) => setManualUrl(e.target.value)}
+          placeholder="https://192.168.178.10:32400"
+          className="w-full px-3 py-2 rounded-xl bg-zinc-950 text-zinc-100 placeholder-zinc-500 outline-none focus:ring-2 focus:ring-amber-400/60"
+        />
+        <p className="text-xs text-zinc-500 mt-1.5">
+          Lass leer für automatische Plex-Erkennung. Manuell setzen wenn plex.direct DNS nicht funktioniert.
+        </p>
+        {connInfo?.url && (
+          <div className="text-xs font-mono text-zinc-500 mt-1.5 truncate">
+            Aktiv: <span className={connInfo.reachable ? 'text-emerald-400' : 'text-rose-300'}>{connInfo.url}</span>
+            <span className="text-zinc-600"> · {connInfo.mode === 'manual' ? 'manuell' : 'automatisch'}</span>
+          </div>
+        )}
       </Row>
     </div>
   );

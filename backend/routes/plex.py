@@ -7,12 +7,30 @@ from urllib.parse import urljoin
 import requests
 from flask import Blueprint, Response, jsonify
 
-from services import library_cache, settings_store
+from services import library_cache, plex_client, settings_store
 
 logger = logging.getLogger(__name__)
 bp = Blueprint("plex", __name__, url_prefix="/api/plex")
 
 _THUMB_TIMEOUT = 15
+
+
+@bp.get("/connection-info")
+def connection_info():
+    """Active Plex connection: manual override vs auto-discovery, the base URL in use
+    (never the token), and a quick reachability probe."""
+    plex = settings_store.get("plex")
+    manual = (plex.get("plex_server_url") or "").strip()
+    url = manual or (plex.get("url") or "")
+    mode = "manual" if manual else "auto"
+    reachable = False
+    if url and plex.get("token"):
+        try:
+            plex_client.connect_from_settings(plex, timeout=5)
+            reachable = True
+        except Exception as exc:  # noqa: BLE001 — unreachable is a normal, reported state
+            logger.info("connection-info: Plex unreachable (%s)", exc)
+    return jsonify({"mode": mode, "url": url, "reachable": reachable})
 
 
 @bp.get("/thumb/<kind>/<key>")

@@ -84,6 +84,10 @@ export function plexLogout() {
   return postJson('/api/plex/auth/logout', {});
 }
 
+export function getPlexConnectionInfo() {
+  return fetch('/api/plex/connection-info').then(unwrap);
+}
+
 export function getLibraryStatus() {
   return fetch('/api/library/status').then(unwrap);
 }
