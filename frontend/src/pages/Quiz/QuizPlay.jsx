@@ -1,9 +1,30 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Timer, Check, X, ListChecks, Settings, Play, RotateCcw, LogOut } from 'lucide-react';
+import { Timer, Check, X, Settings, Play, RotateCcw, LogOut } from 'lucide-react';
 import { navigate } from '../../router';
 import { quizAnswer, quizAbandon } from '../../api';
 import { loadRound, saveResults, clearRound } from './store';
-import { MODE_PROMPT, fmt } from './util';
+import { MODE_PROMPT, TIER_LABEL, fmt } from './util';
+
+const TIER_DOT = { 1: '#34d399', 2: '#f5a623', 3: '#fb7185' }; // emerald / amber / rose
+
+// Three pips + tier label, for the light Stage HUD. No lucide icon by design.
+function DifficultyBadge({ tier }) {
+  const dot = TIER_DOT[tier] || '#a1a1aa';
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span className="inline-flex items-center gap-0.5">
+        {[1, 2, 3].map((i) => (
+          <span
+            key={i}
+            className="inline-block w-1.5 h-1.5 rounded-full"
+            style={i <= tier ? { background: dot } : { border: '1px solid #d4d4d8' }}
+          />
+        ))}
+      </span>
+      <span className="hidden sm:inline text-zinc-600">{TIER_LABEL[tier]}</span>
+    </span>
+  );
+}
 import { initAudio, tick, tickParams, chime, buzz } from './audio';
 import RadialCountdown from './RadialCountdown';
 
@@ -260,7 +281,6 @@ export default function QuizPlay({ roundId }) {
   // Below md it is always bottom (CSS handles the breakpoint).
   const wantsRight = stemImage && !MULTI_IMAGE_STEM_MODES.includes(q.mode) && q.options.length <= 4;
   const gridCols = q.options.length > 4 ? 'grid-cols-3' : 'grid-cols-2';
-  const remainingCount = Math.max(0, questions.length - index - 1);
   const vignette = remaining <= 5000 && !locked;
 
   const leave = async (to) => {
@@ -295,13 +315,17 @@ export default function QuizPlay({ roundId }) {
       {/* Stage — light neutral surface */}
       <div className={`relative flex flex-col h-[55%] w-full bg-zinc-100 text-zinc-900 ${wantsRight ? 'md:h-full md:w-[62%]' : ''}`}>
         {/* HUD */}
-        <div className="shrink-0 flex items-center gap-2 sm:gap-3 px-3 sm:px-6 py-2 pt-[max(0.5rem,env(safe-area-inset-top))] text-sm">
-          <span className="flex items-center gap-1 font-mono tabular-nums text-zinc-900"><Timer className="w-4 h-4 text-zinc-500" /> {mmss(elapsed)}</span>
+        <div className="shrink-0 flex items-center gap-2 px-3 sm:px-6 py-2 pt-[max(0.5rem,env(safe-area-inset-top))] text-sm">
+          <span className="flex items-center gap-1.5 min-h-[44px]">
+            <span className="tabular-nums text-zinc-900 font-medium">{index + 1}/{questions.length}</span>
+            <span className="text-zinc-400">·</span>
+            <DifficultyBadge tier={q.tier || q.difficulty || 1} />
+          </span>
+          <span className="flex items-center gap-1 font-mono tabular-nums text-zinc-900 ml-auto"><Timer className="w-4 h-4 text-zinc-500" /> {mmss(elapsed)}</span>
           <span className="flex items-center gap-1 tabular-nums text-emerald-600"><Check className="w-4 h-4" /> {correctCount}</span>
           <span className="flex items-center gap-1 tabular-nums text-rose-600"><X className="w-4 h-4" /> {wrongCount}</span>
-          <span className="flex items-center gap-1 tabular-nums text-zinc-600 ml-auto"><ListChecks className="w-4 h-4" /> {remainingCount}</span>
           <span className="flex items-center gap-1 font-semibold tabular-nums text-amber-600">✨ {fmt(score)}</span>
-          <button type="button" onClick={doPause} aria-label="Pause" className="w-9 h-9 rounded-lg bg-zinc-200 flex items-center justify-center active:scale-95">
+          <button type="button" onClick={doPause} aria-label="Pause" className="w-9 h-9 rounded-lg bg-zinc-200 flex items-center justify-center active:scale-95 shrink-0">
             <Settings className="w-4 h-4 text-zinc-700" />
           </button>
         </div>
