@@ -7,6 +7,7 @@ import {
 import { getLibrary, movieInfo, getSettings, saveSettings } from '../api';
 import { HistogramRange } from '../components/HistogramRange';
 import FilterFunnel from '../components/FilterFunnel';
+import GenrePicker from '../components/GenrePicker';
 
 const ACCENT = '#f5a623';
 const RUNTIME_MIN_BOUND = 60;
@@ -376,14 +377,6 @@ export default function Dice({ onNeedSettings }) {
     if (spare) setFactView((view) => view.map((f, i) => (i === slot ? spare : f)));
   };
 
-  const toggleGenre = (g) => {
-    setGenreGroups((groups) =>
-      groups.flat().includes(g)
-        ? groups.map((grp) => grp.filter((x) => x !== g)).filter((grp) => grp.length > 0)
-        : [...groups, [g]],
-    );
-  };
-
   const resetFilters = () => {
     setGenreGroups([]);
     setYearMin(yearBounds.min);
@@ -623,20 +616,7 @@ export default function Dice({ onNeedSettings }) {
                     <button onClick={() => setGenreGroups([])} className="text-xs text-amber-400/80 active:text-amber-300 font-medium">leeren</button>
                   )}
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {allGenres.map((g) => {
-                    const on = selectedFlat.includes(g);
-                    return (
-                      <button
-                        key={g}
-                        onClick={() => toggleGenre(g)}
-                        className={`px-3 py-1.5 rounded-xl text-sm border transition-colors active:scale-95 ${on ? 'bg-amber-400 text-zinc-950 border-amber-400 font-medium' : 'bg-zinc-900 text-zinc-300 border-zinc-800'}`}
-                      >
-                        {g}
-                      </button>
-                    );
-                  })}
-                </div>
+                <GenrePicker groups={genreGroups} allGenres={allGenres} onChange={setGenreGroups} />
                 {selectedFlat.length > 0 && (
                   <p className="text-xs text-amber-400/90 mt-2 tabular-nums">{genreSummary(genreGroups)}</p>
                 )}
