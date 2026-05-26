@@ -2,12 +2,25 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Server, RefreshCw, Loader2, Check, AlertCircle, Save, Library,
   Settings as SettingsIcon, Info, Database, Plug, LogOut, Clipboard,
+  ExternalLink, Github, Activity, ShieldCheck,
 } from 'lucide-react';
 import {
   getSettings, saveSettings, discoverServers, testConnection, refreshLibrary,
   createPlexPin, checkPlexPin, plexLogout, getPlexConnectionInfo, ensurePlexClientId,
+  getPersistence,
 } from '../api';
 import QuizConfig from '../components/QuizConfig';
+import DieIcon from '../components/DieIcon';
+
+const APP_VERSION = import.meta.env.VITE_APP_VERSION || '1.0.0';
+
+// About-screen source rows; links restricted to the real public domains.
+const ABOUT_SOURCES = [
+  { text: 'Plex (api.plex.tv) — Bibliothek + Metadaten', href: 'https://api.plex.tv' },
+  { text: 'Plex python-plexapi', href: null },
+  { text: 'The Movie Database (TMDb) — wenn Poster fehlen', href: 'https://www.themoviedb.org' },
+  { text: 'Anthropic Claude API — KI-Plot-Anreicherung (optional)', href: 'https://www.anthropic.com' },
+];
 
 const TABS = [
   { id: 'allgemein', label: 'Allgemein' },
@@ -103,6 +116,8 @@ export default function Settings({ onConnected }) {
   const [polling, setPolling] = useState(false);
   const [loginError, setLoginError] = useState('');
   const [toast, setToast] = useState(null);
+  const [persist, setPersist] = useState(null);
+  const [persistLoading, setPersistLoading] = useState(false);
 
   const pollRef = useRef(null);
   const timeoutRef = useRef(null);
@@ -120,6 +135,17 @@ export default function Settings({ onConnected }) {
       () => showToast('error', 'Kopieren fehlgeschlagen'),
     );
   }, [showToast]);
+
+  const runPersistenceCheck = useCallback(async () => {
+    setPersistLoading(true);
+    try {
+      setPersist(await getPersistence());
+    } catch (e) {
+      setPersist({ error: e.message || 'Fehler' });
+    } finally {
+      setPersistLoading(false);
+    }
+  }, []);
 
   const refreshConnInfo = useCallback(async () => {
     try {
@@ -638,14 +664,85 @@ export default function Settings({ onConnected }) {
 
         {loaded && activeTab === 'quiz' && <QuizConfig />}
 
-        {loaded && (activeTab === 'allgemein' || activeTab === 'ueber') && (
+        {loaded && activeTab === 'ueber' && (
+          <section className="space-y-4">
+            <div className="rounded-2xl bg-zinc-900 ring-1 ring-zinc-800 p-4">
+              <div className="flex items-center gap-3">
+                <DieIcon className="w-10 h-10 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="font-extrabold text-2xl text-zinc-100 leading-none">PlexDice</div>
+                  <p className="text-sm text-zinc-400 mt-1">Plex Companion fürs Filmwürfeln und Quizzen.</p>
+                </div>
+                <span className="shrink-0 self-start text-xs font-mono text-zinc-400 px-2 py-1 rounded-lg bg-zinc-800">v{APP_VERSION}</span>
+              </div>
+            </div>
+
+            <div className="rounded-2xl bg-zinc-900 ring-1 ring-zinc-800 p-4">
+              <h3 className="text-sm font-semibold text-zinc-200 mb-3">Quellen & Bibliotheken</h3>
+              <ul className="space-y-2 text-sm text-zinc-400">
+                {ABOUT_SOURCES.map((s) => (
+                  <li key={s.text}>
+                    {s.href ? (
+                      <a href={s.href} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-zinc-300 hover:text-amber-300 active:text-amber-300">
+                        {s.text} <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                      </a>
+                    ) : (
+                      <span>{s.text}</span>
+                    )}
+                  </li>
+                ))}
+                <li className="flex flex-wrap items-center gap-x-1.5">
+                  <span>Frontend:</span>
+                  <a href="https://react.dev" target="_blank" rel="noopener noreferrer" className="text-zinc-300 hover:text-amber-300 active:text-amber-300 underline decoration-zinc-700">React</a>
+                  <span className="text-zinc-600">·</span>
+                  <a href="https://vitejs.dev" target="_blank" rel="noopener noreferrer" className="text-zinc-300 hover:text-amber-300 active:text-amber-300 underline decoration-zinc-700">Vite</a>
+                  <span className="text-zinc-600">·</span>
+                  <a href="https://tailwindcss.com" target="_blank" rel="noopener noreferrer" className="text-zinc-300 hover:text-amber-300 active:text-amber-300 underline decoration-zinc-700">Tailwind</a>
+                  <span className="text-zinc-600">·</span>
+                  <a href="https://lucide.dev" target="_blank" rel="noopener noreferrer" className="text-zinc-300 hover:text-amber-300 active:text-amber-300 underline decoration-zinc-700">lucide-react</a>
+                </li>
+              </ul>
+            </div>
+
+            <div className="rounded-2xl bg-zinc-900 ring-1 ring-zinc-800 p-4">
+              <h3 className="text-sm font-semibold text-zinc-200 mb-3 flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-emerald-400" /> Datenschutz</h3>
+              <ul className="space-y-2 text-sm text-zinc-400 list-disc pl-5">
+                <li>Plex-Token wird ausschließlich auf diesem Server gespeichert und nie an Dritte weitergegeben.</li>
+                <li>Keine Telemetrie, keine Analytics.</li>
+                <li>AI-Plot-Texte werden ggf. anonymisiert an Anthropic gesendet, Filmtitel + Jahr — nichts darüber hinaus.</li>
+              </ul>
+            </div>
+
+            <div className="rounded-2xl bg-zinc-900 ring-1 ring-zinc-800 p-4">
+              <h3 className="text-sm font-semibold text-zinc-200 mb-3">Code</h3>
+              <a href="https://github.com/premiumcola/PlexDice" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm text-zinc-300 hover:text-amber-300 active:text-amber-300">
+                <Github className="w-4 h-4" /> github.com/premiumcola/PlexDice
+              </a>
+            </div>
+
+            <div className="rounded-2xl bg-zinc-900 ring-1 ring-zinc-800 p-4">
+              <h3 className="text-sm font-semibold text-zinc-200 mb-3">Diagnostics</h3>
+              <button
+                type="button"
+                onClick={runPersistenceCheck}
+                disabled={persistLoading}
+                className="min-h-[44px] px-4 py-2.5 rounded-xl bg-zinc-800 text-zinc-100 text-sm font-medium flex items-center gap-2 active:scale-[0.98] transition-transform disabled:opacity-40"
+              >
+                {persistLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Activity className="w-4 h-4" />} Persistenz-Check
+              </button>
+              {persist && (
+                <pre className="mt-3 p-3 rounded-xl bg-zinc-950 ring-1 ring-zinc-800 font-mono text-xs text-zinc-400 overflow-x-auto whitespace-pre-wrap break-all">
+                  {JSON.stringify(persist, null, 2)}
+                </pre>
+              )}
+            </div>
+          </section>
+        )}
+
+        {loaded && activeTab === 'allgemein' && (
           <section className="p-6 rounded-2xl bg-zinc-900/60 border border-zinc-800 text-center">
             <Info className="w-8 h-8 text-zinc-600 mx-auto mb-3" />
-            <p className="text-sm text-zinc-400">
-              {activeTab === 'ueber'
-                ? 'PlexDice — würfelt einen zufälligen Film aus deiner Plex-Bibliothek.'
-                : 'Allgemeine Einstellungen folgen in einer späteren Version.'}
-            </p>
+            <p className="text-sm text-zinc-400">Allgemeine Einstellungen folgen in einer späteren Version.</p>
           </section>
         )}
       </div>

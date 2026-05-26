@@ -99,6 +99,10 @@ export function getLibraryStatus() {
   return fetch('/api/library/status').then(unwrap);
 }
 
+export function getPersistence() {
+  return fetch('/api/health/persistence').then(unwrap);
+}
+
 function del(url) {
   return fetch(url, { method: 'DELETE' }).then(unwrap);
 }
