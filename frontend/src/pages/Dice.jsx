@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import {
   Dices, SlidersHorizontal, ChevronDown, ChevronUp, Clock, Calendar, Star,
   ShieldAlert, Tag, Film, X, AlertCircle, History as HistoryIcon, Youtube,
-  ExternalLink, Tv2, Sparkles, Play, Loader2, Eye, EyeOff, Check, Shield, RefreshCw,
+  ExternalLink, Tv2, Sparkles, Play, Loader2, Eye, EyeOff, Check, Shield, RefreshCw, BarChart3,
 } from 'lucide-react';
 import { getLibrary, movieInfo, getSettings, saveSettings } from '../api';
 import { HistogramRange } from '../components/HistogramRange';
@@ -138,6 +138,7 @@ export default function Dice({ onNeedSettings }) {
   const [history, setHistory] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
   const [highlightSection, setHighlightSection] = useState(null);
+  const [funnelExpanded, setFunnelExpanded] = useState(false); // transient: result-mode funnel toggle
   const [prefsLoaded, setPrefsLoaded] = useState(false);
 
   const [aiInfo, setAiInfo] = useState(null);
@@ -317,6 +318,7 @@ export default function Dice({ onNeedSettings }) {
     setShowFilters(false);
     setShowHistory(false);
     setAiInfo(null);
+    setFunnelExpanded(false); // each new roll starts collapsed in result mode
 
     const choice = filtered[Math.floor(Math.random() * filtered.length)];
 
@@ -555,15 +557,37 @@ export default function Dice({ onNeedSettings }) {
             )}
           </div>
 
-          {/* Headline funnel: how active filters narrow the pool (placeholder when none) */}
+          {/* Headline funnel — collapses to a slim bar once a movie is picked, so the
+              result reaches into the viewport. Tap "Statistik" to bring it back. */}
           {movies.length > 0 && (
             funnelStages.length > 0 ? (
-              <FilterFunnel
-                stages={funnelStages}
-                total={movies.length}
-                onOpenStage={openStage}
-                onResetStage={resetStage}
-              />
+              <>
+                {picked && (
+                  <button
+                    type="button"
+                    onClick={() => setFunnelExpanded((e) => !e)}
+                    aria-expanded={funnelExpanded}
+                    className="w-full mb-4 flex items-center justify-between gap-2 px-4 py-3 rounded-2xl bg-zinc-900/60 active:scale-[0.99] transition-transform"
+                  >
+                    <span className="text-sm tabular-nums">
+                      <span className="text-amber-400 font-semibold">{filtered.length.toLocaleString('de-DE')}</span>
+                      <span className="text-zinc-400"> Treffer</span>
+                    </span>
+                    <span className="flex items-center gap-1.5 text-xs text-zinc-400">
+                      <BarChart3 className="w-4 h-4" /> Statistik
+                      {funnelExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </span>
+                  </button>
+                )}
+                {(!picked || funnelExpanded) && (
+                  <FilterFunnel
+                    stages={funnelStages}
+                    total={movies.length}
+                    onOpenStage={openStage}
+                    onResetStage={resetStage}
+                  />
+                )}
+              </>
             ) : (
               <p className="mb-4 text-center text-sm text-zinc-500">
                 {movies.length.toLocaleString('de-DE')} Filme · keine Filter aktiv
