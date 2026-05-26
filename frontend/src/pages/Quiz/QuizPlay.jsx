@@ -291,6 +291,9 @@ export default function QuizPlay({ roundId }) {
   const [flash, setFlash] = useState(false);
   const [confettiKey, setConfettiKey] = useState(0);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [roundTwoIntroShown, setRoundTwoIntroShown] = useState(false);
+  const [showRoundTwoIntro, setShowRoundTwoIntro] = useState(false);
+  const [roundTwoCountdown, setRoundTwoCountdown] = useState(3);
 
   const startRef = useRef(Date.now());
   const roundStartRef = useRef(Date.now());
@@ -303,6 +306,8 @@ export default function QuizPlay({ roundId }) {
   const advanceRef = useRef(null);
   const toastRef = useRef(null);
   const scoreRef = useRef(0);
+  const introActiveRef = useRef(false); // true while the round-2 overlay freezes the timer
+  const roundTwoTimerRef = useRef(null);
 
   const q = byId[currentQid];
 
@@ -331,6 +336,34 @@ export default function QuizPlay({ roundId }) {
     navigate(`/quiz/result/${roundId}`);
   }, [roundId, total]);
 
+  // Close the round-2 overlay (countdown done or tapped) and hand the retry
+  // question its full clock — the timer stayed frozen while the overlay was up.
+  const dismissRoundTwoIntro = useCallback(() => {
+    if (roundTwoTimerRef.current) {
+      clearInterval(roundTwoTimerRef.current);
+      roundTwoTimerRef.current = null;
+    }
+    introActiveRef.current = false;
+    startRef.current = Date.now();
+    setRemaining(dur);
+    setShowRoundTwoIntro(false);
+  }, [dur]);
+
+  // Announce the retry pool with a 3 → 2 → 1 countdown, then reveal the question.
+  const startRoundTwoIntro = useCallback(() => {
+    setRoundTwoIntroShown(true);
+    setShowRoundTwoIntro(true);
+    setRoundTwoCountdown(3);
+    introActiveRef.current = true; // read inside the question-timer interval to pause it
+    if (roundTwoTimerRef.current) clearInterval(roundTwoTimerRef.current);
+    let n = 3;
+    roundTwoTimerRef.current = setInterval(() => {
+      n -= 1;
+      if (n <= 0) dismissRoundTwoIntro();
+      else setRoundTwoCountdown(n);
+    }, 900);
+  }, [dismissRoundTwoIntro]);
+
   // Advance to whatever the server serves next (a first visit or a retry), or
   // finish once the round is fully resolved.
   const applyNext = useCallback(
@@ -350,16 +383,19 @@ export default function QuizPlay({ roundId }) {
         finish();
         return;
       }
+      const nextVisit = resp.next.visit || 'first';
       setCurrentQid(resp.next.question_id);
-      setVisit(resp.next.visit || 'first');
+      setVisit(nextVisit);
       setVisitSeq((n) => n + 1);
       setLocked(false);
       setReveal(null);
       setSelectedIds([]);
       selectedRef.current = [];
       lastTapRef.current = { id: null, ts: 0 };
+      // First retry of the session → announce round 2 (timer paused until dismissed).
+      if (nextVisit === 'retry' && !roundTwoIntroShown) startRoundTwoIntro();
     },
-    [finish, showToast],
+    [finish, showToast, roundTwoIntroShown, startRoundTwoIntro],
   );
 
   const lockIn = useCallback(
@@ -444,7 +480,7 @@ export default function QuizPlay({ roundId }) {
     lastTickRef.current = 0;
     setRemaining(dur);
     const iv = setInterval(() => {
-      if (pausedRef.current) return;
+      if (pausedRef.current || introActiveRef.current) return;
       const rem = dur - (Date.now() - startRef.current);
       if (rem <= 0) {
         setRemaining(0);
@@ -510,6 +546,7 @@ export default function QuizPlay({ roundId }) {
     () => () => {
       clearTimeout(advanceRef.current);
       clearTimeout(toastRef.current);
+      clearInterval(roundTwoTimerRef.current);
     },
     [],
   );
@@ -582,6 +619,10 @@ export default function QuizPlay({ roundId }) {
 
       <QuestionTimeline questions={questions} statusMap={statusMap} currentQid={currentQid} layout="rail" remainingMs={locked ? null : remaining} durationMs={dur} />
 
+      {/* Stage + Panel hide behind the round-2 overlay so the retry question
+          never flashes before the countdown completes. */}
+      {!showRoundTwoIntro && (
+      <>
       {/* Stage — light neutral surface */}
       <div className={`relative flex flex-col w-full bg-zinc-100 text-zinc-900 ${shortStage ? 'shrink-0 h-auto' : `h-[55%] ${wantsRight ? 'md:h-full md:w-[62%]' : ''}`}`}>
         {/* HUD */}
@@ -673,6 +714,33 @@ export default function QuizPlay({ roundId }) {
           </div>
         )}
       </div>
+      </>
+      )}
+
+      {showRoundTwoIntro && (
+        <div
+          role="dialog"
+          aria-live="polite"
+          aria-label="Runde 2 startet"
+          onClick={dismissRoundTwoIntro}
+          className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-zinc-950/85 backdrop-blur-md"
+        >
+          <Fireworks variant="mini" />
+          <div className="text-amber-400 text-sm uppercase tracking-[0.3em] mb-3">
+            Wiederholungs-Runde
+          </div>
+          <div className="text-zinc-100 font-extrabold text-6xl sm:text-7xl mb-6">
+            Runde 2
+          </div>
+          <div className="text-zinc-300 text-base sm:text-lg max-w-md text-center px-6 mb-10">
+            Falsch beantwortete Fragen kommen jetzt nochmal dran — in zufälliger
+            Reihenfolge, bis alle richtig sind.
+          </div>
+          <div className="w-24 h-24 rounded-full ring-4 ring-amber-400 flex items-center justify-center text-amber-300 text-5xl font-bold tabular-nums animate-pulse">
+            {roundTwoCountdown}
+          </div>
+        </div>
+      )}
 
       {paused && (
         <div className="fixed inset-0 z-50 bg-zinc-950/85 flex items-center justify-center p-6">
