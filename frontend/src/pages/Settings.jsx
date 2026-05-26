@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Server, RefreshCw, Loader2, Check, AlertCircle, Save, Library,
-  Settings as SettingsIcon, Info, Database, Plug, LogOut, Clipboard,
-  ExternalLink, Github, Activity, ShieldCheck,
+  Settings as SettingsIcon, Database, Plug, LogOut, Clipboard,
+  ExternalLink, Github, Activity, ShieldCheck, Trash2,
 } from 'lucide-react';
 import {
   getSettings, saveSettings, discoverServers, testConnection, refreshLibrary,
   createPlexPin, checkPlexPin, plexLogout, getPlexConnectionInfo, ensurePlexClientId,
-  getPersistence,
+  getPersistence, clearAiCache,
 } from '../api';
 import QuizConfig from '../components/QuizConfig';
 import DieIcon from '../components/DieIcon';
@@ -118,6 +118,8 @@ export default function Settings({ onConnected }) {
   const [toast, setToast] = useState(null);
   const [persist, setPersist] = useState(null);
   const [persistLoading, setPersistLoading] = useState(false);
+  const [startTab, setStartTab] = useState('last');
+  const [reduceMotion, setReduceMotion] = useState(false);
 
   const pollRef = useRef(null);
   const timeoutRef = useRef(null);
@@ -155,6 +157,25 @@ export default function Settings({ onConnected }) {
     }
   }, []);
 
+  const changeStartTab = (v) => {
+    setStartTab(v);
+    saveSettings({ ui: { start_tab: v } }).catch(() => {});
+  };
+
+  const changeReduceMotion = (v) => {
+    setReduceMotion(v);
+    saveSettings({ ui: { reduce_motion: v } }).catch(() => {});
+  };
+
+  const clearAi = async () => {
+    try {
+      const res = await clearAiCache();
+      showToast('success', `AI-Cache geleert (${res.cleared || 0})`);
+    } catch {
+      showToast('error', 'Cache leeren fehlgeschlagen');
+    }
+  };
+
   useEffect(() => {
     (async () => {
       try {
@@ -168,6 +189,9 @@ export default function Settings({ onConnected }) {
         setSsl(plex.ssl != null ? plex.ssl : parsed.ssl);
         setSelectedLibraries(plex.libraries || []);
         setManualUrl(plex.plex_server_url || '');
+        const ui = s.ui || {};
+        setStartTab(ui.start_tab || 'last');
+        setReduceMotion(Boolean(ui.reduce_motion));
         refreshConnInfo();
       } catch {
         /* first run */
@@ -740,9 +764,61 @@ export default function Settings({ onConnected }) {
         )}
 
         {loaded && activeTab === 'allgemein' && (
-          <section className="p-6 rounded-2xl bg-zinc-900/60 border border-zinc-800 text-center">
-            <Info className="w-8 h-8 text-zinc-600 mx-auto mb-3" />
-            <p className="text-sm text-zinc-400">Allgemeine Einstellungen folgen in einer späteren Version.</p>
+          <section className="space-y-4">
+            <div className="rounded-2xl bg-zinc-900 ring-1 ring-zinc-800 p-4">
+              <h3 className="text-sm font-semibold text-zinc-200 mb-1">Startseite</h3>
+              <p className="text-xs text-zinc-500 mb-3">Welche Seite öffnen beim Start?</p>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { v: 'dice', label: 'Würfeln' },
+                  { v: 'quiz', label: 'Quiz' },
+                  { v: 'last', label: 'Zuletzt genutzt' },
+                ].map(({ v, label }) => {
+                  const on = startTab === v;
+                  return (
+                    <button
+                      key={v}
+                      type="button"
+                      onClick={() => changeStartTab(v)}
+                      className={`min-h-[44px] px-2 py-2.5 rounded-xl text-sm font-medium active:scale-[0.97] transition-colors ${on ? 'bg-amber-400 text-zinc-950' : 'bg-zinc-800 text-zinc-300'}`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="rounded-2xl bg-zinc-900 ring-1 ring-zinc-800 p-4">
+              <h3 className="text-sm font-semibold text-zinc-200 mb-3">Animationen</h3>
+              <div className="flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="text-sm text-zinc-200">Bewegungen reduzieren</div>
+                  <div className="text-xs text-zinc-500 mt-0.5">Schaltet Konfetti, Feuerwerk und den animierten Würfel-Hintergrund ab.</div>
+                </div>
+                <Toggle checked={reduceMotion} onChange={changeReduceMotion} />
+              </div>
+            </div>
+
+            <div className="rounded-2xl bg-zinc-900 ring-1 ring-zinc-800 p-4">
+              <h3 className="text-sm font-semibold text-zinc-200 mb-3">Caches</h3>
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={clearAi}
+                  className="w-full min-h-[44px] px-4 py-2.5 rounded-xl bg-zinc-800 text-zinc-100 text-sm font-medium flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
+                >
+                  <Trash2 className="w-4 h-4" /> AI-Plot-Cache leeren
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('bibliotheken')}
+                  className="w-full min-h-[44px] px-4 py-2.5 rounded-xl bg-zinc-800 text-zinc-100 text-sm font-medium flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
+                >
+                  <Database className="w-4 h-4" /> Library-Cache neu aufbauen
+                </button>
+              </div>
+            </div>
           </section>
         )}
       </div>

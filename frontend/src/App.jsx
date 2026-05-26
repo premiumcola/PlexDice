@@ -41,7 +41,8 @@ export default function App() {
   const tab = activeTab(pathname);
   const immersive = pathname.startsWith('/quiz/play'); // full-screen quiz play
 
-  // On first load, send the user to Settings if Plex isn't connected yet.
+  // On first load: to Settings if Plex isn't connected; otherwise honour the
+  // start-tab preference when landing on the root.
   useEffect(() => {
     (async () => {
       try {
@@ -49,12 +50,31 @@ export default function App() {
         if (!(s?.plex?.tokenSet && s?.plex?.url)) {
           setNeedSettings(true);
           if (!window.location.pathname.startsWith('/settings')) navigate('/settings');
+          return;
+        }
+        if (window.location.pathname === '/') {
+          const start = s?.ui?.start_tab || 'last';
+          let dest = null;
+          if (start === 'quiz') dest = '/quiz';
+          else if (start === 'last') {
+            let last = null;
+            try { last = localStorage.getItem('plexdice:lastTab'); } catch { /* storage unavailable */ }
+            if (last === 'quiz') dest = '/quiz';
+          }
+          if (dest) navigate(dest, { replace: true });
         }
       } catch {
         setNeedSettings(true);
       }
     })();
   }, []);
+
+  // Remember the last content tab so "Zuletzt genutzt" can restore it next launch.
+  useEffect(() => {
+    if (tab === 'dice' || tab === 'quiz') {
+      try { localStorage.setItem('plexdice:lastTab', tab); } catch { /* storage unavailable */ }
+    }
+  }, [tab]);
 
   const handleNeedSettings = useCallback(() => {
     setNeedSettings(true);

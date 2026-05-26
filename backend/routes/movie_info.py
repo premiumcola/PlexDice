@@ -35,6 +35,14 @@ def _save(cache: Dict[str, Any]) -> None:
     os.replace(tmp, _CACHE_PATH)
 
 
+def clear_cache() -> int:
+    """Empty the movie-info (AI-plot) cache; returns how many entries were removed."""
+    with _lock:
+        count = len(_load())
+        _save({})
+    return count
+
+
 @bp.post("/info")
 def info():
     body = request.get_json(silent=True) or {}

@@ -5,6 +5,7 @@ from flask import Flask
 
 from quiz.routes import bp as quiz_bp
 
+from .cache import bp as cache_bp
 from .health import bp as health_bp
 from .library import bp as library_bp
 from .movie_info import bp as movie_info_bp
@@ -21,3 +22,4 @@ def register_routes(app: Flask) -> None:
     app.register_blueprint(movie_info_bp)
     app.register_blueprint(quiz_bp)
     app.register_blueprint(health_bp)
+    app.register_blueprint(cache_bp)

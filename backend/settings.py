@@ -27,7 +27,7 @@ def _default_settings() -> Dict[str, Any]:
             "user": None,
         },
         "ai": {"enabled": True},
-        "ui": {"last_filters": {}},
+        "ui": {"last_filters": {}, "start_tab": "last", "reduce_motion": False},
         "quiz": {
             "default_difficulty": "medium",
             "default_size": 50,

@@ -10,6 +10,7 @@ import FilterFunnel from '../components/FilterFunnel';
 import GenrePicker from '../components/GenrePicker';
 import AppHeader from '../components/AppHeader';
 import Fireworks from '../components/Fireworks';
+import { usePrefs } from '../usePrefs';
 
 const ACCENT = '#f5a623';
 const RUNTIME_MIN_BOUND = 60;
@@ -56,6 +57,7 @@ function loadPrefs() {
 }
 
 export default function Dice({ onNeedSettings }) {
+  const { reduceMotion } = usePrefs();
   const [movies, setMovies] = useState([]);
   const [moviesReady, setMoviesReady] = useState(false);
   const [loadError, setLoadError] = useState('');
@@ -418,8 +420,8 @@ export default function Dice({ onNeedSettings }) {
           background: 'radial-gradient(ellipse 80% 50% at 50% 0%, rgba(245, 166, 35, 0.08), transparent 70%), radial-gradient(ellipse 60% 40% at 50% 100%, rgba(124, 58, 237, 0.06), transparent 70%)',
         }} />
 
-        {rolling && <div className="fixed inset-0 pointer-events-none rolling-bg" />}
-        {fireworks && <Fireworks key={fireworksKey} />}
+        {rolling && !reduceMotion && <div className="fixed inset-0 pointer-events-none rolling-bg" />}
+        {fireworks && !reduceMotion && <Fireworks key={fireworksKey} />}
 
         <div className="relative max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-24 sm:py-10">
           <AppHeader product="dice" />

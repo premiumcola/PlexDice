@@ -103,6 +103,10 @@ export function getPersistence() {
   return fetch('/api/health/persistence').then(unwrap);
 }
 
+export function clearAiCache() {
+  return postJson('/api/cache/ai/clear', {});
+}
+
 function del(url) {
   return fetch(url, { method: 'DELETE' }).then(unwrap);
 }
