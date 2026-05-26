@@ -63,13 +63,15 @@ function OptionButton({ option, mode, selected, locked, reveal, onTap }) {
     }
   }
   const isImage = option.kind === 'image';
+  // Headshots are square/4:5 — a 2:3 cell bottom-crops chins. Posters stay 2:3.
+  const imageBox = OPTIONS_ARE_PERSONS.has(mode) ? 'aspect-square w-full' : 'aspect-[2/3] w-full';
   return (
     <button
       type="button"
       disabled={locked}
       onClick={() => onTap(option.id)}
       style={{ animation: anim || 'none' }}
-      className={`relative rounded-2xl overflow-hidden ${cls} text-left transition-all active:scale-[0.97] disabled:active:scale-100 ${isImage ? 'aspect-[2/3] w-full' : 'min-h-[64px] p-3 md:p-4 flex flex-col justify-center'}`}
+      className={`relative rounded-2xl overflow-hidden ${cls} text-left transition-all active:scale-[0.97] disabled:active:scale-100 ${isImage ? imageBox : 'min-h-[64px] p-3 md:p-4 flex flex-col justify-center'}`}
     >
       {isImage ? (
         <>
@@ -338,7 +340,7 @@ export default function QuizPlay({ roundId }) {
         {/* Stem + radial countdown */}
         <div className="flex-1 min-h-0 px-4 sm:px-6 py-3 flex items-center justify-center overflow-hidden relative">
           {stemImage ? (
-            <div className="aspect-[2/3] max-h-full max-w-[min(70vw,360px)] landscape:max-h-[60vh] rounded-2xl overflow-hidden shadow-2xl">
+            <div className={`${STEM_IS_PERSON.has(q.mode) ? 'aspect-square' : 'aspect-[2/3]'} max-h-full max-w-[min(70vw,360px)] landscape:max-h-[60vh] rounded-2xl overflow-hidden shadow-2xl`}>
               <img
                 src={q.stem.content}
                 alt=""
