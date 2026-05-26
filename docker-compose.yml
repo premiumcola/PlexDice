@@ -11,4 +11,9 @@ services:
       # of ./data to survive stack redeploys.
       - ./data:/data
     env_file: .env
+    # Force public resolvers so Plex's *.plex.direct hostnames always resolve, even
+    # when the Unraid host's DNS (Pi-hole, missing forwarder) cannot reach them.
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
     restart: unless-stopped
