@@ -39,3 +39,6 @@ data/
 
 # ---- Audit / throwaway scratch ----
 backend/scratch/
+
+# Claude Code — personal permission overrides only
+.claude/settings.local.json
