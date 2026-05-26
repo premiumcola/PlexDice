@@ -70,3 +70,21 @@ export const STEM_IS_PERSON = new Set([
 ]);
 // Modes whose image options are person photos (top-anchor + keep the name label).
 export const OPTIONS_ARE_PERSONS = new Set(['movie_to_actor', 'movie_to_director']);
+
+// Modes whose OPTIONS are cover/person images (tall — they need vertical room).
+// cover_to_* are intentionally absent: their options are short text chips and only
+// the stem is a poster, which the image-stem branch in panelOnRight already covers.
+export const IMAGE_OPTION_MODES = new Set([
+  'title_year_to_cover', 'actor_to_movie', 'movie_to_actor', 'plot_to_movie',
+  'tagline_to_movie', 'director_to_movie', 'movie_to_director', 'plot_redacted_to_movie',
+  'actor_filmography_multi', 'writer_to_movie', 'two_actors_to_shared', 'collection_member',
+]);
+
+// md+ panel side. A tall image — stem OR options — claims the full-height stage on
+// the right so option covers never clip. The wide multi-select grid and the
+// two-stars question stay in a Panel below; short text-only trays do too.
+export function panelOnRight(q) {
+  if (q.mode === 'two_actors_to_shared') return false;
+  if (q.multi_select && (q.options?.length || 0) > 4) return false;
+  return q.stem.kind === 'image' || IMAGE_OPTION_MODES.has(q.mode);
+}

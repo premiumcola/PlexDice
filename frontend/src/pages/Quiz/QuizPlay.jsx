@@ -3,7 +3,7 @@ import { Timer, Check, X, Pause, Play, RotateCcw, LogOut } from 'lucide-react';
 import { navigate } from '../../router';
 import { quizAnswer, quizAbandon } from '../../api';
 import { loadRound, saveResults, clearRound } from './store';
-import { MODE_PROMPT, TIER_LABEL, STEM_IS_PERSON, OPTIONS_ARE_PERSONS, fmt } from './util';
+import { MODE_PROMPT, TIER_LABEL, STEM_IS_PERSON, OPTIONS_ARE_PERSONS, panelOnRight, fmt } from './util';
 
 const TIER_DOT = { 1: '#34d399', 2: '#f5a623', 3: '#fb7185' }; // emerald / amber / rose
 
@@ -27,8 +27,6 @@ function DifficultyBadge({ tier }) {
 }
 import { initAudio, tick, tickParams, chime, buzz } from './audio';
 import RadialCountdown from './RadialCountdown';
-
-const MULTI_IMAGE_STEM_MODES = ['two_actors_to_shared'];
 
 function basePoints(timeMs) {
   if (timeMs <= 5000) return 100;
@@ -279,9 +277,10 @@ export default function QuizPlay({ roundId }) {
   }
 
   const stemImage = q.stem.kind === 'image';
-  // md+ only: Panel goes right for single-image, ≤4-option questions; bottom otherwise.
-  // Below md it is always bottom (CSS handles the breakpoint).
-  const wantsRight = stemImage && !MULTI_IMAGE_STEM_MODES.includes(q.mode) && q.options.length <= 4;
+  // md+ only: a tall image (stem or options) claims the full-height stage on the
+  // right so covers never clip; text trays / multi-select sit below. Below md it is
+  // always bottom (CSS handles the breakpoint).
+  const wantsRight = panelOnRight(q);
   const gridCols = q.options.length > 4 ? 'grid-cols-3' : 'grid-cols-2';
   const vignette = remaining <= 5000 && !locked;
 
