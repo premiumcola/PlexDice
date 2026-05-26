@@ -90,7 +90,7 @@ function renderRedactedPlot(text) {
 
 // Dark-Panel option. Unselected = zinc; selected (not locked) = amber outline;
 // reveal = emerald (correct) / rose (wrong chosen).
-function OptionButton({ option, mode, fill, selected, locked, reveal, onTap }) {
+function OptionButton({ option, mode, fill, selected, locked, reveal, onTap, hint }) {
   let cls = 'border border-zinc-700 bg-zinc-800/60 text-zinc-100';
   let anim;
   if (!locked && selected) {
@@ -140,11 +140,29 @@ function OptionButton({ option, mode, fill, selected, locked, reveal, onTap }) {
               <div className="text-xs sm:text-sm font-medium text-white truncate">{option.label}</div>
             </div>
           )}
+          {selected && !locked && hint && (
+            <div
+              className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1 overflow-hidden bg-amber-500/85 px-2 py-1 text-[11px] font-medium text-zinc-950"
+              style={{ maxHeight: '22%', animation: 'pfHintIn 0.15s ease' }}
+            >
+              <MousePointerClick className="w-3 h-3 shrink-0" />
+              <span className="truncate">Nochmal tippen zum Bestätigen</span>
+            </div>
+          )}
         </>
       ) : (
         <>
           <div className={`font-semibold leading-tight ${fill ? 'text-lg md:text-2xl tabular-nums' : 'text-base sm:text-lg'}`}>{option.content}</div>
           {option.label && <div className="text-xs text-zinc-400 tabular-nums mt-0.5">{option.label}</div>}
+          {selected && !locked && hint && (
+            <div
+              className="mt-0.5 flex items-center justify-center gap-1 text-[11px] font-medium uppercase tracking-wide text-amber-300/90"
+              style={{ animation: 'pfHintIn 0.15s ease' }}
+            >
+              <MousePointerClick className="w-3 h-3 shrink-0" />
+              Nochmal tippen zum Bestätigen
+            </div>
+          )}
         </>
       )}
     </button>
@@ -611,18 +629,18 @@ export default function QuizPlay({ roundId }) {
 
       {/* Panel — dark surface, edge-to-edge, single hairline divider against the Stage */}
       <div className={`flex flex-col h-[45%] w-full bg-zinc-950 text-zinc-100 border-t border-amber-500/50 ${wantsRight ? 'md:h-full md:w-[38%] md:border-t-0 md:border-l' : ''}`}>
-        {!locked && (q.multi_select || selectedIds.length > 0) && (
+        {!locked && q.multi_select && (
           <div role="status" aria-live="polite" className="shrink-0 px-4 sm:px-6 pt-3 flex justify-center" style={{ animation: 'pfHintIn 0.15s ease' }}>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-zinc-800/80 text-zinc-200 px-3 py-1.5 text-xs sm:text-sm">
               <MousePointerClick className="w-4 h-4 text-amber-400 shrink-0" />
-              {q.multi_select ? 'Alle Passenden wählen, dann Bestätigen' : 'Nochmal tippen zum Bestätigen'}
+              Alle Passenden wählen, dann Bestätigen
             </span>
           </div>
         )}
         <div className={`flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 pt-3 ${q.multi_select ? '' : 'pb-[max(0.75rem,env(safe-area-inset-bottom))]'}`}>
           <div key={visitSeq} className={`grid ${gridCols} gap-2 sm:gap-3 ${textOptions ? 'h-full auto-rows-fr' : ''}`} style={{ animation: 'pfSlideUp 0.25s ease' }}>
             {q.options.map((o) => (
-              <OptionButton key={o.id} option={o} mode={q.mode} fill={textOptions} selected={selectedIds.includes(o.id)} locked={locked} reveal={reveal} onTap={onOption} />
+              <OptionButton key={o.id} option={o} mode={q.mode} fill={textOptions} selected={selectedIds.includes(o.id)} locked={locked} reveal={reveal} onTap={onOption} hint={!q.multi_select} />
             ))}
           </div>
         </div>
