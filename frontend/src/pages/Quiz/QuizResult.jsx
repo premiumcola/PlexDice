@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Loader2, Save, Trophy, TrendingUp, AlertTriangle } from 'lucide-react';
+import { Loader2, Save, Trophy, TrendingUp, AlertTriangle, Clock, Check, RotateCcw, SkipForward } from 'lucide-react';
 import { navigate } from '../../router';
 import { quizComplete, quizAbandon, quizHistory } from '../../api';
 import { loadResults, loadRound, clearRound } from './store';
@@ -39,6 +39,24 @@ function Confetti() {
   );
 }
 
+const mmss = (secs) => {
+  const s = Math.max(0, Math.round(secs || 0));
+  return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+};
+const pct = (n, total) => (total ? `${Math.round((n / total) * 100)}%` : '0%');
+
+function Stat({ icon, label, value, sub }) {
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <div className="flex items-center gap-1 text-[11px] uppercase tracking-wide text-zinc-500">
+        {icon} {label}
+      </div>
+      <div className="text-2xl font-semibold tabular-nums text-zinc-100">{value}</div>
+      {sub && <div className="text-xs text-zinc-400 tabular-nums">{sub}</div>}
+    </div>
+  );
+}
+
 export default function QuizResult({ roundId }) {
   const results = useMemo(() => loadResults(roundId), [roundId]);
   const round = useMemo(() => loadRound(roundId), [roundId]);
@@ -59,17 +77,26 @@ export default function QuizResult({ roundId }) {
   }
 
   const answers = results.answers || [];
-  const size = results.size || answers.length;
-  const correct = answers.filter((a) => a.correct).length;
+  const stats = results.stats || null;
+  const size = stats?.total ?? results.size ?? answers.length;
+  const correct = stats?.first_try ?? answers.filter((a) => a.correct).length;
   const maxScore = size * 100;
   const accuracy = maxScore ? results.score / maxScore : 0;
 
+  // Per-mode breakdown: first-try correctness from the server when available,
+  // otherwise derived from the client's answer log.
   const byMode = {};
-  answers.forEach((a) => {
-    const m = (byMode[a.mode] = byMode[a.mode] || { correct: 0, total: 0 });
-    m.total += 1;
-    if (a.correct) m.correct += 1;
-  });
+  if (stats?.by_mode) {
+    Object.entries(stats.by_mode).forEach(([mode, v]) => {
+      byMode[mode] = { correct: v.first_try, total: v.total };
+    });
+  } else {
+    answers.forEach((a) => {
+      const m = (byMode[a.mode] = byMode[a.mode] || { correct: 0, total: 0 });
+      m.total += 1;
+      if (a.correct) m.correct += 1;
+    });
+  }
 
   // Callout chips
   const chips = [];
@@ -138,9 +165,30 @@ export default function QuizResult({ roundId }) {
             {fmt(results.score)}
           </div>
           <div className="mt-3 text-zinc-300 tabular-nums">
-            {correct} / {size} richtig
+            {correct} / {size} beim ersten Versuch
           </div>
         </div>
+
+        {stats && (
+          <div className="mt-8 rounded-2xl bg-zinc-900/60 ring-1 ring-zinc-800 p-4 sm:p-5">
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <Clock className="w-5 h-5 text-zinc-400" />
+              <span className="font-display-tight text-4xl sm:text-5xl tabular-nums text-zinc-100">{mmss(stats.elapsed_seconds)}</span>
+            </div>
+            <div className={`grid ${stats.forced > 0 ? 'grid-cols-3' : 'grid-cols-2'} gap-3 text-center`}>
+              <Stat icon={<Check className="w-4 h-4 text-emerald-400" />} label="1. Versuch" value={stats.first_try} sub={pct(stats.first_try, stats.total)} />
+              <Stat
+                icon={<RotateCcw className="w-4 h-4 text-amber-400" />}
+                label="Wiederholt"
+                value={stats.retry}
+                sub={stats.retry > 0 ? `⌀ ${stats.retry_avg_attempts}×` : pct(stats.retry, stats.total)}
+              />
+              {stats.forced > 0 && (
+                <Stat icon={<SkipForward className="w-4 h-4 text-zinc-400" />} label="Übersprungen" value={stats.forced} sub={pct(stats.forced, stats.total)} />
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="mt-8 md:grid md:grid-cols-2 md:gap-6 md:items-start space-y-4 md:space-y-0">
           <div className="rounded-2xl bg-zinc-900/60 ring-1 ring-zinc-800 p-4 sm:p-5">
