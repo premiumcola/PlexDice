@@ -506,10 +506,10 @@ export default function Dice({ onNeedSettings }) {
                 <circle cx="125" cy="105" r="4" fill="#0a0a0a" opacity="0.7" />
                 <circle cx="155" cy="135" r="4" fill="#0a0a0a" opacity="0.7" />
               </svg>
-              <h1 className="font-display-tight text-xl sm:text-2xl lg:text-3xl tracking-tight leading-none flex-1 min-w-0">Plex Quiz &amp; Dice</h1>
+              <h1 className="font-display-tight text-xl sm:text-2xl lg:text-3xl tracking-tight leading-none flex-1 min-w-0 truncate">Plex Quiz &amp; Dice</h1>
               <div className="text-right shrink-0 tabular-nums opsz-14">
                 <span className={`text-lg font-semibold ${activeFilterCount > 0 ? 'text-amber-400' : 'text-zinc-200'}`}>{filtered.length.toLocaleString('de-DE')}</span>
-                <span className="text-sm text-zinc-400"> von {movies.length.toLocaleString('de-DE')}</span>
+                <span className="text-sm text-zinc-400 hidden sm:inline"> von {movies.length.toLocaleString('de-DE')}</span>
               </div>
             </div>
           </header>
