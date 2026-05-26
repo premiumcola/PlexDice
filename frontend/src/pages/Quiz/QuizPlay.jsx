@@ -160,7 +160,6 @@ function chipState(st, isActive) {
 }
 
 const CHIP_CLASS = {
-  active: 'ring-2 ring-amber-400 text-amber-600 bg-amber-400/15 animate-pulse',
   first: 'bg-emerald-500 text-zinc-950 ring-1 ring-emerald-400',
   retry_done: 'bg-amber-400 text-zinc-950 ring-1 ring-amber-300',
   retry: 'bg-rose-500 text-white ring-1 ring-rose-400',
@@ -178,28 +177,57 @@ const CHIP_LABEL = {
 };
 
 // Read-only progress chips, one per question. Vertical rail on md+, collapsed
-// horizontal strip on iPhone. Tapping does nothing yet — status display only.
-function QuestionTimeline({ questions, statusMap, currentQid, layout }) {
+// horizontal strip on iPhone. Chips are circles, sized so the whole set always fits
+// without a scrollbar; the active chip breathes gently, then blinks sharply rose
+// once time is critical (≤ 5 s) to telegraph the pressure.
+function QuestionTimeline({ questions, statusMap, currentQid, layout, remainingMs, durationMs }) {
   const rail = layout === 'rail';
+  const n = questions.length || 1;
+  // Fit-always: shrink each chip to fit the rail height / strip width, capped per layout.
+  const size = rail
+    ? `clamp(14px, calc((100vh - 6rem) / ${n}), 32px)`
+    : `clamp(14px, calc((100vw - 1.5rem) / ${n}), 24px)`;
+  const fontSize = rail
+    ? `clamp(9px, calc((100vh - 6rem) / ${n} * 0.42), 14px)`
+    : `clamp(8px, calc((100vw - 1.5rem) / ${n} * 0.42), 12px)`;
+  // Mirror the clamp in JS to know when chips fall under 24px so the gap can tighten to 4px.
+  const avail = rail
+    ? (typeof window !== 'undefined' ? window.innerHeight : 800) - 96
+    : (typeof window !== 'undefined' ? window.innerWidth : 393) - 24;
+  const gap = Math.max(14, Math.min(rail ? 32 : 24, avail / n)) < 24 ? 'gap-1' : 'gap-1.5';
+  const critical =
+    remainingMs != null && (remainingMs <= 5000 || remainingMs / (durationMs || 15000) < 5 / 15);
   return (
     <div
       aria-label="Fragen-Fortschritt"
       className={
         rail
-          ? 'hidden md:flex absolute inset-y-0 left-0 z-20 w-11 flex-col items-center gap-1.5 overflow-y-auto bg-zinc-950 border-r border-amber-500/40 py-3'
-          : 'md:hidden shrink-0 flex items-center gap-1.5 overflow-x-auto px-3 py-1.5 bg-zinc-100 border-b border-zinc-300'
+          ? `hidden md:flex absolute inset-y-0 left-0 z-20 w-11 flex-col items-center justify-center ${gap} bg-zinc-950 border-r border-amber-500/40 py-3`
+          : `md:hidden shrink-0 flex items-center justify-center ${gap} px-3 py-1.5 bg-zinc-100 border-b border-zinc-300`
       }
     >
       {questions.map((qq, i) => {
         const state = chipState(statusMap[qq.id], qq.id === currentQid);
+        const isActive = state === 'active';
+        const cls = isActive
+          ? critical
+            ? 'bg-rose-500 text-white ring-2 ring-rose-300'
+            : 'ring-2 ring-amber-400 text-amber-600 bg-amber-400/15'
+          : CHIP_CLASS[state];
+        const anim = isActive
+          ? critical
+            ? 'pfChipBlink 0.35s ease-in-out infinite'
+            : 'pfChipPulse 1.4s ease-in-out infinite'
+          : undefined;
         return (
-          <div key={qq.id} className="shrink-0 p-1" title={`Frage ${i + 1}: ${CHIP_LABEL[state]}`}>
-            <div
-              aria-label={`Frage ${i + 1}: ${CHIP_LABEL[state]}`}
-              className={`w-9 h-9 ${rail ? 'rounded-lg' : 'rounded-full'} flex items-center justify-center text-xs font-semibold tabular-nums ${CHIP_CLASS[state]}`}
-            >
-              {i + 1}
-            </div>
+          <div
+            key={qq.id}
+            title={`Frage ${i + 1}: ${CHIP_LABEL[state]}`}
+            aria-label={`Frage ${i + 1}: ${CHIP_LABEL[state]}`}
+            style={{ width: size, height: size, fontSize, animation: anim }}
+            className={`shrink-0 rounded-full flex items-center justify-center font-semibold tabular-nums ${cls}`}
+          >
+            {i + 1}
           </div>
         );
       })}
@@ -486,7 +514,7 @@ export default function QuizPlay({ roundId }) {
   };
 
   return (
-    <div className={`h-[100dvh] flex flex-col overflow-hidden relative md:pl-11 ${wantsRight ? 'md:flex-row' : ''}`}>
+    <div className={`h-[100dvh] flex flex-col overflow-hidden relative md:pl-12 ${wantsRight ? 'md:flex-row' : ''}`}>
       <style>{`
         @keyframes quizTitleFade {0%{opacity:0;transform:translateY(6px)}100%{opacity:1;transform:translateY(0)}}
         @keyframes pfVignette {0%,100%{opacity:0.6}50%{opacity:1}}
@@ -512,7 +540,7 @@ export default function QuizPlay({ roundId }) {
         </div>
       )}
 
-      <QuestionTimeline questions={questions} statusMap={statusMap} currentQid={currentQid} layout="rail" />
+      <QuestionTimeline questions={questions} statusMap={statusMap} currentQid={currentQid} layout="rail" remainingMs={locked ? null : remaining} durationMs={dur} />
 
       {/* Stage — light neutral surface */}
       <div className={`relative flex flex-col h-[55%] w-full bg-zinc-100 text-zinc-900 ${wantsRight ? 'md:h-full md:w-[62%]' : ''}`}>
@@ -538,7 +566,7 @@ export default function QuizPlay({ roundId }) {
           </button>
         </div>
 
-        <QuestionTimeline questions={questions} statusMap={statusMap} currentQid={currentQid} layout="strip" />
+        <QuestionTimeline questions={questions} statusMap={statusMap} currentQid={currentQid} layout="strip" remainingMs={locked ? null : remaining} durationMs={dur} />
 
         <div className="shrink-0 px-4 sm:px-6 pt-1 text-center font-display text-lg md:text-2xl lg:text-3xl text-zinc-900">
           {MODE_PROMPT[q.mode] || 'Frage'}
