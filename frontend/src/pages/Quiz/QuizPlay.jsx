@@ -81,9 +81,11 @@ function OptionButton({ option, mode, selected, locked, reveal, onTap }) {
             <div className="absolute inset-0 bg-zinc-800" />
           )}
           {selected && !locked && <div className="absolute inset-0 ring-2 ring-amber-400 rounded-2xl pointer-events-none" />}
-          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-zinc-950/90 to-transparent px-2 py-1.5">
-            <div className="text-xs sm:text-sm font-medium text-white truncate">{option.label}</div>
-          </div>
+          {OPTIONS_ARE_PERSONS.has(mode) && (
+            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-zinc-950/90 to-transparent px-2 py-1.5">
+              <div className="text-xs sm:text-sm font-medium text-white truncate">{option.label}</div>
+            </div>
+          )}
         </>
       ) : (
         <>
