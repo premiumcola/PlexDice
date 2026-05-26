@@ -245,10 +245,32 @@ export default function Settings({ onConnected }) {
 
   const startLogin = async () => {
     setLoginError('');
+
+    // Open the popup synchronously inside the click handler. Browsers (Safari
+    // most strictly) only let window.open bypass the popup blocker when it runs
+    // synchronously in a user gesture; any await before it drops that trust and
+    // the call silently returns null. So we open about:blank now and navigate it
+    // to the real Plex URL once the async PIN request returns.
+    const popup = window.open('about:blank', 'plexlogin', 'width=560,height=720');
+    if (!popup) {
+      showToast('error', 'Popup blockiert. Bitte Popups für diese Seite erlauben und nochmal versuchen.');
+      return;
+    }
+    popupRef.current = popup;
+    try {
+      popup.document.write(
+        '<!doctype html><meta charset="utf-8"><title>Plex</title>'
+        + '<body style="margin:0;display:flex;align-items:center;justify-content:center;'
+        + 'height:100vh;background:#09090b;color:#a1a1aa;font:16px system-ui,sans-serif">'
+        + 'Verbinde mit Plex …</body>',
+      );
+    } catch { /* popup already navigated cross-origin */ }
+
     let pin;
     try {
       pin = await createPlexPin();
     } catch (e) {
+      try { popup.close(); } catch { /* ignore */ }
       showToast('error', 'Login fehlgeschlagen');
       setLoginError(e.message || 'error');
       return;
@@ -258,7 +280,7 @@ export default function Settings({ onConnected }) {
       `code=${encodeURIComponent(pin.code)}`,
       `context[device][product]=${encodeURIComponent('PlexDice')}`,
     ].join('&');
-    popupRef.current = window.open(`https://app.plex.tv/auth#?${params}`, 'plexlogin', 'width=560,height=720');
+    popup.location.href = `https://app.plex.tv/auth#?${params}`;
     setPolling(true);
 
     pollRef.current = setInterval(async () => {
