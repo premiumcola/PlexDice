@@ -41,6 +41,34 @@ function mmss(secs) {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
+// Two-layer "blur curtain": a blurred, slightly-scaled copy of the poster fills the
+// frame while a sharp copy on top is masked away at one edge, letting the blur show
+// through there. Hides on-art text (title at top / release year at bottom) as
+// atmospheric haze rather than a hard white block. Parent must be `relative`.
+function MaskedPoster({ src, direction }) {
+  const gradient =
+    direction === 'bottom'
+      ? 'linear-gradient(to top, transparent 0%, transparent 18%, black 28%, black 100%)'
+      : 'linear-gradient(to bottom, transparent 0%, transparent 18%, black 28%, black 100%)';
+  return (
+    <>
+      <img
+        src={src}
+        alt=""
+        aria-hidden="true"
+        className="absolute inset-0 w-full h-full object-cover object-center"
+        style={{ filter: 'blur(14px) brightness(0.85)', transform: 'scale(1.06)' }}
+      />
+      <img
+        src={src}
+        alt=""
+        className="absolute inset-0 w-full h-full object-cover object-center"
+        style={{ WebkitMaskImage: gradient, maskImage: gradient }}
+      />
+    </>
+  );
+}
+
 // Dark-Panel option. Unselected = zinc; selected (not locked) = amber outline;
 // reveal = emerald (correct) / rose (wrong chosen).
 function OptionButton({ option, mode, selected, locked, reveal, onTap }) {
@@ -279,6 +307,8 @@ export default function QuizPlay({ roundId }) {
   }
 
   const stemImage = q.stem.kind === 'image';
+  // Which poster edge to blur away (hides on-art title/year); null renders it sharp.
+  const stemMaskDir = q.mode === 'cover_to_title' ? 'top' : null;
   // md+ only: a tall image (stem or options) claims the full-height stage on the
   // right so covers never clip; text trays / multi-select sit below. Below md it is
   // always bottom (CSS handles the breakpoint).
@@ -340,20 +370,16 @@ export default function QuizPlay({ roundId }) {
         {/* Stem + radial countdown */}
         <div className="flex-1 min-h-0 px-4 sm:px-6 py-3 flex items-center justify-center overflow-hidden relative">
           {stemImage ? (
-            <div className={`${STEM_IS_PERSON.has(q.mode) ? 'aspect-square' : 'aspect-[2/3]'} max-h-full max-w-[min(70vw,360px)] landscape:max-h-[60vh] rounded-2xl overflow-hidden shadow-2xl`}>
-              <img
-                src={q.stem.content}
-                alt=""
-                className={`w-full h-full object-cover ${STEM_IS_PERSON.has(q.mode) ? 'object-top' : 'object-center'}`}
-                style={
-                  q.mode === 'cover_to_title'
-                    ? {
-                        WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, transparent 18%, black 28%, black 100%)',
-                        maskImage: 'linear-gradient(to bottom, transparent 0%, transparent 18%, black 28%, black 100%)',
-                      }
-                    : undefined
-                }
-              />
+            <div className={`relative ${STEM_IS_PERSON.has(q.mode) ? 'aspect-square' : 'aspect-[2/3]'} max-h-full max-w-[min(70vw,360px)] landscape:max-h-[60vh] rounded-2xl overflow-hidden shadow-2xl`}>
+              {stemMaskDir ? (
+                <MaskedPoster src={q.stem.content} direction={stemMaskDir} />
+              ) : (
+                <img
+                  src={q.stem.content}
+                  alt=""
+                  className={`w-full h-full object-cover ${STEM_IS_PERSON.has(q.mode) ? 'object-top' : 'object-center'}`}
+                />
+              )}
             </div>
           ) : (
             <div className="max-h-full max-w-2xl overflow-auto rounded-2xl bg-white ring-1 ring-zinc-300 p-5 md:p-6 text-center">
