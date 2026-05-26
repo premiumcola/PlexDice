@@ -33,6 +33,16 @@ function formatRuntime(m) {
   return `${h}h ${min.toString().padStart(2, '0')}m`;
 }
 
+// Genre groups: inner array = AND, outer = OR. Joins genres with " & ",
+// groups with " ODER "; parens around multi-genre groups only when >1 group.
+function genreSummary(groups) {
+  const active = groups.filter((g) => g.length > 0);
+  const multi = active.length > 1;
+  return active
+    .map((g) => (multi && g.length > 1 ? `(${g.join(' & ')})` : g.join(' & ')))
+    .join(' ODER ');
+}
+
 function loadPrefs() {
   try {
     const raw = localStorage.getItem(PREFS_KEY);
@@ -118,7 +128,7 @@ export default function Dice({ onNeedSettings }) {
   const [loadError, setLoadError] = useState('');
 
   const [showFilters, setShowFilters] = useState(false);
-  const [selectedGenres, setSelectedGenres] = useState([]);
+  const [genreGroups, setGenreGroups] = useState([]); // string[][]: inner = AND, outer = OR
   const [yearMin, setYearMin] = useState(null);
   const [yearMax, setYearMax] = useState(null);
   const [runtimeMin, setRuntimeMin] = useState(RUNTIME_MIN_BOUND);
@@ -159,12 +169,17 @@ export default function Dice({ onNeedSettings }) {
     () => [...new Set(movies.flatMap((m) => m.g || []))].sort(),
     [movies],
   );
+  const selectedFlat = genreGroups.flat();
 
   // Load saved preferences (once), then fetch the library.
   useEffect(() => {
     const p = loadPrefs();
     if (p) {
-      if (Array.isArray(p.selectedGenres)) setSelectedGenres(p.selectedGenres);
+      if (Array.isArray(p.genreGroups)) {
+        setGenreGroups(p.genreGroups.filter((grp) => Array.isArray(grp) && grp.length));
+      } else if (Array.isArray(p.selectedGenres) && p.selectedGenres.length) {
+        setGenreGroups([p.selectedGenres]); // migrate old flat AND-list → one AND-group
+      }
       if (typeof p.yearMin === 'number') setYearMin(p.yearMin);
       if (typeof p.yearMax === 'number') setYearMax(p.yearMax);
       if (typeof p.runtimeMin === 'number') setRuntimeMin(p.runtimeMin);
@@ -203,14 +218,14 @@ export default function Dice({ onNeedSettings }) {
       localStorage.setItem(
         PREFS_KEY,
         JSON.stringify({
-          selectedGenres, yearMin, yearMax, runtimeMin, runtimeMax,
+          genreGroups, yearMin, yearMax, runtimeMin, runtimeMax,
           fskMin, fskMax, ratingMin, ratingMax,
         }),
       );
     } catch {
       /* storage unavailable */
     }
-  }, [prefsLoaded, selectedGenres, yearMin, yearMax, runtimeMin, runtimeMax, fskMin, fskMax, ratingMin, ratingMax]);
+  }, [prefsLoaded, genreGroups, yearMin, yearMax, runtimeMin, runtimeMax, fskMin, fskMax, ratingMin, ratingMax]);
 
   // Load the persisted watched-status choice from server settings (ui.last_filters).
   useEffect(() => {
@@ -262,11 +277,12 @@ export default function Dice({ onNeedSettings }) {
       ratingMax >= 10 ? `Ab ${fmtRating(ratingMin)}`
         : ratingMin <= 0 ? `Bis ${fmtRating(ratingMax)}`
           : `${fmtRating(ratingMin)}–${fmtRating(ratingMax)}`;
+    const genreActive = genreGroups.filter((grp) => grp.length > 0);
     return [
-      selectedGenres.length > 0 && {
+      genreActive.length > 0 && {
         id: 'genre', label: 'Genres', icon: Tag, drawer_target: 'genre',
-        summary: selectedGenres.join(', '),
-        pred: (m) => selectedGenres.every((g) => (m.g || []).includes(g)),
+        summary: genreSummary(genreGroups),
+        pred: (m) => genreActive.some((grp) => grp.every((g) => (m.g || []).includes(g))),
       },
       (effYearMin !== yearBounds.min || effYearMax !== yearBounds.max) && {
         id: 'year', label: 'Jahr', icon: Calendar, drawer_target: 'year',
@@ -294,7 +310,7 @@ export default function Dice({ onNeedSettings }) {
         pred: (m) => (watched === 'unseen' ? (m.view_count || 0) === 0 : (m.view_count || 0) > 0),
       },
     ].filter(Boolean);
-  }, [selectedGenres, effYearMin, effYearMax, yearBounds.min, yearBounds.max, runtimeMin, runtimeMax, fskMin, fskMax, ratingMin, ratingMax, watched]);
+  }, [genreGroups, effYearMin, effYearMax, yearBounds.min, yearBounds.max, runtimeMin, runtimeMax, fskMin, fskMax, ratingMin, ratingMax, watched]);
 
   const filtered = useMemo(() => {
     let pool = movies;
@@ -361,11 +377,15 @@ export default function Dice({ onNeedSettings }) {
   };
 
   const toggleGenre = (g) => {
-    setSelectedGenres((prev) => (prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]));
+    setGenreGroups((groups) =>
+      groups.flat().includes(g)
+        ? groups.map((grp) => grp.filter((x) => x !== g)).filter((grp) => grp.length > 0)
+        : [...groups, [g]],
+    );
   };
 
   const resetFilters = () => {
-    setSelectedGenres([]);
+    setGenreGroups([]);
     setYearMin(yearBounds.min);
     setYearMax(yearBounds.max);
     setRuntimeMin(RUNTIME_MIN_BOUND);
@@ -392,7 +412,7 @@ export default function Dice({ onNeedSettings }) {
 
   // Clear a single filter dimension to its neutral (inactive) value.
   const resetStage = (id) => {
-    if (id === 'genre') setSelectedGenres([]);
+    if (id === 'genre') setGenreGroups([]);
     else if (id === 'year') { setYearMin(yearBounds.min); setYearMax(yearBounds.max); }
     else if (id === 'runtime') { setRuntimeMin(RUNTIME_MIN_BOUND); setRuntimeMax(RUNTIME_MAX_BOUND); }
     else if (id === 'fsk') { setFskMin(0); setFskMax(18); }
@@ -599,13 +619,13 @@ export default function Dice({ onNeedSettings }) {
                   <label className="text-sm font-medium text-zinc-300 flex items-center gap-2 uppercase tracking-wide">
                     <Tag className="w-3.5 h-3.5" /> Genres
                   </label>
-                  {selectedGenres.length > 0 && (
-                    <button onClick={() => setSelectedGenres([])} className="text-xs text-amber-400/80 active:text-amber-300 font-medium">leeren</button>
+                  {selectedFlat.length > 0 && (
+                    <button onClick={() => setGenreGroups([])} className="text-xs text-amber-400/80 active:text-amber-300 font-medium">leeren</button>
                   )}
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {allGenres.map((g) => {
-                    const on = selectedGenres.includes(g);
+                    const on = selectedFlat.includes(g);
                     return (
                       <button
                         key={g}
@@ -617,8 +637,8 @@ export default function Dice({ onNeedSettings }) {
                     );
                   })}
                 </div>
-                {selectedGenres.length > 0 && (
-                  <p className="text-xs text-zinc-400 mt-2">Treffer wenn alle gewählten Genres passen</p>
+                {selectedFlat.length > 0 && (
+                  <p className="text-xs text-amber-400/90 mt-2 tabular-nums">{genreSummary(genreGroups)}</p>
                 )}
               </div>
 
