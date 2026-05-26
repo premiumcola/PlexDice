@@ -337,11 +337,18 @@ def b_collection_member(m, lib):
     if not cols:
         return None
     col = cols[0]
-    members = [x["key"] for x in lib.collection_movies.get(col, [])]
+    member_objs = lib.collection_movies.get(col, [])
+    members = [x["key"] for x in member_objs]
     d = lib.movie_distractors(m, "genre_adjacent", 3, exclude=members)
     if len(d) < 3:
         return None
-    return {"stem": _text_stem(f"Reihe: {col}"), **_single(_poster(m), [_poster(x) for x in d])}
+    # Show a sibling's poster, not the series name — the name would be the answer.
+    siblings = [s for s in member_objs if s.get("key") != m.get("key") and s.get("thumb_url")]
+    if siblings:
+        stem = {"kind": "image", "content": random.choice(siblings)["thumb_url"]}
+    else:
+        stem = _text_stem(f"Reihe: ████ ({len(member_objs)} Filme)")
+    return {"stem": stem, **_single(_poster(m), [_poster(x) for x in d])}
 
 
 @dataclass
