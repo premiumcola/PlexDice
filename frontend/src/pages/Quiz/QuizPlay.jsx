@@ -88,7 +88,7 @@ export default function QuizPlay({ roundId }) {
   const [wrongCount, setWrongCount] = useState(0);
   const [locked, setLocked] = useState(false);
   const [reveal, setReveal] = useState(null);
-  const [multiSel, setMultiSel] = useState([]);
+  const [selectedIds, setSelectedIds] = useState([]);
   const [remaining, setRemaining] = useState(dur);
   const [elapsed, setElapsed] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -100,7 +100,7 @@ export default function QuizPlay({ roundId }) {
   const pauseRemainRef = useRef(dur);
   const lastTickRef = useRef(0);
   const answersRef = useRef([]);
-  const multiRef = useRef([]);
+  const selectedRef = useRef([]);
   const advanceRef = useRef(null);
 
   const q = questions[index];
@@ -152,8 +152,8 @@ export default function QuizPlay({ roundId }) {
           setIndex((i) => i + 1);
           setLocked(false);
           setReveal(null);
-          setMultiSel([]);
-          multiRef.current = [];
+          setSelectedIds([]);
+          selectedRef.current = [];
         }
       }, autoreveal);
     },
@@ -163,15 +163,15 @@ export default function QuizPlay({ roundId }) {
   const onOption = (id) => {
     if (locked || pausedRef.current) return;
     initAudio();
-    if (q.multi_select) {
-      setMultiSel((sel) => {
-        const next = sel.includes(id) ? sel.filter((x) => x !== id) : [...sel, id];
-        multiRef.current = next;
-        return next;
-      });
-    } else {
-      lockIn([id]);
-    }
+    setSelectedIds((sel) => {
+      const next = q.multi_select
+        ? sel.includes(id)
+          ? sel.filter((x) => x !== id)
+          : [...sel, id]
+        : [id]; // single-select: tap replaces, never locks
+      selectedRef.current = next;
+      return next;
+    });
   };
 
   useEffect(() => {
@@ -184,7 +184,7 @@ export default function QuizPlay({ roundId }) {
       const rem = dur - (Date.now() - startRef.current);
       if (rem <= 0) {
         setRemaining(0);
-        lockIn(q.multi_select ? multiRef.current : [], true);
+        lockIn(selectedRef.current, true);
         return;
       }
       setRemaining(rem);
@@ -338,18 +338,16 @@ export default function QuizPlay({ roundId }) {
         <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 pt-3">
           <div key={index} className={`grid ${gridCols} gap-2 sm:gap-3`} style={{ animation: 'pfSlideUp 0.25s ease' }}>
             {q.options.map((o) => (
-              <OptionButton key={o.id} option={o} selected={multiSel.includes(o.id)} locked={locked} reveal={reveal} onTap={onOption} />
+              <OptionButton key={o.id} option={o} selected={selectedIds.includes(o.id)} locked={locked} reveal={reveal} onTap={onOption} />
             ))}
           </div>
         </div>
-        {q.multi_select && (
-          <div className="shrink-0 px-4 sm:px-6 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-            <button type="button" onClick={() => lockIn(multiSel)} disabled={locked || multiSel.length === 0}
-              className="w-full rounded-xl py-3 font-semibold bg-amber-400 text-zinc-950 active:scale-[0.98] transition-transform disabled:opacity-40 disabled:cursor-not-allowed">
-              Bestätigen ({multiSel.length})
-            </button>
-          </div>
-        )}
+        <div className="shrink-0 px-4 sm:px-6 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          <button type="button" onClick={() => lockIn(selectedIds)} disabled={locked || selectedIds.length === 0}
+            className="w-full rounded-xl py-3 font-semibold bg-amber-400 text-zinc-950 active:scale-[0.98] transition-transform disabled:opacity-40 disabled:cursor-not-allowed">
+            {q.multi_select ? `Bestätigen (${selectedIds.length})` : 'Bestätigen'}
+          </button>
+        </div>
       </div>
 
       {paused && (
