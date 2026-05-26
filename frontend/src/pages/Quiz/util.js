@@ -35,7 +35,7 @@ export const MODE_PROMPT = {
   plot_redacted_to_movie: 'Erkennst du den Film am zensierten Plot?',
   actor_filmography_multi: 'Welche Filme gehören zu dieser Person? (mehrere)',
   writer_to_movie: 'Welchen Film schrieb diese Person?',
-  two_actors_to_shared: 'In welchem Film spielten beide mit?',
+  two_actors_to_shared: 'In welchem Film spielen die beiden Schauspieler:innen mit?',
   collection_member: 'Welcher Film gehört zu dieser Reihe?',
 };
 
