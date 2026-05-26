@@ -7,6 +7,8 @@ import { MODE_PROMPT, TIER_LABEL, STEM_IS_PERSON, OPTIONS_ARE_PERSONS, panelOnRi
 import Fireworks from '../../components/Fireworks';
 
 const TIER_DOT = { 1: '#34d399', 2: '#f5a623', 3: '#fb7185' }; // emerald / amber / rose
+// Timeline chip difficulty pip — Tailwind bg classes (emerald / amber / rose-400).
+const TIER_PIP = { 1: 'bg-emerald-400', 2: 'bg-amber-400', 3: 'bg-rose-400' };
 
 // Three pips + tier label, for the light Stage HUD. No lucide icon by design.
 function DifficultyBadge({ tier }) {
@@ -170,7 +172,7 @@ const CHIP_LABEL = {
   active: 'aktiv',
   first: 'beim ersten Versuch gelöst',
   retry_done: 'nach Wiederholung gelöst',
-  retry: 'in Wiederholung',
+  retry: 'in Wiederholungs-Runde',
   forced: 'übersprungen',
   idle: 'offen',
 };
@@ -185,7 +187,7 @@ function QuestionTimeline({ questions, statusMap, currentQid, layout, remainingM
   // Fit-always: shrink each chip to fit the rail height / strip width, capped per layout.
   const size = rail
     ? `clamp(14px, calc((100vh - 6rem) / ${n}), 32px)`
-    : `clamp(14px, calc((100vw - 1.5rem) / ${n}), 24px)`;
+    : `clamp(14px, calc((100vw - 1.5rem) / ${n}), 28px)`;
   const fontSize = rail
     ? `clamp(9px, calc((100vh - 6rem) / ${n} * 0.42), 14px)`
     : `clamp(8px, calc((100vw - 1.5rem) / ${n} * 0.42), 12px)`;
@@ -193,7 +195,7 @@ function QuestionTimeline({ questions, statusMap, currentQid, layout, remainingM
   const avail = rail
     ? (typeof window !== 'undefined' ? window.innerHeight : 800) - 96
     : (typeof window !== 'undefined' ? window.innerWidth : 393) - 24;
-  const gap = Math.max(14, Math.min(rail ? 32 : 24, avail / n)) < 24 ? 'gap-1' : 'gap-1.5';
+  const gap = Math.max(14, Math.min(rail ? 32 : 28, avail / n)) < 24 ? 'gap-1' : 'gap-1.5';
   const critical =
     remainingMs != null && (remainingMs <= 5000 || remainingMs / (durationMs || 15000) < 5 / 15);
   return (
@@ -201,13 +203,15 @@ function QuestionTimeline({ questions, statusMap, currentQid, layout, remainingM
       aria-label="Fragen-Fortschritt"
       className={
         rail
-          ? `hidden md:flex absolute inset-y-0 left-0 z-20 w-11 flex-col items-center justify-center ${gap} bg-zinc-950 border-r border-amber-500/40 py-3`
+          ? `hidden md:flex absolute inset-y-0 left-0 z-20 w-16 flex-col items-center justify-center ${gap} bg-zinc-950 border-r border-amber-500/40 py-3`
           : `md:hidden shrink-0 flex items-center justify-center ${gap} px-3 py-1.5 bg-zinc-100 border-b border-zinc-300`
       }
     >
       {questions.map((qq, i) => {
         const state = chipState(statusMap[qq.id], qq.id === currentQid);
         const isActive = state === 'active';
+        const tier = qq.tier || qq.difficulty || 1;
+        const showRetry = state === 'retry' || state === 'retry_done';
         const cls = isActive
           ? critical
             ? 'bg-rose-500 text-white ring-2 ring-rose-300'
@@ -218,15 +222,24 @@ function QuestionTimeline({ questions, statusMap, currentQid, layout, remainingM
             ? 'pfChipBlink 0.35s ease-in-out infinite'
             : 'pfChipPulse 1.4s ease-in-out infinite'
           : undefined;
+        const label = `Frage ${i + 1} · Tier ${tier} (${TIER_LABEL[tier] || '?'}) · ${CHIP_LABEL[state]}`;
         return (
           <div
             key={qq.id}
-            title={`Frage ${i + 1}: ${CHIP_LABEL[state]}`}
-            aria-label={`Frage ${i + 1}: ${CHIP_LABEL[state]}`}
+            title={label}
+            aria-label={label}
             style={{ width: size, height: size, fontSize, animation: anim }}
-            className={`shrink-0 rounded-full flex items-center justify-center font-semibold tabular-nums ${cls}`}
+            className={`relative shrink-0 rounded-full flex items-center justify-center font-semibold tabular-nums ${cls}`}
           >
             {i + 1}
+            <span
+              aria-hidden="true"
+              className={`absolute rounded-full ring-1 ring-zinc-950 ${TIER_PIP[tier] || 'bg-zinc-400'}`}
+              style={{ width: 6, height: 6, right: -1, bottom: -1 }}
+            />
+            {showRetry && (
+              <RotateCcw aria-hidden="true" className="absolute text-amber-500" style={{ width: 8, height: 8, right: -2, top: -2 }} />
+            )}
           </div>
         );
       })}
@@ -563,7 +576,7 @@ export default function QuizPlay({ roundId }) {
   };
 
   return (
-    <div className={`h-[100dvh] flex flex-col overflow-hidden relative md:pl-12 ${wantsRight ? 'md:flex-row' : ''}`}>
+    <div className={`h-[100dvh] flex flex-col overflow-hidden relative md:pl-[68px] ${wantsRight ? 'md:flex-row' : ''}`}>
       <style>{`
         @keyframes quizTitleFade {0%{opacity:0;transform:translateY(6px)}100%{opacity:1;transform:translateY(0)}}
         @keyframes pfVignette {0%,100%{opacity:0.6}50%{opacity:1}}
