@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Timer, Check, X, Pause, Play, RotateCcw, LogOut, MousePointerClick } from 'lucide-react';
 import { navigate } from '../../router';
-import { quizAnswer, quizAbandon } from '../../api';
+import { quizAnswer, quizAbandon, quizState } from '../../api';
 import { loadRound, saveResults, clearRound } from './store';
 import { MODE_PROMPT, TIER_LABEL, STEM_IS_PERSON, OPTIONS_ARE_PERSONS, panelOnRight, fmt } from './util';
 
@@ -157,7 +157,14 @@ export default function QuizPlay({ roundId }) {
   const autoreveal = round?.autoreveal_delay_ms || 1200;
   const showCorrect = round?.show_correct_on_wrong !== false;
 
-  const [index, setIndex] = useState(0);
+  const total = questions.length;
+  const byId = useRef(Object.fromEntries(questions.map((qq) => [qq.id, qq]))).current;
+
+  const [currentQid, setCurrentQid] = useState(questions[0]?.id || null);
+  const [visit, setVisit] = useState('first');
+  const [visitSeq, setVisitSeq] = useState(0);
+  const [resolvedCount, setResolvedCount] = useState(0);
+  const [toast, setToast] = useState(null);
   const [score, setScore] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
   const [wrongCount, setWrongCount] = useState(0);
@@ -178,13 +185,65 @@ export default function QuizPlay({ roundId }) {
   const selectedRef = useRef([]);
   const lastTapRef = useRef({ id: null, ts: 0 });
   const advanceRef = useRef(null);
+  const toastRef = useRef(null);
+  const scoreRef = useRef(0);
 
-  const q = questions[index];
+  const q = byId[currentQid];
 
-  const finish = useCallback(() => {
-    saveResults(roundId, { score, size: questions.length, answers: answersRef.current });
+  const showToast = useCallback((msg) => {
+    setToast(msg);
+    clearTimeout(toastRef.current);
+    toastRef.current = setTimeout(() => setToast(null), 2500);
+  }, []);
+
+  // Mastery rounds end only when every question is resolved; pull the final stats
+  // from the (still-alive) server session so the result screen can show them.
+  const finish = useCallback(async () => {
+    let stats = null;
+    try {
+      const st = await quizState(roundId);
+      stats = st?.stats || null;
+    } catch {
+      /* round gone / offline — fall back to client tallies */
+    }
+    saveResults(roundId, {
+      score: stats?.score ?? scoreRef.current,
+      size: total,
+      stats,
+      answers: answersRef.current,
+    });
     navigate(`/quiz/result/${roundId}`);
-  }, [roundId, score, questions.length]);
+  }, [roundId, total]);
+
+  // Advance to whatever the server serves next (a first visit or a retry), or
+  // finish once the round is fully resolved.
+  const applyNext = useCallback(
+    (resp) => {
+      if (!resp) {
+        finish();
+        return;
+      }
+      if (typeof resp.resolved_count === 'number') setResolvedCount(resp.resolved_count);
+      if (typeof resp.current_score === 'number') {
+        setScore(resp.current_score);
+        scoreRef.current = resp.current_score;
+      }
+      if (resp.forced_resolve) showToast('Frage übersprungen nach 5 Versuchen');
+      if (resp.done || !resp.next) {
+        finish();
+        return;
+      }
+      setCurrentQid(resp.next.question_id);
+      setVisit(resp.next.visit || 'first');
+      setVisitSeq((n) => n + 1);
+      setLocked(false);
+      setReveal(null);
+      setSelectedIds([]);
+      selectedRef.current = [];
+      lastTapRef.current = { id: null, ts: 0 };
+    },
+    [finish, showToast],
+  );
 
   const lockIn = useCallback(
     (chosenArr, timedOut = false) => {
@@ -212,7 +271,6 @@ export default function QuizPlay({ roundId }) {
         payload = { question_id: q.id, chosen_option_id: id, time_ms: timeMs };
       }
       setReveal({ correctIds: correct || showCorrect ? correctIds : [], chosenIds: chosenSet });
-      setScore((s) => s + pts);
       if (correct) setCorrectCount((c) => c + 1);
       else setWrongCount((c) => c + 1);
       answersRef.current.push({ mode: q.mode, correct, points: pts, difficulty: q.difficulty });
@@ -221,19 +279,13 @@ export default function QuizPlay({ roundId }) {
         setFlash(true);
         setTimeout(() => setFlash(false), 200);
       }
-      quizAnswer(roundId, payload).catch(() => {});
-      advanceRef.current = setTimeout(() => {
-        if (index + 1 >= questions.length) finish();
-        else {
-          setIndex((i) => i + 1);
-          setLocked(false);
-          setReveal(null);
-          setSelectedIds([]);
-          selectedRef.current = [];
-        }
+      // The server response decides what comes next (retry order is server-side).
+      const answerPromise = quizAnswer(roundId, payload).catch(() => null);
+      advanceRef.current = setTimeout(async () => {
+        applyNext(await answerPromise);
       }, autoreveal);
     },
-    [locked, q, roundId, index, questions.length, finish, dur, soundOn, showCorrect, autoreveal],
+    [locked, q, roundId, applyNext, dur, soundOn, showCorrect, autoreveal],
   );
 
   const onOption = (id) => {
@@ -285,7 +337,7 @@ export default function QuizPlay({ roundId }) {
       }
     }, 100);
     return () => clearInterval(iv);
-  }, [index, locked, q, lockIn, dur, soundOn]);
+  }, [visitSeq, locked, q, lockIn, dur, soundOn]);
 
   useEffect(() => {
     const iv = setInterval(() => setElapsed(Math.floor((Date.now() - roundStartRef.current) / 1000)), 1000);
@@ -330,7 +382,13 @@ export default function QuizPlay({ roundId }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [doPause]);
 
-  useEffect(() => () => clearTimeout(advanceRef.current), []);
+  useEffect(
+    () => () => {
+      clearTimeout(advanceRef.current);
+      clearTimeout(toastRef.current);
+    },
+    [],
+  );
 
   if (!round || !q) {
     return (
@@ -386,14 +444,28 @@ export default function QuizPlay({ roundId }) {
       )}
       {flash && <div className="pointer-events-none fixed inset-0 z-40" style={{ background: 'rgba(185,28,28,0.35)' }} />}
 
+      {toast && (
+        <div className="pointer-events-none fixed inset-x-0 top-[max(1rem,env(safe-area-inset-top))] z-50 flex justify-center px-4" role="status" aria-live="polite">
+          <span className="rounded-full bg-zinc-900/95 text-zinc-100 ring-1 ring-amber-500/40 px-4 py-2 text-sm shadow-lg" style={{ animation: 'pfHintIn 0.2s ease' }}>
+            {toast}
+          </span>
+        </div>
+      )}
+
       {/* Stage — light neutral surface */}
       <div className={`relative flex flex-col h-[55%] w-full bg-zinc-100 text-zinc-900 ${wantsRight ? 'md:h-full md:w-[62%]' : ''}`}>
         {/* HUD */}
         <div className="shrink-0 flex items-center gap-2 px-3 sm:px-6 py-2 pt-[max(0.5rem,env(safe-area-inset-top))] text-sm">
           <span className="flex items-center gap-1.5 min-h-[44px]">
-            <span className="tabular-nums text-zinc-900 font-medium">{index + 1}/{questions.length}</span>
+            <span className="tabular-nums text-zinc-900 font-medium">{resolvedCount}/{total}</span>
+            <span className="hidden sm:inline text-zinc-500 text-xs">gelöst</span>
             <span className="text-zinc-400">·</span>
             <DifficultyBadge tier={q.tier || q.difficulty || 1} />
+            {visit === 'retry' && (
+              <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-400/20 text-amber-600" role="img" aria-label="Wiederholung" title="Wiederholung">
+                <RotateCcw className="w-3.5 h-3.5" />
+              </span>
+            )}
           </span>
           <span className="flex items-center gap-1 font-mono tabular-nums text-zinc-900 ml-auto"><Timer className="w-4 h-4 text-zinc-500" /> {mmss(elapsed)}</span>
           <span className="flex items-center gap-1 tabular-nums text-emerald-600"><Check className="w-4 h-4" /> {correctCount}</span>
@@ -454,7 +526,7 @@ export default function QuizPlay({ roundId }) {
           </div>
         )}
         <div className={`flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 pt-3 ${q.multi_select ? '' : 'pb-[max(0.75rem,env(safe-area-inset-bottom))]'}`}>
-          <div key={index} className={`grid ${gridCols} gap-2 sm:gap-3 ${textOptions ? 'h-full auto-rows-fr' : ''}`} style={{ animation: 'pfSlideUp 0.25s ease' }}>
+          <div key={visitSeq} className={`grid ${gridCols} gap-2 sm:gap-3 ${textOptions ? 'h-full auto-rows-fr' : ''}`} style={{ animation: 'pfSlideUp 0.25s ease' }}>
             {q.options.map((o) => (
               <OptionButton key={o.id} option={o} mode={q.mode} fill={textOptions} selected={selectedIds.includes(o.id)} locked={locked} reveal={reveal} onTap={onOption} />
             ))}

@@ -102,6 +102,9 @@ export function quizAnswer(roundId, body) {
 export function quizComplete(roundId, body) {
   return postJson(`/api/quiz/round/${roundId}/complete`, body);
 }
+export function quizState(roundId) {
+  return fetch(`/api/quiz/round/${roundId}/state`).then(unwrap);
+}
 export function quizAbandon(roundId) {
   return del(`/api/quiz/round/${roundId}`);
 }

@@ -103,6 +103,16 @@ def answer(round_id: str):
     return jsonify(result)
 
 
+@bp.get("/round/<round_id>/state")
+def round_state(round_id: str):
+    """Mastery progress: counts, per-question status, the next question, and stats.
+    Doubles as the timeline source and the result-screen stats feed."""
+    session = sessions.get(round_id)
+    if not session:
+        return jsonify({"error": "round not found"}), 404
+    return jsonify(session.state_payload())
+
+
 @bp.post("/round/<round_id>/complete")
 def complete(round_id: str):
     session = sessions.get(round_id)
@@ -113,8 +123,12 @@ def complete(round_id: str):
     questions_out = []
     for q in session.questions:
         ans = session.answers.get(q["id"], {})
+        st = session.status.get(q["id"], {})
         options = {o["id"]: o for o in q.get("options", [])}
-        chosen_id = ans.get("chosen_option_id")
+        # Mastery: the meaningful "did you know it" signal is the first attempt, so
+        # the review shows the first guess and whether it was right first time.
+        first_chosen = st.get("first_chosen")
+        first_chosen_id = first_chosen if isinstance(first_chosen, str) else None
         questions_out.append(
             {
                 "id": q["id"],
@@ -123,9 +137,12 @@ def complete(round_id: str):
                 "movie_key": q["movie_key"],
                 "movie_title": q.get("movie_title"),
                 "movie_year": q.get("movie_year"),
-                "correct": bool(ans.get("correct", False)),
-                "chosen_option_id": chosen_id,
-                "chosen_text": _readable(options.get(chosen_id)),
+                "correct": bool(st.get("first_try_correct", False)),
+                "first_try_correct": bool(st.get("first_try_correct", False)),
+                "attempts": int(st.get("attempts", 0)),
+                "forced_resolve": bool(st.get("forced_resolve", False)),
+                "chosen_option_id": first_chosen_id,
+                "chosen_text": _readable(options.get(first_chosen_id)),
                 "correct_text": _readable(options.get(q.get("correct_option_id"))),
                 "time_ms": ans.get("time_ms"),
             }
@@ -142,6 +159,7 @@ def complete(round_id: str):
         "difficulty": session.difficulty,
         "modes": session.modes,
         "questions": questions_out,
+        "mastery": session.stats_payload(),
     }
     history.add_round(record)
     sessions.drop(round_id)
