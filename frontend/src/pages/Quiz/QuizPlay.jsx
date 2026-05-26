@@ -90,7 +90,7 @@ function renderRedactedPlot(text) {
 
 // Dark-Panel option. Unselected = zinc; selected (not locked) = amber outline;
 // reveal = emerald (correct) / rose (wrong chosen).
-function OptionButton({ option, mode, selected, locked, reveal, onTap }) {
+function OptionButton({ option, mode, fill, selected, locked, reveal, onTap }) {
   let cls = 'border border-zinc-700 bg-zinc-800/60 text-zinc-100';
   let anim;
   if (!locked && selected) {
@@ -112,13 +112,18 @@ function OptionButton({ option, mode, selected, locked, reveal, onTap }) {
   const isImage = option.kind === 'image';
   // Headshots are square/4:5 — a 2:3 cell bottom-crops chins. Posters stay 2:3.
   const imageBox = OPTIONS_ARE_PERSONS.has(mode) ? 'aspect-square w-full' : 'aspect-[2/3] w-full';
+  // Text options: in a text-only grid they stretch to fill the cell (big, centered);
+  // otherwise (a rare text fallback among images) they stay compact and left-aligned.
+  const textBox = fill
+    ? 'h-full p-4 md:p-6 flex flex-col items-center justify-center text-center'
+    : 'min-h-[64px] p-3 md:p-4 flex flex-col justify-center text-left';
   return (
     <button
       type="button"
       disabled={locked}
       onClick={() => onTap(option.id)}
       style={{ animation: anim || 'none' }}
-      className={`relative rounded-2xl overflow-hidden ${cls} text-left transition-all active:scale-[0.97] disabled:active:scale-100 ${isImage ? imageBox : 'min-h-[64px] p-3 md:p-4 flex flex-col justify-center'}`}
+      className={`relative rounded-2xl overflow-hidden ${cls} transition-all active:scale-[0.97] disabled:active:scale-100 ${isImage ? imageBox : textBox}`}
     >
       {isImage ? (
         <>
@@ -136,7 +141,7 @@ function OptionButton({ option, mode, selected, locked, reveal, onTap }) {
         </>
       ) : (
         <>
-          <div className="font-semibold text-base sm:text-lg leading-tight">{option.content}</div>
+          <div className={`font-semibold leading-tight ${fill ? 'text-lg md:text-2xl tabular-nums' : 'text-base sm:text-lg'}`}>{option.content}</div>
           {option.label && <div className="text-xs text-zinc-400 tabular-nums mt-0.5">{option.label}</div>}
         </>
       )}
@@ -329,10 +334,12 @@ export default function QuizPlay({ roundId }) {
   // Which poster edge to blur away (hides on-art title/year); null renders it sharp.
   const stemMaskDir =
     q.mode === 'cover_to_title' ? 'top' : q.mode === 'movie_to_year_exact' ? 'bottom' : null;
-  // md+ only: a tall image (stem or options) claims the full-height stage on the
-  // right so covers never clip; text trays / multi-select sit below. Below md it is
-  // always bottom (CSS handles the breakpoint).
+  // md+ only: tall image options claim the full-height stage on the right so covers
+  // never clip; text-chip trays / multi-select sit below. Below md it is always
+  // bottom (CSS handles the breakpoint).
   const wantsRight = panelOnRight(q);
+  // A text-only option grid stretches to fill the Panel; image grids keep their aspect.
+  const textOptions = q.options.every((o) => o.kind === 'text');
   const gridCols = q.options.length > 4 ? 'grid-cols-3' : 'grid-cols-2';
   const vignette = remaining <= 5000 && !locked;
 
@@ -425,9 +432,9 @@ export default function QuizPlay({ roundId }) {
       {/* Panel — dark surface, edge-to-edge, single hairline divider against the Stage */}
       <div className={`flex flex-col h-[45%] w-full bg-zinc-950 text-zinc-100 border-t border-amber-500/50 ${wantsRight ? 'md:h-full md:w-[38%] md:border-t-0 md:border-l' : ''}`}>
         <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 pt-3">
-          <div key={index} className={`grid ${gridCols} gap-2 sm:gap-3`} style={{ animation: 'pfSlideUp 0.25s ease' }}>
+          <div key={index} className={`grid ${gridCols} gap-2 sm:gap-3 ${textOptions ? 'h-full auto-rows-fr' : ''}`} style={{ animation: 'pfSlideUp 0.25s ease' }}>
             {q.options.map((o) => (
-              <OptionButton key={o.id} option={o} mode={q.mode} selected={selectedIds.includes(o.id)} locked={locked} reveal={reveal} onTap={onOption} />
+              <OptionButton key={o.id} option={o} mode={q.mode} fill={textOptions} selected={selectedIds.includes(o.id)} locked={locked} reveal={reveal} onTap={onOption} />
             ))}
           </div>
         </div>

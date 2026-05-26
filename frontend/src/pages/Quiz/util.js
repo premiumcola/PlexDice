@@ -80,11 +80,13 @@ export const IMAGE_OPTION_MODES = new Set([
   'actor_filmography_multi', 'writer_to_movie', 'two_actors_to_shared', 'collection_member',
 ]);
 
-// md+ panel side. A tall image — stem OR options — claims the full-height stage on
-// the right so option covers never clip. The wide multi-select grid and the
-// two-stars question stay in a Panel below; short text-only trays do too.
+// md+ panel side. Tall image OPTIONS (covers / headshots) claim the full-height stage
+// on the right so they never clip. Everything else sits in a Panel below: short
+// text-chip trays (FSK, year, runtime, country, decade, titles fill a wide tray
+// nicely), the wide multi-select grid, and the two-stars question. This mirrors the
+// iPhone layout, where the Panel is always below.
 export function panelOnRight(q) {
   if (q.mode === 'two_actors_to_shared') return false;
   if (q.multi_select && (q.options?.length || 0) > 4) return false;
-  return q.stem.kind === 'image' || IMAGE_OPTION_MODES.has(q.mode);
+  return IMAGE_OPTION_MODES.has(q.mode);
 }
