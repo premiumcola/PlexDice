@@ -7,6 +7,8 @@ import { MODE_PROMPT, fmt } from './util';
 import { initAudio, tick, tickParams, chime, buzz } from './audio';
 import RadialCountdown from './RadialCountdown';
 
+const MULTI_IMAGE_STEM_MODES = ['two_actors_to_shared'];
+
 function basePoints(timeMs) {
   if (timeMs <= 5000) return 100;
   if (timeMs <= 10000) return 80;
@@ -254,6 +256,9 @@ export default function QuizPlay({ roundId }) {
   }
 
   const stemImage = q.stem.kind === 'image';
+  // md+ only: Panel goes right for single-image, ≤4-option questions; bottom otherwise.
+  // Below md it is always bottom (CSS handles the breakpoint).
+  const wantsRight = stemImage && !MULTI_IMAGE_STEM_MODES.includes(q.mode) && q.options.length <= 4;
   const gridCols = q.options.length > 4 ? 'grid-cols-3' : 'grid-cols-2';
   const remainingCount = Math.max(0, questions.length - index - 1);
   const vignette = remaining <= 5000 && !locked;
@@ -270,7 +275,7 @@ export default function QuizPlay({ roundId }) {
   };
 
   return (
-    <div className="h-[100dvh] flex flex-col overflow-hidden relative">
+    <div className={`h-[100dvh] flex flex-col overflow-hidden relative ${wantsRight ? 'md:flex-row' : ''}`}>
       <style>{`
         @keyframes quizTitleFade {0%{opacity:0;transform:translateY(6px)}100%{opacity:1;transform:translateY(0)}}
         @keyframes pfVignette {0%,100%{opacity:0.6}50%{opacity:1}}
@@ -288,7 +293,7 @@ export default function QuizPlay({ roundId }) {
       {flash && <div className="pointer-events-none fixed inset-0 z-40" style={{ background: 'rgba(185,28,28,0.35)' }} />}
 
       {/* Stage — light neutral surface */}
-      <div className="relative flex flex-col h-[55%] bg-zinc-100 text-zinc-900">
+      <div className={`relative flex flex-col h-[55%] w-full bg-zinc-100 text-zinc-900 ${wantsRight ? 'md:h-full md:w-[62%]' : ''}`}>
         {/* HUD */}
         <div className="shrink-0 flex items-center gap-2 sm:gap-3 px-3 sm:px-6 py-2 pt-[max(0.5rem,env(safe-area-inset-top))] text-sm">
           <span className="flex items-center gap-1 font-mono tabular-nums text-zinc-900"><Timer className="w-4 h-4 text-zinc-500" /> {mmss(elapsed)}</span>
@@ -329,7 +334,7 @@ export default function QuizPlay({ roundId }) {
       </div>
 
       {/* Panel — dark surface, edge-to-edge, single hairline divider against the Stage */}
-      <div className="flex flex-col h-[45%] bg-zinc-950 text-zinc-100 border-t border-amber-500/50">
+      <div className={`flex flex-col h-[45%] w-full bg-zinc-950 text-zinc-100 border-t border-amber-500/50 ${wantsRight ? 'md:h-full md:w-[38%] md:border-t-0 md:border-l' : ''}`}>
         <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 pt-3">
           <div key={index} className={`grid ${gridCols} gap-2 sm:gap-3`} style={{ animation: 'pfSlideUp 0.25s ease' }}>
             {q.options.map((o) => (
