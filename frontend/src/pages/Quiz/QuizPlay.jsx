@@ -41,6 +41,12 @@ function mmss(secs) {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
+// A short text stem (the "A & B" pill of the two-stars question) needs no tall Stage —
+// let the Stage shrink to the pill so the cover options claim the lower viewport.
+function stemIsShortText(q) {
+  return q.stem?.kind === 'text' && q.mode === 'two_actors_to_shared';
+}
+
 // Two-layer "blur curtain": a blurred, slightly-scaled copy of the poster fills the
 // frame while a sharp copy on top is masked away at one edge, letting the blur show
 // through there. Hides on-art text (title at top / release year at bottom) as
@@ -517,6 +523,8 @@ export default function QuizPlay({ roundId }) {
   // never clip; text-chip trays / multi-select sit below. Below md it is always
   // bottom (CSS handles the breakpoint).
   const wantsRight = panelOnRight(q);
+  // Short text stem + panel-below: Stage hugs the pill, Panel grows to fill the rest.
+  const shortStage = stemIsShortText(q) && !wantsRight;
   // A text-only option grid stretches to fill the Panel; image grids keep their aspect.
   const textOptions = q.options.every((o) => o.kind === 'text');
   const gridCols = q.options.length > 4 ? 'grid-cols-3' : 'grid-cols-2';
@@ -563,7 +571,7 @@ export default function QuizPlay({ roundId }) {
       <QuestionTimeline questions={questions} statusMap={statusMap} currentQid={currentQid} layout="rail" remainingMs={locked ? null : remaining} durationMs={dur} />
 
       {/* Stage — light neutral surface */}
-      <div className={`relative flex flex-col h-[55%] w-full bg-zinc-100 text-zinc-900 ${wantsRight ? 'md:h-full md:w-[62%]' : ''}`}>
+      <div className={`relative flex flex-col w-full bg-zinc-100 text-zinc-900 ${shortStage ? 'shrink-0 h-auto' : `h-[55%] ${wantsRight ? 'md:h-full md:w-[62%]' : ''}`}`}>
         {/* HUD */}
         <div className="shrink-0 flex items-center gap-2 px-3 sm:px-6 py-2 pt-[max(0.5rem,env(safe-area-inset-top))] text-sm">
           <span className="flex items-center gap-1.5 min-h-[44px]">
@@ -593,7 +601,7 @@ export default function QuizPlay({ roundId }) {
         </div>
 
         {/* Stem + radial countdown */}
-        <div className="flex-1 min-h-0 px-4 sm:px-6 py-3 flex items-center justify-center overflow-hidden relative">
+        <div className={`${shortStage ? 'shrink-0' : 'flex-1 min-h-0'} px-4 sm:px-6 py-3 flex items-center justify-center overflow-hidden relative`}>
           {stemImage ? (
             <div className={`relative ${STEM_IS_PERSON.has(q.mode) ? 'aspect-square' : 'aspect-[2/3]'} max-h-full max-w-[min(70vw,360px)] landscape:max-h-[60vh] rounded-2xl overflow-hidden shadow-2xl`}>
               {stemMaskDir ? (
@@ -628,7 +636,7 @@ export default function QuizPlay({ roundId }) {
       </div>
 
       {/* Panel — dark surface, edge-to-edge, single hairline divider against the Stage */}
-      <div className={`flex flex-col h-[45%] w-full bg-zinc-950 text-zinc-100 border-t border-amber-500/50 ${wantsRight ? 'md:h-full md:w-[38%] md:border-t-0 md:border-l' : ''}`}>
+      <div className={`flex flex-col w-full bg-zinc-950 text-zinc-100 border-t border-amber-500/50 ${shortStage ? 'flex-1 min-h-0' : `h-[45%] ${wantsRight ? 'md:h-full md:w-[38%] md:border-t-0 md:border-l' : ''}`}`}>
         {!locked && q.multi_select && (
           <div role="status" aria-live="polite" className="shrink-0 px-4 sm:px-6 pt-3 flex justify-center" style={{ animation: 'pfHintIn 0.15s ease' }}>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-zinc-800/80 text-zinc-200 px-3 py-1.5 text-xs sm:text-sm">
