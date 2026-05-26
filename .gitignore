@@ -36,3 +36,6 @@ Thumbs.db
 data/
 .env
 *.local
+
+# ---- Audit / throwaway scratch ----
+backend/scratch/
