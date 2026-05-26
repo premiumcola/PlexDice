@@ -247,7 +247,9 @@ def b_plot_redacted_to_movie(m, lib):
         if re.fullmatch(r"\w+", tok):
             words += 1
             if tok.lower() in terms:
-                out.append("▮▮▮")
+                # Invisible separators (U+2063) bracket a length sentinel the frontend
+                # parses into a sized redaction bar — avoids the ▮ glyph that tofus on iOS.
+                out.append(f"⁣[REDACT:{len(tok)}]⁣")
                 redacted += 1
                 continue
         out.append(tok)

@@ -69,6 +69,25 @@ function MaskedPoster({ src, direction }) {
   );
 }
 
+// Backend marks each redacted plot word as ⁣[REDACT:n]⁣ (invisible separators
+// as parser anchors). Split on that and render each as a fixed-width bar sized to the
+// hidden word — a deliberate redaction, never a missing-font tofu box.
+function renderRedactedPlot(text) {
+  const re = /⁣\[REDACT:(\d+)\]⁣/g;
+  const nodes = [];
+  let last = 0;
+  let key = 0;
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) nodes.push(text.slice(last, m.index));
+    const n = Math.max(2, parseInt(m[1], 10) || 3);
+    nodes.push(<span key={`r${key++}`} className="redact-block" style={{ width: `${n}ch` }} aria-label="zensiert" />);
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) nodes.push(text.slice(last));
+  return nodes;
+}
+
 // Dark-Panel option. Unselected = zinc; selected (not locked) = amber outline;
 // reveal = emerald (correct) / rose (wrong chosen).
 function OptionButton({ option, mode, selected, locked, reveal, onTap }) {
@@ -383,7 +402,9 @@ export default function QuizPlay({ roundId }) {
             </div>
           ) : (
             <div className="max-h-full max-w-2xl overflow-auto rounded-2xl bg-white ring-1 ring-zinc-300 p-5 md:p-6 text-center">
-              <p className="text-base sm:text-lg md:text-xl leading-relaxed text-zinc-900">{q.stem.content}</p>
+              <p className="text-base sm:text-lg md:text-xl leading-relaxed text-zinc-900">
+                {q.mode === 'plot_redacted_to_movie' ? renderRedactedPlot(q.stem.content) : q.stem.content}
+              </p>
             </div>
           )}
           {!locked && (
