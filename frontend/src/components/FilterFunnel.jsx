@@ -54,17 +54,21 @@ export default function FilterFunnel({ stages, total, onOpenStage, onResetStage 
   const PAD_TOP = 26;
   const EXIT_DROP = 38;
   const TERM_H = 14;
-  const EXIT_LABEL_H = 30;
+  // Breath below the exit terminals — the old label row is now in-stream pills.
+  const BOTTOM_PAD = 6;
   const yTop = PAD_TOP;
   const baseY = yTop + HCHART;
   const termTop = baseY + EXIT_DROP;
-  const H = termTop + TERM_H + EXIT_LABEL_H;
+  const H = termTop + TERM_H + BOTTOM_PAD;
 
   // Horizontal geometry.
   const SRC_W = 14;
   const TARGET_W = W < 420 ? 84 : 104;
   const flowStart = SRC_W;
   const flowEnd = W - TARGET_W;
+  // Slide the stream's right edge a touch under the Treffer badge (drawn on top) so
+  // the two meet without a visible seam.
+  const streamRight = flowEnd + 12;
   const span = Math.max(flowEnd - flowStart, 40);
   const colW = span / (n + 1);
 
@@ -78,9 +82,9 @@ export default function FilterFunnel({ stages, total, onOpenStage, onResetStage 
   const knots = [
     { x: flowStart, y: baseY },
     ...stages.map((s, i) => ({ x: gateX[i], y: yTop + h(s.count_out) })),
-    { x: flowEnd, y: yTop + h(finalCount) },
+    { x: streamRight, y: yTop + h(finalCount) },
   ];
-  let streamD = `M ${flowStart} ${yTop} L ${flowEnd} ${yTop} L ${flowEnd} ${yTop + h(finalCount)} `;
+  let streamD = `M ${flowStart} ${yTop} L ${streamRight} ${yTop} L ${streamRight} ${yTop + h(finalCount)} `;
   for (let i = knots.length - 1; i > 0; i--) {
     streamD += curve(knots[i].x, knots[i].y, knots[i - 1].x, knots[i - 1].y) + ' ';
   }
@@ -125,9 +129,6 @@ export default function FilterFunnel({ stages, total, onOpenStage, onResetStage 
                   <stop offset="0" stopColor="#f5a623" stopOpacity="0.85" />
                   <stop offset="1" stopColor="#ffaf3a" stopOpacity="1" />
                 </linearGradient>
-                <filter id="pf-glow" x="-60%" y="-60%" width="220%" height="220%">
-                  <feDropShadow dx="0" dy="0" stdDeviation="4" floodColor="#f5a623" floodOpacity="0.55" />
-                </filter>
               </defs>
 
               {/* Library source bar */}
@@ -190,8 +191,17 @@ export default function FilterFunnel({ stages, total, onOpenStage, onResetStage 
                 );
               })}
 
-              {/* Treffer target bar */}
-              <rect x={flowEnd} y={yTop} width={TARGET_W} height={targetH} rx="6" fill={COL.target} filter="url(#pf-glow)" />
+              {/* Treffer target bar — amber glow + a soft left shadow so the stream
+                  slides under it with intentional depth, not a seam. */}
+              <rect
+                x={flowEnd}
+                y={yTop}
+                width={TARGET_W}
+                height={targetH}
+                rx="6"
+                fill={COL.target}
+                style={{ filter: 'drop-shadow(0 0 4px rgba(245,166,35,0.55)) drop-shadow(-4px 0 12px rgba(0,0,0,0.35))' }}
+              />
             </svg>
 
             {/* HTML overlay: crisp text + lucide icons (Safari-safe, no foreignObject) */}
@@ -220,24 +230,22 @@ export default function FilterFunnel({ stages, total, onOpenStage, onResetStage 
                 );
               })}
 
+              {/* Per-gate delta pill set into the stream: how many films this filter
+                  removed. Skip the first gate (its drop dominates) and any no-op gate. */}
               {stages.map((s, i) => {
-                const Icon = s.icon;
                 const delta = s.count_in - s.count_out;
-                if (delta <= 0) return null;
-                const hideSmall = n > 4 && i < 2 ? 'max-[499px]:hidden' : '';
+                if (i === 0 || delta <= 0) return null;
+                const PILL_W = 52;
+                const cx = Math.min(Math.max(gateX[i], flowStart + PILL_W / 2), flowEnd - PILL_W / 2);
                 return (
-                  <button
+                  <div
                     key={s.id}
-                    type="button"
-                    onClick={guarded(() => confirmReset(s))}
-                    {...hover(s, i, 'exit')}
-                    className={`absolute -translate-x-1/2 pointer-events-auto flex items-center gap-1 text-[11px] text-zinc-400 whitespace-nowrap transition-colors hover:text-amber-300 ${hideSmall}`}
-                    style={{ left: gateX[i] + 6, top: termTop + TERM_H + 3 }}
+                    className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center rounded bg-zinc-950/85 px-1 py-0.5 leading-tight"
+                    style={{ left: cx, top: yTop + HCHART * 0.45, width: PILL_W }}
                   >
-                    <Icon className="w-3 h-3 shrink-0" />
-                    <span className="tabular-nums">−{fmt(delta)}</span>
-                    <span> · {s.label}</span>
-                  </button>
+                    <span className="text-[10px] text-zinc-400 truncate max-w-full">{s.label}</span>
+                    <span className="text-xs font-semibold text-amber-300 tabular-nums">−{fmt(delta)}</span>
+                  </div>
                 );
               })}
 
