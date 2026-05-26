@@ -72,6 +72,10 @@ export function testConnection({ url, ssl }) {
   return postJson('/api/plex/test', { url, ssl });
 }
 
+export function ensurePlexClientId() {
+  return postJson('/api/plex/auth/client-id', {});
+}
+
 export function createPlexPin() {
   return postJson('/api/plex/auth/pin', {});
 }

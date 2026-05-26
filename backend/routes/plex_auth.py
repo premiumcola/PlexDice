@@ -72,6 +72,16 @@ def logout():
     return jsonify({"ok": True})
 
 
+@bp.post("/client-id")
+def ensure_client_id():
+    """Return the stable client identifier, generating one if settings lost it.
+
+    The frontend calls this before building the auth URL: an empty clientID makes
+    plex.tv silently reject the login, so we guarantee a value server-side first.
+    """
+    return jsonify({"client_id": settings_store.ensure_client_id()})
+
+
 def _fetch_user(token: str) -> Dict[str, Any]:
     """Fetch the signed-in account's username, email and avatar."""
     headers = {**_headers(), "X-Plex-Token": token}

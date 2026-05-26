@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import {
   getSettings, saveSettings, discoverServers, testConnection, refreshLibrary,
-  createPlexPin, checkPlexPin, plexLogout, getPlexConnectionInfo,
+  createPlexPin, checkPlexPin, plexLogout, getPlexConnectionInfo, ensurePlexClientId,
 } from '../api';
 import QuizConfig from '../components/QuizConfig';
 
@@ -266,6 +266,22 @@ export default function Settings({ onConnected }) {
       );
     } catch { /* popup already navigated cross-origin */ }
 
+    // settings.json may have lost its client_id (fresh container, corrupt or
+    // manual write); an empty clientID makes plex.tv silently reject the auth
+    // URL. Make sure the backend has one before we build the URL.
+    let id = clientId;
+    if (!id) {
+      try {
+        const res = await ensurePlexClientId();
+        id = res.client_id;
+        setClientId(id);
+      } catch {
+        try { popup.close(); } catch { /* ignore */ }
+        showToast('error', 'Backend nicht erreichbar');
+        return;
+      }
+    }
+
     let pin;
     try {
       pin = await createPlexPin();
@@ -276,7 +292,7 @@ export default function Settings({ onConnected }) {
       return;
     }
     const params = [
-      `clientID=${encodeURIComponent(clientId)}`,
+      `clientID=${encodeURIComponent(id)}`,
       `code=${encodeURIComponent(pin.code)}`,
       `context[device][product]=${encodeURIComponent('PlexDice')}`,
     ].join('&');
