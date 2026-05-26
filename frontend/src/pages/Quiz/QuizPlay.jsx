@@ -716,7 +716,7 @@ export default function QuizPlay({ roundId }) {
           </div>
         )}
         <div className={`flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 pt-3 ${q.multi_select ? '' : 'pb-[max(0.75rem,env(safe-area-inset-bottom))]'}`}>
-          <div key={visitSeq} className={`grid ${gridCols} gap-2 sm:gap-3 ${textOptions ? 'h-full auto-rows-fr' : ''}`} style={{ animation: 'pfSlideUp 0.25s ease' }}>
+          <div key={visitSeq} className={`grid ${gridCols} gap-2 sm:gap-3 ${textOptions ? 'h-full auto-rows-fr' : ''} ${shortStage ? 'max-w-2xl mx-auto w-full' : ''}`} style={{ animation: 'pfSlideUp 0.25s ease' }}>
             {q.options.map((o) => (
               <OptionButton key={o.id} option={o} mode={q.mode} fill={textOptions} selected={selectedIds.includes(o.id)} locked={locked} reveal={reveal} onTap={onOption} hint={!q.multi_select} />
             ))}
