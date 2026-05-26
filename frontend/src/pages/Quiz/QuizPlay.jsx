@@ -327,7 +327,8 @@ export default function QuizPlay({ roundId }) {
 
   const stemImage = q.stem.kind === 'image';
   // Which poster edge to blur away (hides on-art title/year); null renders it sharp.
-  const stemMaskDir = q.mode === 'cover_to_title' ? 'top' : null;
+  const stemMaskDir =
+    q.mode === 'cover_to_title' ? 'top' : q.mode === 'movie_to_year_exact' ? 'bottom' : null;
   // md+ only: a tall image (stem or options) claims the full-height stage on the
   // right so covers never clip; text trays / multi-select sit below. Below md it is
   // always bottom (CSS handles the breakpoint).
