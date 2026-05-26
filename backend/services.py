@@ -6,6 +6,7 @@ import os
 
 import urllib3
 
+from atomic_io import file_size
 from library_cache import LibraryCache
 from plex_client import PlexClient
 from settings import SettingsStore
@@ -20,6 +21,30 @@ DATA_DIR = os.environ.get("DATA_DIR", "/data")
 settings_store = SettingsStore(os.path.join(DATA_DIR, "settings.json"))
 library_cache = LibraryCache(os.path.join(DATA_DIR, "library_cache.json"))
 plex_client = PlexClient()
+
+
+def _log_persistence_diagnostics() -> None:
+    """Log once at boot where DATA_DIR resolves and whether it will persist.
+
+    A non-writable DATA_DIR is the usual cause of "settings gone after restart":
+    the container ends up writing to its ephemeral layer instead of the mounted
+    volume. Surfacing this loudly turns a silent data-loss bug into an obvious one.
+    """
+    abs_dir = os.path.abspath(DATA_DIR)
+    exists = os.path.isdir(abs_dir)
+    writable = exists and os.access(abs_dir, os.W_OK)
+    settings_bytes = file_size(os.path.join(DATA_DIR, "settings.json"))
+    cache_bytes = file_size(os.path.join(DATA_DIR, "library_cache.json"))
+    logger.info(
+        "Persistence: DATA_DIR=%s exists=%s writable=%s settings.json=%dB library_cache.json=%dB",
+        abs_dir, exists, writable, settings_bytes, cache_bytes,
+    )
+    if not writable:
+        logger.error(
+            "CRITICAL: DATA_DIR=%s is not writable — settings WILL NOT persist across "
+            "restarts. Check your docker-compose volume mount.",
+            abs_dir,
+        )
 
 
 def _seed_from_env() -> None:
@@ -55,6 +80,7 @@ def _maybe_enrich() -> None:
         logger.warning("Boot enrichment skipped: %s", exc)
 
 
+_log_persistence_diagnostics()
 _seed_from_env()
 settings_store.ensure_client_id()
 _maybe_enrich()

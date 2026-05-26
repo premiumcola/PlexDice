@@ -5,6 +5,10 @@ services:
     ports:
       - "8090:8080"
     volumes:
+      # IMPORTANT: ./data is the ONLY persistent state. Settings, Plex
+      # token, library cache and AI cache all live here. On Unraid use
+      # an absolute path (e.g. /mnt/user/appdata/plexdice/data) instead
+      # of ./data to survive stack redeploys.
       - ./data:/data
     env_file: .env
     restart: unless-stopped

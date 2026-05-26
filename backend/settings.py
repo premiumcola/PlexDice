@@ -7,7 +7,10 @@ import logging
 import os
 import threading
 import uuid
-from typing import Any, Dict
+from datetime import datetime, timezone
+from typing import Any, Dict, Optional
+
+from atomic_io import atomic_write_json
 
 logger = logging.getLogger(__name__)
 
@@ -58,15 +61,14 @@ class SettingsStore:
         self._lock = threading.RLock()
         self._data: Dict[str, Any] = _default_settings()
         self._mtime: float = 0.0
+        self._last_write_utc: Optional[str] = None
         self._ensure_file()
         self._reload()
 
     def _ensure_file(self) -> None:
         if not os.path.exists(self._path):
-            os.makedirs(os.path.dirname(self._path), exist_ok=True)
-            with open(self._path, "w", encoding="utf-8") as fh:
-                json.dump(_default_settings(), fh, indent=2)
-            logger.info("Created default settings at %s", self._path)
+            if atomic_write_json(self._path, _default_settings(), indent=2):
+                logger.info("Created default settings at %s", self._path)
 
     def _reload(self) -> None:
         try:
@@ -92,9 +94,9 @@ class SettingsStore:
         return self.all().get(section, {})
 
     def save(self) -> None:
-        with open(self._path, "w", encoding="utf-8") as fh:
-            json.dump(self._data, fh, indent=2)
-        self._mtime = os.path.getmtime(self._path)
+        if atomic_write_json(self._path, self._data, indent=2):
+            self._mtime = os.path.getmtime(self._path)
+            self._last_write_utc = datetime.now(timezone.utc).isoformat()
 
     def update(self, patch: Dict[str, Any]) -> Dict[str, Any]:
         """Deep-merge a partial settings dict and persist it."""
@@ -135,3 +137,8 @@ class SettingsStore:
         plex["tokenSet"] = bool(plex.get("token"))
         plex["token"] = ""
         return data
+
+    def last_write_utc(self) -> Optional[str]:
+        """UTC ISO timestamp of the last successful settings write this process made."""
+        with self._lock:
+            return self._last_write_utc

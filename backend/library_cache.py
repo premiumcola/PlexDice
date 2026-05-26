@@ -8,6 +8,7 @@ import threading
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
+from atomic_io import atomic_write_json
 from plex_client import PlexClient
 from settings import SettingsStore
 
@@ -41,10 +42,8 @@ class LibraryCache:
             logger.warning("Could not read library cache: %s", exc)
 
     def save(self) -> None:
-        os.makedirs(os.path.dirname(self._path), exist_ok=True)
-        with open(self._path, "w", encoding="utf-8") as fh:
-            json.dump(self._data, fh, ensure_ascii=False)
-        self._mtime = os.path.getmtime(self._path)
+        if atomic_write_json(self._path, self._data, ensure_ascii=False):
+            self._mtime = os.path.getmtime(self._path)
 
     def movies(self) -> List[Dict[str, Any]]:
         with self._lock:
