@@ -1,5 +1,4 @@
 import { useLayoutEffect, useRef, useState } from 'react';
-import { ChevronDown, ChevronUp } from 'lucide-react';
 
 const fmt = (n) => n.toLocaleString('de-DE');
 
@@ -40,9 +39,6 @@ function curve(x1, y1, x2, y2) {
 export default function FilterFunnel({ stages, total, onOpenStage, onResetStage }) {
   const [wrapRef, width] = useWidth();
   const [tip, setTip] = useState(null); // { x, stage, kind }
-  const [legendOpen, setLegendOpen] = useState(
-    () => typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches,
-  );
   const hideTimer = useRef(null);
   const pressTimer = useRef(null);
   const suppressRef = useRef(false);
@@ -54,7 +50,7 @@ export default function FilterFunnel({ stages, total, onOpenStage, onResetStage 
   const finalCount = stages[n - 1].count_out;
 
   // Vertical geometry (px, scale 1).
-  const HCHART = W < 420 ? 130 : W < 700 ? 168 : 188;
+  const HCHART = W < 420 ? 92 : W < 700 ? 118 : 132;
   const PAD_TOP = 26;
   const EXIT_DROP = 38;
   const TERM_H = 14;
@@ -119,7 +115,7 @@ export default function FilterFunnel({ stages, total, onOpenStage, onResetStage 
   const tipX = tip ? Math.min(Math.max(tip.x, 72), W - 72) : 0;
 
   return (
-    <div className="relative mb-4 rounded-2xl bg-zinc-900/60 px-2 py-2 sm:px-3 sm:py-3">
+    <div className="relative mb-4 rounded-2xl bg-zinc-900/60 px-2 pt-2 pb-1 sm:px-3 sm:pt-3 sm:pb-1.5">
       <div ref={wrapRef} className="relative w-full">
         {width > 0 && (
           <>
@@ -278,34 +274,6 @@ export default function FilterFunnel({ stages, total, onOpenStage, onResetStage 
               )}
             </div>
           </>
-        )}
-      </div>
-
-      {/* Legend (toggleable; open on desktop, collapsed on tablet) */}
-      <div className="mt-1.5 px-1">
-        <button
-          type="button"
-          onClick={() => setLegendOpen((o) => !o)}
-          className="flex items-center gap-1 text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors"
-        >
-          {legendOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />} Legende
-        </button>
-        {legendOpen && (
-          <div className="mt-1.5 space-y-1 text-[11px] text-zinc-400">
-            <div className="flex items-center gap-4 flex-wrap">
-              <span className="flex items-center gap-1.5">
-                <span className="inline-block w-3 h-3 rounded-sm" style={{ background: 'linear-gradient(90deg,#f5a623,#ffaf3a)' }} />
-                Hauptstrom (Treffer)
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="inline-block w-3 h-3 rounded-sm" style={{ background: COL.exit, opacity: 0.5 }} />
-                Herausgefiltert
-              </span>
-            </div>
-            <p className="text-zinc-500">
-              Tipp: Tippe einen Filter um ihn anzupassen, eine Ausstromfahne um ihn zu entfernen.
-            </p>
-          </div>
         )}
       </div>
     </div>
