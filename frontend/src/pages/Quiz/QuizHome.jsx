@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Target, Play, ChevronRight, Image as ImageIcon } from 'lucide-react';
+import { Play, ChevronRight, Image as ImageIcon } from 'lucide-react';
 import { navigate } from '../../router';
 import { getLibraryStatus, quizHistory } from '../../api';
 import { relativeDate, fmt } from './util';
+import AppHeader from '../../components/AppHeader';
 
 function CastBanner({ progress }) {
   const { done = 0, total = 0 } = progress || {};
@@ -65,10 +66,7 @@ export default function QuizHome() {
   return (
     <div className="min-h-[100dvh] bg-zinc-950 text-zinc-100">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-24 sm:py-10">
-        <header className="mb-6 pb-4 border-b border-zinc-900 flex items-center gap-3">
-          <Target className="w-7 h-7 text-amber-400" strokeWidth={2.4} />
-          <h1 className="font-display-tight text-3xl lg:text-4xl tracking-tight leading-none">Quiz</h1>
-        </header>
+        <AppHeader product="quiz" />
 
         {castLoading && <CastBanner progress={status.meta_progress} />}
 
