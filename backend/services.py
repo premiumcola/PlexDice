@@ -8,7 +8,7 @@ import urllib3
 
 from atomic_io import file_size
 from library_cache import LibraryCache
-from plex_client import PlexClient
+from plex_client import PlexClient, _lan_link_base
 from settings import SettingsStore
 
 logger = logging.getLogger(__name__)
@@ -80,7 +80,26 @@ def _maybe_enrich() -> None:
         logger.warning("Boot enrichment skipped: %s", exc)
 
 
+def _log_stale_deep_links() -> None:
+    """Warn (never modify) when cached deep-links still point at plex.direct but a
+    cleaner link base now applies — the user re-syncs from Settings to refresh them."""
+    try:
+        movies = library_cache.movies()
+        if not movies:
+            return
+        plex = settings_store.get("plex")
+        manual = (plex.get("plex_server_url") or "").strip() or None
+        link_base = _lan_link_base(plex.get("url") or "", manual)
+        first = movies[0].get("plex_url") or ""
+        if ".plex.direct" in first and ".plex.direct" not in link_base:
+            stale = sum(1 for m in movies if ".plex.direct" in (m.get("plex_url") or ""))
+            logger.info("Library cache has %d stale deep-links — sync to refresh", stale)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Stale deep-link check skipped: %s", exc)
+
+
 _log_persistence_diagnostics()
 _seed_from_env()
 settings_store.ensure_client_id()
 _maybe_enrich()
+_log_stale_deep_links()

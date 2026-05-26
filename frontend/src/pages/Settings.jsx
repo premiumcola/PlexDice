@@ -617,6 +617,9 @@ export default function Settings({ onConnected }) {
                   {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Database className="w-4 h-4" />}
                   {syncing ? 'Synchronisiere…' : 'Bibliotheken synchronisieren'}
                 </button>
+                <p className="text-xs text-zinc-500 mt-2 text-center">
+                  Nach Update der Server-URL bitte synchronisieren — sonst zeigen ältere Filme noch alte Deep-links.
+                </p>
               </>
             )}
 
