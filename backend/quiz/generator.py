@@ -8,17 +8,21 @@ final array is shuffled so even identical pools play in a different order.
 """
 from __future__ import annotations
 
+import logging
 import random
+from collections import Counter
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from quiz.library import QuizLibrary
 from quiz.modes import MODES, available_modes
 
+logger = logging.getLogger(__name__)
+
 TIER_WEIGHTS: Dict[str, Dict[int, float]] = {
     "easy": {1: 1.0},
     "medium": {1: 0.30, 2: 0.70},
     "hard": {2: 0.20, 3: 0.80},
-    "mixed": {1: 0.33, 2: 0.33, 3: 0.34},
+    "mixed": {1: 1 / 3, 2: 1 / 3, 3: 1 / 3},
 }
 _MAX_MOVIE_TRIES = 5
 
@@ -60,16 +64,42 @@ class QuizGenerator:
         tiers = list(tier_modes.keys())
         tier_w = [weights[t] for t in tiers]
         ordered = sorted(tier_modes.keys())
+        # Mixed aims for an even tier split per round; weighted draws stay noisy at
+        # small sizes, so plan its slots deterministically. Other difficulties keep
+        # their per-slot weighted draw.
+        if difficulty == "mixed":
+            tier_plan = self._even_tier_plan(ordered, size)
+        else:
+            tier_plan = random.choices(tiers, weights=tier_w, k=size)
+        random.shuffle(tier_plan)
         used: Set[str] = set()
         sigs = set(avoid)
         questions: List[Dict[str, Any]] = []
-        for _ in range(size):
-            tier = random.choices(tiers, weights=tier_w, k=1)[0]
+        for tier in tier_plan:
             question = self._build_for_tier(tier, tier_modes, ordered, used, sigs)
             if question:
                 questions.append(question)
         random.shuffle(questions)
+        tier_counts = Counter(qq.get("tier") for qq in questions)
+        logger.info(
+            "Quiz round built: difficulty=%s size=%d tiers=%s",
+            difficulty, len(questions), dict(sorted(tier_counts.items())),
+        )
         return questions, meta
+
+    @staticmethod
+    def _even_tier_plan(tiers: List[int], size: int) -> List[int]:
+        """Slot tiers as evenly as possible: floor(size/k) each, the remainder
+        distributed round-robin starting from the second tier."""
+        tiers = sorted(tiers)
+        k = len(tiers) or 1
+        counts = {t: size // k for t in tiers}
+        for i in range(size % k):
+            counts[tiers[(1 + i) % k]] += 1
+        plan: List[int] = []
+        for t in tiers:
+            plan.extend([t] * counts[t])
+        return plan
 
     def _build_for_tier(self, tier, tier_modes, ordered, used, sigs) -> Optional[Dict[str, Any]]:
         # Try the requested tier, then easier tiers, then harder ones.
