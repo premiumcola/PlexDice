@@ -599,25 +599,37 @@ export default function QuizPlay({ roundId }) {
       <>
       {/* Stage — light neutral surface */}
       <div className={`relative flex flex-col w-full bg-zinc-100 text-zinc-900 ${shortStage ? 'shrink-0 h-auto' : `h-[55%] ${wantsRight ? 'md:h-full md:w-[62%]' : ''}`}`}>
-        {/* HUD */}
-        <div className="shrink-0 flex items-center gap-2 px-3 sm:px-6 py-2 pt-[max(0.5rem,env(safe-area-inset-top))] text-sm">
-          <span className="flex items-center gap-1.5 min-h-[44px]">
-            <span className="tabular-nums text-zinc-900 font-medium">{resolvedCount}/{total}</span>
-            <span className="hidden sm:inline text-zinc-500 text-xs">gelöst</span>
-            <span className="text-zinc-400">·</span>
+        {/* HUD — three readable groups: progress · status · actions */}
+        <div className="shrink-0 flex items-center gap-1 px-3 sm:px-6 py-1.5 pt-[max(0.5rem,env(safe-area-inset-top))] text-base sm:text-lg min-h-[56px]">
+          {/* Group A · progress */}
+          <div className="flex items-center gap-2">
+            <div className="flex flex-col leading-none">
+              <span className="text-xl sm:text-2xl font-bold text-zinc-900 tabular-nums">{resolvedCount}/{total}</span>
+              <span className="text-xs text-zinc-500">gelöst</span>
+            </div>
             <DifficultyBadge tier={q.tier || q.difficulty || 1} />
             {visit === 'retry' && (
               <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-400/20 text-amber-600" role="img" aria-label="Wiederholung" title="Wiederholung">
                 <RotateCcw className="w-3.5 h-3.5" />
               </span>
             )}
-          </span>
-          <span className="flex items-center gap-1 font-mono tabular-nums text-zinc-900 ml-auto"><Timer className="w-4 h-4 text-zinc-500" /> {mmss(elapsed)}</span>
-          <span className="flex items-center gap-1 tabular-nums text-emerald-600"><Check className="w-4 h-4" /> {correctCount}</span>
-          <span className="flex items-center gap-1 tabular-nums text-rose-600"><X className="w-4 h-4" /> {wrongCount}</span>
-          <span className="flex items-center gap-1 font-semibold tabular-nums text-amber-600">✨ {fmt(score)}</span>
+          </div>
+
+          <span aria-hidden="true" className="w-px self-stretch bg-zinc-300 mx-2 my-1.5" />
+
+          {/* Group B · status */}
+          <div className="flex flex-1 items-center gap-1 sm:gap-2 min-w-0">
+            <span className="flex items-center gap-1 font-mono font-semibold tabular-nums text-zinc-900 py-1.5 px-2"><Timer className="w-4 h-4 text-zinc-500" /> {mmss(elapsed)}</span>
+            <span className="flex items-center gap-1 font-semibold tabular-nums text-emerald-600 py-1.5 px-2"><Check className="w-4 h-4 text-zinc-500" /> {correctCount}</span>
+            <span className="flex items-center gap-1 font-semibold tabular-nums text-rose-600 py-1.5 px-2"><X className="w-4 h-4 text-zinc-500" /> {wrongCount}</span>
+            <span className="flex items-center gap-1 font-semibold tabular-nums text-amber-600 py-1.5 px-2">✨ {fmt(score)}</span>
+          </div>
+
+          <span aria-hidden="true" className="w-px self-stretch bg-zinc-300 mx-2 my-1.5" />
+
+          {/* Group C · actions */}
           <button type="button" onClick={doPause} aria-label="Pause" className="w-9 h-9 rounded-lg bg-zinc-200 flex items-center justify-center active:scale-95 shrink-0">
-            <Pause className="w-4 h-4 text-zinc-700" />
+            <Pause className="w-5 h-5 text-zinc-700" />
           </button>
         </div>
 
