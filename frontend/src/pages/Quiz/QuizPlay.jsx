@@ -337,7 +337,19 @@ export default function QuizPlay({ roundId }) {
         {/* Stem + radial countdown */}
         <div className="flex-1 min-h-0 px-4 sm:px-6 py-3 flex items-center justify-center overflow-hidden relative">
           {stemImage ? (
-            <img src={q.stem.content} alt="" className="max-h-full max-w-full md:max-w-md object-contain rounded-2xl shadow-2xl" />
+            <img
+              src={q.stem.content}
+              alt=""
+              className="max-h-full max-w-full md:max-w-md object-contain rounded-2xl shadow-2xl"
+              style={
+                q.mode === 'cover_to_title'
+                  ? {
+                      WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, transparent 18%, black 28%, black 100%)',
+                      maskImage: 'linear-gradient(to bottom, transparent 0%, transparent 18%, black 28%, black 100%)',
+                    }
+                  : undefined
+              }
+            />
           ) : (
             <div className="max-h-full max-w-2xl overflow-auto rounded-2xl bg-white ring-1 ring-zinc-300 p-5 md:p-6 text-center">
               <p className="text-base sm:text-lg md:text-xl leading-relaxed text-zinc-900">{q.stem.content}</p>
