@@ -149,6 +149,64 @@ function OptionButton({ option, mode, fill, selected, locked, reveal, onTap }) {
   );
 }
 
+// Per-question status for the timeline chip. Active beats every resolved state.
+function chipState(st, isActive) {
+  if (isActive) return 'active';
+  if (!st) return 'idle';
+  if (st.forced_resolve) return 'forced';
+  if (st.resolved) return st.first_try_correct ? 'first' : 'retry_done';
+  if (st.attempts > 0) return 'retry';
+  return 'idle';
+}
+
+const CHIP_CLASS = {
+  active: 'ring-2 ring-amber-400 text-amber-600 bg-amber-400/15 animate-pulse',
+  first: 'bg-emerald-500 text-zinc-950 ring-1 ring-emerald-400',
+  retry_done: 'bg-amber-400 text-zinc-950 ring-1 ring-amber-300',
+  retry: 'bg-rose-500 text-white ring-1 ring-rose-400',
+  forced: 'bg-zinc-400 text-zinc-900 ring-1 ring-zinc-300 line-through',
+  idle: 'text-zinc-400 ring-1 ring-zinc-400/50',
+};
+
+const CHIP_LABEL = {
+  active: 'aktiv',
+  first: 'beim ersten Versuch gelöst',
+  retry_done: 'nach Wiederholung gelöst',
+  retry: 'in Wiederholung',
+  forced: 'übersprungen',
+  idle: 'offen',
+};
+
+// Read-only progress chips, one per question. Vertical rail on md+, collapsed
+// horizontal strip on iPhone. Tapping does nothing yet — status display only.
+function QuestionTimeline({ questions, statusMap, currentQid, layout }) {
+  const rail = layout === 'rail';
+  return (
+    <div
+      aria-label="Fragen-Fortschritt"
+      className={
+        rail
+          ? 'hidden md:flex absolute inset-y-0 left-0 z-20 w-11 flex-col items-center gap-1.5 overflow-y-auto bg-zinc-950 border-r border-amber-500/40 py-3'
+          : 'md:hidden shrink-0 flex items-center gap-1.5 overflow-x-auto px-3 py-1.5 bg-zinc-100 border-b border-zinc-300'
+      }
+    >
+      {questions.map((qq, i) => {
+        const state = chipState(statusMap[qq.id], qq.id === currentQid);
+        return (
+          <div key={qq.id} className="shrink-0 p-1" title={`Frage ${i + 1}: ${CHIP_LABEL[state]}`}>
+            <div
+              aria-label={`Frage ${i + 1}: ${CHIP_LABEL[state]}`}
+              className={`w-9 h-9 ${rail ? 'rounded-lg' : 'rounded-full'} flex items-center justify-center text-xs font-semibold tabular-nums ${CHIP_CLASS[state]}`}
+            >
+              {i + 1}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function QuizPlay({ roundId }) {
   const round = useRef(loadRound(roundId)).current;
   const questions = round?.questions || [];
@@ -164,6 +222,7 @@ export default function QuizPlay({ roundId }) {
   const [visit, setVisit] = useState('first');
   const [visitSeq, setVisitSeq] = useState(0);
   const [resolvedCount, setResolvedCount] = useState(0);
+  const [statusMap, setStatusMap] = useState({});
   const [toast, setToast] = useState(null);
   const [score, setScore] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
@@ -223,6 +282,7 @@ export default function QuizPlay({ roundId }) {
         finish();
         return;
       }
+      if (resp.status) setStatusMap(resp.status);
       if (typeof resp.resolved_count === 'number') setResolvedCount(resp.resolved_count);
       if (typeof resp.current_score === 'number') {
         setScore(resp.current_score);
@@ -426,7 +486,7 @@ export default function QuizPlay({ roundId }) {
   };
 
   return (
-    <div className={`h-[100dvh] flex flex-col overflow-hidden relative ${wantsRight ? 'md:flex-row' : ''}`}>
+    <div className={`h-[100dvh] flex flex-col overflow-hidden relative md:pl-11 ${wantsRight ? 'md:flex-row' : ''}`}>
       <style>{`
         @keyframes quizTitleFade {0%{opacity:0;transform:translateY(6px)}100%{opacity:1;transform:translateY(0)}}
         @keyframes pfVignette {0%,100%{opacity:0.6}50%{opacity:1}}
@@ -452,6 +512,8 @@ export default function QuizPlay({ roundId }) {
         </div>
       )}
 
+      <QuestionTimeline questions={questions} statusMap={statusMap} currentQid={currentQid} layout="rail" />
+
       {/* Stage — light neutral surface */}
       <div className={`relative flex flex-col h-[55%] w-full bg-zinc-100 text-zinc-900 ${wantsRight ? 'md:h-full md:w-[62%]' : ''}`}>
         {/* HUD */}
@@ -475,6 +537,8 @@ export default function QuizPlay({ roundId }) {
             <Pause className="w-4 h-4 text-zinc-700" />
           </button>
         </div>
+
+        <QuestionTimeline questions={questions} statusMap={statusMap} currentQid={currentQid} layout="strip" />
 
         <div className="shrink-0 px-4 sm:px-6 pt-1 text-center font-display text-lg md:text-2xl lg:text-3xl text-zinc-900">
           {MODE_PROMPT[q.mode] || 'Frage'}
