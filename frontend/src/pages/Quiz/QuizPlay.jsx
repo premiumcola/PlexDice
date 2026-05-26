@@ -603,7 +603,7 @@ export default function QuizPlay({ roundId }) {
         {/* Stem + radial countdown */}
         <div className={`${shortStage ? 'shrink-0' : 'flex-1 min-h-0'} px-4 sm:px-6 py-3 flex items-center justify-center overflow-hidden relative`}>
           {stemImage ? (
-            <div className={`relative ${STEM_IS_PERSON.has(q.mode) ? 'aspect-square' : 'aspect-[2/3]'} max-h-full max-w-[min(70vw,360px)] landscape:max-h-[60vh] rounded-2xl overflow-hidden shadow-2xl`}>
+            <div className={`relative h-full w-auto ${STEM_IS_PERSON.has(q.mode) ? 'aspect-square' : 'aspect-[2/3]'} rounded-2xl overflow-hidden shadow-2xl`}>
               {stemMaskDir ? (
                 <MaskedPoster src={q.stem.content} direction={stemMaskDir} />
               ) : (
