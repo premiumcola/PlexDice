@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Timer, Check, X, Settings, Play, RotateCcw, LogOut } from 'lucide-react';
+import { Timer, Check, X, Pause, Play, RotateCcw, LogOut } from 'lucide-react';
 import { navigate } from '../../router';
 import { quizAnswer, quizAbandon } from '../../api';
 import { loadRound, saveResults, clearRound } from './store';
@@ -326,7 +326,7 @@ export default function QuizPlay({ roundId }) {
           <span className="flex items-center gap-1 tabular-nums text-rose-600"><X className="w-4 h-4" /> {wrongCount}</span>
           <span className="flex items-center gap-1 font-semibold tabular-nums text-amber-600">✨ {fmt(score)}</span>
           <button type="button" onClick={doPause} aria-label="Pause" className="w-9 h-9 rounded-lg bg-zinc-200 flex items-center justify-center active:scale-95 shrink-0">
-            <Settings className="w-4 h-4 text-zinc-700" />
+            <Pause className="w-4 h-4 text-zinc-700" />
           </button>
         </div>
 
