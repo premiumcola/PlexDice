@@ -74,6 +74,9 @@ export default function FilterFunnel({ stages, total, onOpenStage, onResetStage 
 
   const h = (c) => (total > 0 ? (c / total) * HCHART : 0);
   const gateX = stages.map((_, i) => flowStart + colW * (i + 1));
+  // Keep the source label from bleeding into the first gate chip on narrow widths.
+  const srcMax = Math.max(0, gateX[0] - SRC_W - 30);
+  const srcText = srcMax >= 92 ? `${fmt(total)} · Bibliothek` : fmt(total);
 
   // Bottom edge of the main stream (top edge stays flat at yTop).
   const knots = [
@@ -197,8 +200,11 @@ export default function FilterFunnel({ stages, total, onOpenStage, onResetStage 
 
             {/* HTML overlay: crisp text + lucide icons (Safari-safe, no foreignObject) */}
             <div className="absolute inset-0 pointer-events-none text-white">
-              <div className="absolute text-[10px] text-zinc-400 tabular-nums whitespace-nowrap" style={{ left: SRC_W + 4, top: 4 }}>
-                {fmt(total)} · Bibliothek
+              <div
+                className="absolute text-[10px] text-zinc-400 tabular-nums truncate"
+                style={{ left: SRC_W + 4, top: 4, maxWidth: srcMax }}
+              >
+                {srcText}
               </div>
 
               {stages.map((s, i) => {
