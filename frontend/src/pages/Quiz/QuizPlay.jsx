@@ -535,6 +535,11 @@ export default function QuizPlay({ roundId }) {
   }
 
   const stemImage = q.stem.kind === 'image';
+  // Stem aspect comes from the backend (16/9 backdrops, 1/1 faces); default 2/3 posters.
+  const stemAspect = q.stem.aspect || (STEM_IS_PERSON.has(q.mode) ? '1/1' : '2/3');
+  const stemAspectClass =
+    stemAspect === '16/9' ? 'aspect-[16/9]' : stemAspect === '1/1' ? 'aspect-square' : 'aspect-[2/3]';
+  const stemLandscape = stemAspect === '16/9';
   // md+ only: tall image options claim the full-height stage on the right so covers
   // never clip; text-chip trays / multi-select sit below. Below md it is always
   // bottom (CSS handles the breakpoint).
@@ -625,7 +630,7 @@ export default function QuizPlay({ roundId }) {
         {/* Stem + radial countdown */}
         <div className={`${shortStage ? 'shrink-0' : 'flex-1 min-h-0'} px-4 sm:px-6 py-3 flex items-center justify-center overflow-hidden relative`}>
           {stemImage ? (
-            <div className={`relative h-full w-auto ${STEM_IS_PERSON.has(q.mode) ? 'aspect-square' : 'aspect-[2/3]'} rounded-2xl overflow-hidden shadow-2xl`}>
+            <div className={`relative ${stemLandscape ? 'w-full h-auto max-h-full' : 'h-full w-auto'} ${stemAspectClass} rounded-2xl overflow-hidden shadow-2xl`}>
               <img
                 src={q.stem.content}
                 alt=""

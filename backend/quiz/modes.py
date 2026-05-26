@@ -43,6 +43,13 @@ def _poster_stem(m):
     return {"kind": "image", "content": m.get("thumb_url")}
 
 
+def _movie_art_stem(m: Dict[str, Any]) -> Dict[str, Any]:
+    # Landscape backdrop instead of the poster — posters often print the lead
+    # actor's name across the top, which hands the answer away.
+    url = m.get("art_url") or m.get("thumb_url")
+    return {"kind": "image", "content": url, "aspect": "16/9"}
+
+
 def _text_stem(t):
     return {"kind": "text", "content": t}
 
@@ -133,7 +140,7 @@ def b_movie_to_actor(m, lib):
     d = lib.person_distractors("actor", m, in_movie, 3)
     if len(d) < 3:
         return None
-    return {"stem": _poster_stem(m), "actor_name": correct_actor.get("name"),
+    return {"stem": _movie_art_stem(m), "actor_name": correct_actor.get("name"),
             **_single(_person_opt(correct_actor), [_person_opt(p) for p in d])}
 
 
