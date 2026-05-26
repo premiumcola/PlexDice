@@ -45,9 +45,12 @@ def _poster_stem(m):
 
 def _movie_art_stem(m: Dict[str, Any]) -> Dict[str, Any]:
     # Landscape backdrop instead of the poster — posters often print the lead
-    # actor's name across the top, which hands the answer away.
-    url = m.get("art_url") or m.get("thumb_url")
-    return {"kind": "image", "content": url, "aspect": "16/9"}
+    # actor's name across the top, which hands the answer away. art_url is always
+    # set, so key the fallback off _art (the real backdrop) to dodge a 404; movies
+    # without a backdrop (rare) fall back to the poster.
+    if m.get("_art"):
+        return {"kind": "image", "content": m.get("art_url"), "aspect": "16/9"}
+    return {"kind": "image", "content": m.get("thumb_url"), "aspect": "2/3"}
 
 
 def _text_stem(t):
