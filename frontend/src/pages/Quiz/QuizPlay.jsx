@@ -4,6 +4,7 @@ import { navigate } from '../../router';
 import { quizAnswer, quizAbandon, quizState } from '../../api';
 import { loadRound, saveResults, clearRound } from './store';
 import { MODE_PROMPT, TIER_LABEL, STEM_IS_PERSON, OPTIONS_ARE_PERSONS, panelOnRight, fmt } from './util';
+import Fireworks from '../../components/Fireworks';
 
 const TIER_DOT = { 1: '#34d399', 2: '#f5a623', 3: '#fb7185' }; // emerald / amber / rose
 
@@ -288,6 +289,8 @@ export default function QuizPlay({ roundId }) {
   const [elapsed, setElapsed] = useState(0);
   const [paused, setPaused] = useState(false);
   const [flash, setFlash] = useState(false);
+  const [confettiKey, setConfettiKey] = useState(0);
+  const [showConfetti, setShowConfetti] = useState(false);
 
   const startRef = useRef(Date.now());
   const roundStartRef = useRef(Date.now());
@@ -389,6 +392,13 @@ export default function QuizPlay({ roundId }) {
       else setWrongCount((c) => c + 1);
       answersRef.current.push({ mode: q.mode, correct, points: pts, difficulty: q.difficulty });
       if (soundOn) (correct ? chime : buzz)();
+      if (correct) {
+        // "Die Konfettikanone vom Würfeln" — a mini burst on top of the emerald
+        // ring + chime. The key bump forces a fresh remount for every answer.
+        setConfettiKey((k) => k + 1);
+        setShowConfetti(true);
+        setTimeout(() => setShowConfetti(false), 1400);
+      }
       if (timedOut) {
         setFlash(true);
         setTimeout(() => setFlash(false), 200);
@@ -559,6 +569,8 @@ export default function QuizPlay({ roundId }) {
         }} />
       )}
       {flash && <div className="pointer-events-none fixed inset-0 z-40" style={{ background: 'rgba(185,28,28,0.35)' }} />}
+
+      {showConfetti && <Fireworks key={confettiKey} variant="mini" />}
 
       {toast && (
         <div className="pointer-events-none fixed inset-x-0 top-[max(1rem,env(safe-area-inset-top))] z-50 flex justify-center px-4" role="status" aria-live="polite">
