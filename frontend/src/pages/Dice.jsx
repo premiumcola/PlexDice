@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import {
   Dices, SlidersHorizontal, ChevronDown, ChevronUp, Clock, Calendar, Star,
   ShieldAlert, Tag, Film, X, AlertCircle, History as HistoryIcon, Youtube,
@@ -85,6 +85,7 @@ export default function Dice({ onNeedSettings }) {
   const [highlightSection, setHighlightSection] = useState(null);
   const [funnelExpanded, setFunnelExpanded] = useState(false); // transient: result-mode funnel toggle
   const [prefsLoaded, setPrefsLoaded] = useState(false);
+  const resultRef = useRef(null); // the rolled movie card, scrolled into focus after a roll
 
   const [aiInfo, setAiInfo] = useState(null);
   const [aiLoading, setAiLoading] = useState(false);
@@ -195,6 +196,16 @@ export default function Dice({ onNeedSettings }) {
     }
     window.history.replaceState({}, '', '/');
   }, [moviesReady, movies]);
+
+  // After a roll resolves, pull the result card into focus under the sticky top zone
+  // so the controls strip scrolls out of view. No auto-scroll on reset (picked === null).
+  useEffect(() => {
+    if (!picked) return undefined;
+    const t = setTimeout(() => {
+      resultRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    }, 750);
+    return () => clearTimeout(t);
+  }, [picked]);
 
   const effYearMin = yearMin ?? yearBounds.min;
   const effYearMax = yearMax ?? yearBounds.max;
@@ -669,7 +680,7 @@ export default function Dice({ onNeedSettings }) {
                 ? undefined
                 : '0 8px 24px rgba(245,166,35,0.35), 0 16px 48px rgba(245,166,35,0.15), inset 0 1px 0 rgba(255,255,255,0.20)',
             }}
-            className={`w-full py-5 rounded-2xl text-zinc-950 font-semibold text-lg tracking-wide flex items-center justify-center gap-3 active:scale-[0.985] transition-transform disabled:opacity-40 disabled:active:scale-100 ${rolling ? 'glow-pulse' : ''}`}
+            className={`w-full rounded-2xl text-zinc-950 font-semibold tracking-wide flex items-center justify-center gap-3 active:scale-[0.985] transition-transform disabled:opacity-40 disabled:active:scale-100 ${picked ? 'py-2.5 text-base' : 'py-5 text-lg'} ${rolling ? 'glow-pulse' : ''}`}
           >
             <span className={rolling ? 'dice-shake' : 'inline-block'}>
               <Dices className="w-7 h-7" strokeWidth={2.5} />
@@ -699,7 +710,7 @@ export default function Dice({ onNeedSettings }) {
 
           {/* Picked movie card */}
           {picked && !rolling && (
-            <article key={picked.key} className="mt-6 rounded-3xl bg-gradient-to-br from-zinc-900 to-zinc-900/40 ring-1 ring-amber-500/10 overflow-hidden reveal-card">
+            <article ref={resultRef} key={picked.key} className="mt-6 scroll-mt-[max(env(safe-area-inset-top),12px)] rounded-3xl bg-gradient-to-br from-zinc-900 to-zinc-900/40 ring-1 ring-amber-500/10 overflow-hidden reveal-card">
               <div className="p-5 sm:p-7">
                 <div className="flex gap-4">
                   {picked.thumb_url && (
