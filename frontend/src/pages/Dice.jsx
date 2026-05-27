@@ -11,6 +11,7 @@ import GenrePicker from '../components/GenrePicker';
 import AppHeader from '../components/AppHeader';
 import Fireworks from '../components/Fireworks';
 import { usePrefs } from '../usePrefs';
+import { sanitizePlexUrl } from '../lib/plexLink';
 
 const ACCENT = '#f5a623';
 const RUNTIME_MIN_BOUND = 60;
@@ -840,7 +841,7 @@ export default function Dice({ onNeedSettings }) {
                 <div className="mt-6 pt-5 border-t border-zinc-800/60 space-y-2">
                   {picked.plex_url && (
                     <a
-                      href={picked.plex_url}
+                      href={sanitizePlexUrl(picked.plex_url)}
                       target="_blank" rel="noopener noreferrer"
                       className="w-full py-3 rounded-xl bg-amber-400 text-zinc-950 font-semibold flex items-center justify-center gap-2 active:scale-[0.98] transition-transform shadow-lg shadow-amber-400/20"
                     >
