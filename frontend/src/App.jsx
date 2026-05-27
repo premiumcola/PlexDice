@@ -5,7 +5,6 @@ import Settings from './pages/Settings';
 import QuizRouter from './pages/Quiz';
 import { getSettings } from './api';
 import { usePathname, navigate } from './router';
-import { useScrolled } from './useScrolled';
 
 const TABS = [
   { id: 'dice', label: 'Würfeln', icon: Dices, path: '/' },
@@ -41,7 +40,6 @@ export default function App() {
   const [needSettings, setNeedSettings] = useState(false);
   const tab = activeTab(pathname);
   const immersive = pathname.startsWith('/quiz/play'); // full-screen quiz play
-  const scrolled = useScrolled();
 
   // On first load: to Settings if Plex isn't connected; otherwise honour the
   // start-tab preference when landing on the root.
@@ -90,14 +88,21 @@ export default function App() {
 
   return (
     <div className="min-h-[100dvh] bg-zinc-950">
-      {/* Solid cover over the iOS status-bar zone so scrolled content never bleeds
-          through the translucent status bar; amber hairline once scrolled. 0-height
-          (invisible) off iOS where the inset is 0. */}
+      {/* Soft scrim: solid zinc-950 behind the status bar, fading to transparent ~56px
+          below the inset so content scrolls under a gentle fade — no seam, no hairline. */}
       {!immersive && (
         <div
           aria-hidden="true"
-          className={`fixed top-0 inset-x-0 z-50 bg-zinc-950 transition-shadow ${scrolled ? 'shadow-[0_1px_0_rgba(245,166,35,0.25)]' : ''}`}
-          style={{ height: 'env(safe-area-inset-top)' }}
+          className="fixed top-0 inset-x-0 z-50 pointer-events-none"
+          style={{
+            height: 'calc(env(safe-area-inset-top) + 56px)',
+            background:
+              'linear-gradient(to bottom, '
+              + 'rgb(9 9 11) 0px, '
+              + 'rgb(9 9 11) env(safe-area-inset-top), '
+              + 'rgba(9, 9, 11, 0.85) calc(env(safe-area-inset-top) + 16px), '
+              + 'rgba(9, 9, 11, 0) calc(env(safe-area-inset-top) + 56px))',
+          }}
         />
       )}
       {needSettings && tab === 'settings' && (
@@ -106,7 +111,7 @@ export default function App() {
         </div>
       )}
 
-      <main className={immersive ? '' : 'safe-top pb-16 sm:pb-0'}>{page}</main>
+      <main className={immersive ? '' : 'safe-top pt-3 pb-16 sm:pb-0'}>{page}</main>
 
       {!immersive && (
         <>
