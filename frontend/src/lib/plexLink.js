@@ -12,3 +12,38 @@ export function sanitizePlexUrl(url) {
   const suffix = url.slice(m[0].length);
   return `http://${ip}${port}${suffix}`;
 }
+
+// iOS / iPadOS / Android — where the native Plex app can be deep-linked. iPadOS Safari
+// masquerades as desktop (platform "MacIntel"), so the touch-point heuristic catches it.
+export function isPlexAppPlatform() {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent || '';
+  const iOS = /iPad|iPhone|iPod/.test(ua)
+    || (navigator.platform === 'MacIntel' && (navigator.maxTouchPoints || 0) > 1);
+  return iOS || /Android/.test(ua);
+}
+
+// Native Plex app deep link to a movie's preplay screen.
+export function plexAppUrl(ratingKey, machineId) {
+  const metadataKey = encodeURIComponent(`/library/metadata/${ratingKey}`);
+  return `plex://preplay/?metadataKey=${metadataKey}&server=${machineId}`;
+}
+
+// On mobile, jump to the native app; if the page is still visible after ~1.5s (app not
+// installed / didn't take over), fall back to the web URL. Returns true if it handled
+// the open (caller should preventDefault), false to let the plain web link proceed.
+export function openInPlexApp({ ratingKey, machineId, webUrl }) {
+  if (!isPlexAppPlatform() || !ratingKey || !machineId) return false;
+  const fallback = setTimeout(() => {
+    if (document.visibilityState === 'visible' && webUrl) {
+      window.open(webUrl, '_blank', 'noopener');
+    }
+  }, 1500);
+  document.addEventListener(
+    'visibilitychange',
+    () => { if (document.visibilityState === 'hidden') clearTimeout(fallback); },
+    { once: true },
+  );
+  window.location.href = plexAppUrl(ratingKey, machineId);
+  return true;
+}
