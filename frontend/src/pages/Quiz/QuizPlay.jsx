@@ -303,7 +303,8 @@ function QuestionTimeline({ questions, statusMap, currentQid, layout, remainingM
   // floor, Stage B "focus mode" collapses done chips to dots and emphasises the current.
   const GAP = 4; // gap-1
   const uniform = innerW > 0 ? Math.floor((innerW - (n - 1) * GAP) / n) : 28;
-  const base = 'md:hidden shrink-0 flex items-center gap-1 pt-0 pb-1.5 bg-zinc-100 border-b border-amber-500/50';
+  // py-1.5 gives the active chip's pulse ring room so it isn't clipped at the strip edge.
+  const base = 'md:hidden shrink-0 flex items-center gap-1 py-1.5 bg-zinc-100 border-b border-amber-500/50';
   const pad = { paddingInline: 'max(8px, env(safe-area-inset-left))' };
 
   if (uniform >= 14) {
@@ -333,7 +334,7 @@ function QuestionTimeline({ questions, statusMap, currentQid, layout, remainingM
     <div
       ref={stripRef}
       aria-label="Fragen-Fortschritt"
-      className={`${base} ${scroll ? 'justify-start overflow-x-auto' : 'justify-center'}`}
+      className={`${base} ${scroll ? 'justify-start overflow-x-auto overflow-y-visible' : 'justify-center'}`}
       style={scroll ? { ...pad, scrollSnapType: 'x mandatory', scrollPaddingInline: '50%' } : pad}
     >
       {nodes}
