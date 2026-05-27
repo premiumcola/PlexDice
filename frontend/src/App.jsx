@@ -5,6 +5,7 @@ import Settings from './pages/Settings';
 import QuizRouter from './pages/Quiz';
 import { getSettings } from './api';
 import { usePathname, navigate } from './router';
+import { useScrolled } from './useScrolled';
 
 const TABS = [
   { id: 'dice', label: 'Würfeln', icon: Dices, path: '/' },
@@ -40,6 +41,7 @@ export default function App() {
   const [needSettings, setNeedSettings] = useState(false);
   const tab = activeTab(pathname);
   const immersive = pathname.startsWith('/quiz/play'); // full-screen quiz play
+  const scrolled = useScrolled();
 
   // On first load: to Settings if Plex isn't connected; otherwise honour the
   // start-tab preference when landing on the root.
@@ -88,6 +90,16 @@ export default function App() {
 
   return (
     <div className="min-h-[100dvh] bg-zinc-950">
+      {/* Solid cover over the iOS status-bar zone so scrolled content never bleeds
+          through the translucent status bar; amber hairline once scrolled. 0-height
+          (invisible) off iOS where the inset is 0. */}
+      {!immersive && (
+        <div
+          aria-hidden="true"
+          className={`fixed top-0 inset-x-0 z-50 bg-zinc-950 transition-shadow ${scrolled ? 'shadow-[0_1px_0_rgba(245,166,35,0.25)]' : ''}`}
+          style={{ height: 'env(safe-area-inset-top)' }}
+        />
+      )}
       {needSettings && tab === 'settings' && (
         <div className="safe-top sticky top-0 z-50 bg-amber-400 text-zinc-950 text-sm font-semibold px-4 py-2 flex items-center gap-2">
           <AlertCircle className="w-4 h-4 shrink-0" /> Bitte zuerst Plex verbinden
