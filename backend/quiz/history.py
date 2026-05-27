@@ -3,9 +3,10 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import threading
 from typing import Any, Dict, List, Optional
+
+from atomic_io import atomic_write_json
 
 logger = logging.getLogger(__name__)
 
@@ -37,11 +38,7 @@ class History:
 
     @staticmethod
     def _write(path: str, data: Any) -> None:
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        tmp = f"{path}.tmp"
-        with open(tmp, "w", encoding="utf-8") as fh:
-            json.dump(data, fh, ensure_ascii=False)
-        os.replace(tmp, path)
+        atomic_write_json(path, data, ensure_ascii=False)
 
     def add_round(self, record: Dict[str, Any]) -> Dict[str, Any]:
         with self._lock:

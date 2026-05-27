@@ -10,6 +10,7 @@ from typing import Any, Dict
 from flask import Blueprint, jsonify, request
 
 import movie_info
+from atomic_io import atomic_write_json
 from services import DATA_DIR, library_cache
 
 bp = Blueprint("movie_info", __name__, url_prefix="/api/movie")
@@ -28,11 +29,7 @@ def _load() -> Dict[str, Any]:
 
 
 def _save(cache: Dict[str, Any]) -> None:
-    os.makedirs(os.path.dirname(_CACHE_PATH), exist_ok=True)
-    tmp = f"{_CACHE_PATH}.tmp"
-    with open(tmp, "w", encoding="utf-8") as fh:
-        json.dump(cache, fh, ensure_ascii=False)
-    os.replace(tmp, _CACHE_PATH)
+    atomic_write_json(_CACHE_PATH, cache, ensure_ascii=False)
 
 
 def clear_cache() -> int:
