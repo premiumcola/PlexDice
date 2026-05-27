@@ -13,6 +13,8 @@ const SOURCES = {
 
 const DEV = import.meta.env.DEV;
 let ctx = null;
+let unlocked = false; // iOS only plays once a gesture has unlocked the context
+let soundEnabled = true; // mirrors the quiz Sound toggle; read synchronously here
 const buffers = {}; // name -> decoded AudioBuffer
 const loading = {}; // name -> Promise<AudioBuffer | null>
 
@@ -30,6 +32,41 @@ function ensureCtx() {
 // in-game sound isn't blocked by the browser's autoplay policy.
 export function initAudio() {
   return ensureCtx();
+}
+
+// iOS Safari only lets Web Audio play after a real gesture creates + resumes the
+// context AND a buffer has been started inside that gesture. Do all three here.
+export function unlockAudio() {
+  if (unlocked) return;
+  const c = ensureCtx();
+  if (!c) return;
+  if (c.state === 'suspended') c.resume().catch(() => {});
+  try {
+    const buf = c.createBuffer(1, 1, 22050);
+    const src = c.createBufferSource();
+    src.buffer = buf;
+    src.connect(c.destination);
+    src.start(0);
+  } catch {
+    /* ignore — context not ready */
+  }
+  unlocked = true;
+}
+
+// Read synchronously inside playSound; fed from the quiz Sound toggle / round config.
+export function setSoundEnabled(on) {
+  soundEnabled = on !== false;
+}
+
+// Unlock on the first gesture anywhere, capturing before any tap handler runs, so by
+// the time a button is pressed the audio context is already alive.
+if (typeof window !== 'undefined') {
+  const evts = ['touchstart', 'touchend', 'click', 'keydown'];
+  const handler = () => {
+    unlockAudio();
+    evts.forEach((e) => document.removeEventListener(e, handler, true));
+  };
+  evts.forEach((e) => document.addEventListener(e, handler, { capture: true, passive: true }));
 }
 
 function loadBuffer(name) {
@@ -62,16 +99,17 @@ export function preloadSounds() {
 }
 
 export function playSound(name, { volume = 1.0 } = {}) {
-  const ac = ensureCtx();
-  if (!ac) return;
+  if (!soundEnabled) return;
+  if (!ctx) return; // no gesture yet → context not created, nothing to play
+  if (ctx.state === 'suspended') ctx.resume().catch(() => {}); // iOS can suspend mid-session
   const start = (buffer) => {
     if (!buffer) return;
     try {
-      const src = ac.createBufferSource();
+      const src = ctx.createBufferSource();
       src.buffer = buffer;
-      const gain = ac.createGain();
+      const gain = ctx.createGain();
       gain.gain.value = Math.max(0, Math.min(1, volume));
-      src.connect(gain).connect(ac.destination);
+      src.connect(gain).connect(ctx.destination);
       src.start();
     } catch {
       /* node creation can throw if the context died — ignore */

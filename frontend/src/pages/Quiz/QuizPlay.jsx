@@ -29,7 +29,7 @@ function DifficultyBadge({ tier }) {
     </span>
   );
 }
-import { initAudio, playSound, preloadSounds } from './audio';
+import { initAudio, playSound, preloadSounds, setSoundEnabled } from './audio';
 import RadialCountdown from './RadialCountdown';
 
 function basePoints(timeMs) {
@@ -557,8 +557,9 @@ export default function QuizPlay({ roundId }) {
     setSelectedIds([id]);
   };
 
-  // Decode all sounds up front so the first in-game tick has zero latency.
-  useEffect(() => { preloadSounds(); }, []);
+  // Decode all sounds up front (zero first-tick latency) and gate them on this round's
+  // Sound setting so playSound honours it even from the timer interval.
+  useEffect(() => { preloadSounds(); setSoundEnabled(soundOn); }, [soundOn]);
 
   useEffect(() => {
     if (locked || !q) return undefined;

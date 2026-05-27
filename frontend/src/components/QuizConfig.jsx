@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ChevronDown, ChevronUp, Check, Volume2, Loader2, Lock } from 'lucide-react';
 import { quizGetConfig, quizSaveConfig, getLibraryStatus } from '../api';
-import { playMenacePreview } from '../pages/Quiz/audio';
+import { playMenacePreview, setSoundEnabled } from '../pages/Quiz/audio';
 
 const DIFFS = [
   { v: 'easy', label: '🟢 Leicht' },
@@ -46,7 +46,7 @@ export default function QuizConfig() {
   const saveTimer = useRef(null);
 
   useEffect(() => {
-    quizGetConfig().then(setCfg).catch(() => {});
+    quizGetConfig().then((c) => { setCfg(c); setSoundEnabled(c?.sound_enabled); }).catch(() => {});
     getLibraryStatus().then(setStatus).catch(() => {});
   }, []);
 
@@ -121,7 +121,7 @@ export default function QuizConfig() {
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-800 text-zinc-200 text-sm active:scale-95">
             <Volume2 className="w-4 h-4" /> Test
           </button>
-          <Toggle checked={cfg.sound_enabled} onChange={(v) => patch({ sound_enabled: v })} />
+          <Toggle checked={cfg.sound_enabled} onChange={(v) => { patch({ sound_enabled: v }); setSoundEnabled(v); }} />
         </div>
       </div>
 
