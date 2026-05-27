@@ -80,9 +80,10 @@ def _maybe_enrich() -> None:
         logger.warning("Boot enrichment skipped: %s", exc)
 
 
-def _log_stale_deep_links() -> None:
-    """Warn (never modify) when cached deep-links still point at plex.direct but a
-    cleaner link base now applies — the user re-syncs from Settings to refresh them."""
+def _heal_stale_deep_links() -> None:
+    """Rewrite plex.direct URLs in the in-memory library cache to the clean LAN-IP base.
+    The on-disk JSON is NOT modified — each boot heals the in-memory copy idempotently
+    (movies() shares the dict references, so the mutation sticks)."""
     try:
         movies = library_cache.movies()
         if not movies:
@@ -90,16 +91,27 @@ def _log_stale_deep_links() -> None:
         plex = settings_store.get("plex")
         manual = (plex.get("plex_server_url") or "").strip() or None
         link_base = _lan_link_base(plex.get("url") or "", manual)
-        first = movies[0].get("plex_url") or ""
-        if ".plex.direct" in first and ".plex.direct" not in link_base:
-            stale = sum(1 for m in movies if ".plex.direct" in (m.get("plex_url") or ""))
-            logger.info("Library cache has %d stale deep-links — sync to refresh", stale)
+        if ".plex.direct" in link_base:
+            return  # nothing better to offer
+        healed = 0
+        for m in movies:
+            url = m.get("plex_url") or ""
+            if ".plex.direct" not in url:
+                continue
+            # Split at ":32400" to keep the /web/index.html#!/... suffix.
+            parts = url.split(":32400", 1)
+            if len(parts) != 2:
+                continue
+            m["plex_url"] = f"{link_base}{parts[1]}"
+            healed += 1
+        if healed:
+            logger.info("Healed %d stale plex.direct deep-links in memory", healed)
     except Exception as exc:  # noqa: BLE001
-        logger.warning("Stale deep-link check skipped: %s", exc)
+        logger.warning("Deep-link heal skipped: %s", exc)
 
 
 _log_persistence_diagnostics()
 _seed_from_env()
 settings_store.ensure_client_id()
 _maybe_enrich()
-_log_stale_deep_links()
+_heal_stale_deep_links()
