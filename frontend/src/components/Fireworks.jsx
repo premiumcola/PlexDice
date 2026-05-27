@@ -2,12 +2,44 @@ import { useMemo } from 'react';
 
 const COLORS = ['#f5a623', '#f472b6', '#a78bfa', '#22d3ee', '#fb7185', '#34d399', '#fde047'];
 
-// Shared confetti burst. `variant` controls the intensity:
-//   'bursts' — three offset bursts, 22 particles each + emoji stars (Würfeln's big throw)
-//   'mini'   — one centred burst, 14 particles, ~1.0 s, no stars (Quiz: lively, not loud)
+// Shared confetti / fireworks burst.
+//   variant 'bursts' — three offset bursts, 22 particles each + emoji stars (Würfeln)
+//   variant 'mini'   — one centred burst, 14 particles, no stars (subtle)
+//   origin {x,y}     — viewport-PIXEL launch point: bursts originate above it and
+//                      explode across the viewport (Quiz correct-answer rockets).
 // The component carries its own keyframes so callers need no CSS.
-export default function Fireworks({ variant = 'bursts' }) {
-  const particles = useMemo(() => {
+export default function Fireworks({ variant = 'bursts', origin = null }) {
+  const { particles, viewBox, stars } = useMemo(() => {
+    if (origin) {
+      // Rockets: bursts offset up-and-out from the card centre, in viewport pixels.
+      const vw = typeof window !== 'undefined' ? window.innerWidth : 1000;
+      const vh = typeof window !== 'undefined' ? window.innerHeight : 1000;
+      const bursts = [
+        { x: origin.x - 80, y: origin.y - 180, delay: 0 },
+        { x: origin.x, y: origin.y - 260, delay: 0.18 },
+        { x: origin.x + 80, y: origin.y - 180, delay: 0.36 },
+      ];
+      const out = [];
+      bursts.forEach((burst, bi) => {
+        for (let i = 0; i < 24; i++) {
+          const angle = (i / 24) * Math.PI * 2 + Math.random() * 0.3;
+          const distance = 70 + Math.random() * 130;
+          out.push({
+            id: `${bi}-${i}`,
+            cx: burst.x,
+            cy: burst.y,
+            r: 3 + Math.random() * 5,
+            dx: Math.cos(angle) * distance,
+            dy: Math.sin(angle) * distance,
+            color: COLORS[Math.floor(Math.random() * COLORS.length)],
+            delay: burst.delay + Math.random() * 0.1,
+            duration: 0.9 + Math.random() * 0.5,
+          });
+        }
+      });
+      return { particles: out, viewBox: `0 0 ${vw} ${vh}`, stars: false };
+    }
+
     const mini = variant === 'mini';
     const bursts = mini
       ? [{ x: 50, y: 45 }]
@@ -20,19 +52,19 @@ export default function Fireworks({ variant = 'bursts' }) {
         const distance = mini ? 50 + Math.random() * 80 : 80 + Math.random() * 140;
         out.push({
           id: `${bi}-${i}`,
-          x: burst.x,
-          y: burst.y,
-          dx: Math.cos(angle) * distance,
-          dy: Math.sin(angle) * distance,
+          cx: burst.x,
+          cy: burst.y,
+          r: (mini ? 2 + Math.random() * 3 : 2 + Math.random() * 4) / 10,
+          dx: (Math.cos(angle) * distance) / 10,
+          dy: (Math.sin(angle) * distance) / 10,
           color: COLORS[Math.floor(Math.random() * COLORS.length)],
-          size: mini ? 2 + Math.random() * 3 : 2 + Math.random() * 4,
           delay: (mini ? 0 : bi * 0.15) + Math.random() * 0.1,
           duration: mini ? 0.8 + Math.random() * 0.3 : 0.9 + Math.random() * 0.5,
         });
       }
     });
-    return out;
-  }, [variant]);
+    return { particles: out, viewBox: '0 0 100 100', stars: !mini };
+  }, [variant, origin]);
 
   return (
     <div className="pointer-events-none fixed inset-0 z-50 overflow-hidden">
@@ -49,24 +81,24 @@ export default function Fireworks({ variant = 'bursts' }) {
           100% { transform: scale(2.4) rotate(360deg); opacity: 0; }
         }
       `}</style>
-      <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+      <svg className="w-full h-full" viewBox={viewBox} preserveAspectRatio="none">
         {particles.map((p) => (
           <circle
             key={p.id}
-            cx={p.x}
-            cy={p.y}
-            r={p.size / 10}
+            cx={p.cx}
+            cy={p.cy}
+            r={p.r}
             fill={p.color}
             style={{
               animation: `firework ${p.duration}s ease-out ${p.delay}s forwards`,
-              transformOrigin: `${p.x}px ${p.y}px`,
-              '--dx': `${p.dx / 10}px`,
-              '--dy': `${p.dy / 10}px`,
+              transformOrigin: `${p.cx}px ${p.cy}px`,
+              '--dx': `${p.dx}px`,
+              '--dy': `${p.dy}px`,
             }}
           />
         ))}
       </svg>
-      {variant !== 'mini' && (
+      {stars && (
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="relative w-full h-full">
             {['✨', '⭐', '✨'].map((emoji, i) => (

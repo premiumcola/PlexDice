@@ -5,6 +5,7 @@ import { quizAnswer, quizAbandon, quizState } from '../../api';
 import { loadRound, saveResults, clearRound } from './store';
 import { MODE_PROMPT, TIER_LABEL, STEM_IS_PERSON, OPTIONS_ARE_PERSONS, panelOnRight, fmt } from './util';
 import Fireworks from '../../components/Fireworks';
+import { usePrefs } from '../../usePrefs';
 
 const TIER_DOT = { 1: '#34d399', 2: '#f5a623', 3: '#fb7185' }; // emerald / amber / rose
 // Timeline chip difficulty pip — Tailwind bg classes (emerald / amber / rose-400).
@@ -71,7 +72,7 @@ function renderRedactedPlot(text) {
 
 // Dark-Panel option. Unselected = zinc; selected (not locked) = amber outline;
 // reveal = emerald (correct) / rose (wrong chosen).
-function OptionButton({ option, mode, fill, selected, locked, reveal, onTap, hint }) {
+function OptionButton({ option, mode, fill, selected, locked, reveal, onTap, hint, btnRef, flash }) {
   let cls = 'border border-zinc-700 bg-zinc-800/60 text-zinc-100';
   let anim;
   if (!locked && selected) {
@@ -109,11 +110,12 @@ function OptionButton({ option, mode, fill, selected, locked, reveal, onTap, hin
     : 'min-h-[64px] p-3 md:p-4 flex flex-col justify-center text-left';
   return (
     <button
+      ref={btnRef}
       type="button"
       disabled={locked}
       onClick={() => onTap(option.id)}
       style={{ animation: anim || 'none' }}
-      className={`relative rounded-2xl overflow-hidden ${cls} transition-all duration-[120ms] ease-out active:scale-[0.97] disabled:active:scale-100 ${isImage ? imageBox : textBox}`}
+      className={`relative rounded-2xl overflow-hidden ${cls} transition-all duration-[120ms] ease-out active:scale-[0.97] disabled:active:scale-100 ${isImage ? imageBox : textBox} ${flash ? 'animate-quizCardFlash' : ''}`}
     >
       {isImage ? (
         <>
@@ -280,8 +282,12 @@ export default function QuizPlay({ roundId }) {
   const [elapsed, setElapsed] = useState(0);
   const [paused, setPaused] = useState(false);
   const [flash, setFlash] = useState(false);
-  const [confettiKey, setConfettiKey] = useState(0);
-  const [showConfetti, setShowConfetti] = useState(false);
+  const { reduceMotion } = usePrefs();
+  const correctOptionRef = useRef(null);
+  const [fireworksOrigin, setFireworksOrigin] = useState(null);
+  const [fireworksKey, setFireworksKey] = useState(0);
+  const [showCardFlash, setShowCardFlash] = useState(false);
+  const [showPageWash, setShowPageWash] = useState(false);
   const [roundTwoIntroShown, setRoundTwoIntroShown] = useState(false);
   const [showRoundTwoIntro, setShowRoundTwoIntro] = useState(false);
   const [roundTwoCountdown, setRoundTwoCountdown] = useState(3);
@@ -420,12 +426,20 @@ export default function QuizPlay({ roundId }) {
       else setWrongCount((c) => c + 1);
       answersRef.current.push({ mode: q.mode, correct, points: pts, difficulty: q.difficulty });
       if (soundOn) playSound(correct ? 'correct' : 'loser');
-      if (correct) {
-        // "Die Konfettikanone vom Würfeln" — a mini burst on top of the emerald
-        // ring + chime. The key bump forces a fresh remount for every answer.
-        setConfettiKey((k) => k + 1);
-        setShowConfetti(true);
-        setTimeout(() => setShowConfetti(false), 1400);
+      if (correct && !reduceMotion) {
+        // Rockets launch from the correct card's centre and explode upward; the card
+        // flickers multi-colour and a brief emerald wash flashes once. ≤ 2 s total.
+        const el = correctOptionRef.current;
+        if (el) {
+          const r = el.getBoundingClientRect();
+          setFireworksOrigin({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
+          setFireworksKey((k) => k + 1);
+          setShowCardFlash(true);
+          setShowPageWash(true);
+          setTimeout(() => setShowCardFlash(false), 900);
+          setTimeout(() => setShowPageWash(false), 280);
+          setTimeout(() => setFireworksOrigin(null), 2000);
+        }
       }
       if (timedOut) {
         setFlash(true);
@@ -437,7 +451,7 @@ export default function QuizPlay({ roundId }) {
         applyNext(await answerPromise);
       }, autoreveal);
     },
-    [locked, q, roundId, applyNext, dur, soundOn, showCorrect, autoreveal],
+    [locked, q, roundId, applyNext, dur, soundOn, showCorrect, autoreveal, reduceMotion],
   );
 
   const onOption = (id) => {
@@ -609,7 +623,12 @@ export default function QuizPlay({ roundId }) {
       )}
       {flash && <div className="pointer-events-none fixed inset-0 z-40" style={{ background: 'rgba(185,28,28,0.35)' }} />}
 
-      {showConfetti && <Fireworks key={confettiKey} variant="mini" />}
+      {fireworksOrigin && (
+        <Fireworks key={fireworksKey} variant="bursts" origin={fireworksOrigin} />
+      )}
+      {showPageWash && (
+        <div className="fixed inset-0 z-[55] pointer-events-none bg-emerald-400/15 animate-quizPageWash" />
+      )}
 
       {toast && (
         <div className="pointer-events-none fixed inset-x-0 top-[max(1rem,env(safe-area-inset-top))] z-50 flex justify-center px-4" role="status" aria-live="polite">
@@ -727,7 +746,19 @@ export default function QuizPlay({ roundId }) {
         <div className={`flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 pt-3 ${q.multi_select ? '' : 'pb-[max(0.75rem,env(safe-area-inset-bottom))]'}`}>
           <div key={visitSeq} className={`grid ${gridCols} gap-2 sm:gap-3 ${textOptions ? 'h-full auto-rows-fr' : ''} ${shortStage ? 'max-w-2xl mx-auto w-full' : ''}`} style={{ animation: 'pfSlideUp 0.25s ease' }}>
             {q.options.map((o) => (
-              <OptionButton key={o.id} option={o} mode={q.mode} fill={textOptions} selected={selectedIds.includes(o.id)} locked={locked} reveal={reveal} onTap={onOption} hint={!q.multi_select} />
+              <OptionButton
+                key={o.id}
+                option={o}
+                mode={q.mode}
+                fill={textOptions}
+                selected={selectedIds.includes(o.id)}
+                locked={locked}
+                reveal={reveal}
+                onTap={onOption}
+                hint={!q.multi_select}
+                btnRef={o.id === q.correct_option_id ? correctOptionRef : undefined}
+                flash={showCardFlash && o.id === q.correct_option_id}
+              />
             ))}
           </div>
         </div>
@@ -751,7 +782,7 @@ export default function QuizPlay({ roundId }) {
           onClick={dismissRoundTwoIntro}
           className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-zinc-950/85 backdrop-blur-md"
         >
-          <Fireworks variant="mini" />
+          {!reduceMotion && <Fireworks variant="mini" />}
           <div className="text-amber-400 text-sm uppercase tracking-[0.3em] mb-3">
             Wiederholungs-Runde
           </div>

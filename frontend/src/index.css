@@ -100,3 +100,40 @@ body {
     transform: scale(0.92);
   }
 }
+
+/* Quiz correct-answer flair: multi-colour card flash + brief page wash. */
+@keyframes quizCardFlash {
+  0% {
+    box-shadow: 0 0 0 0px rgba(16, 185, 129, 0), 0 0 0 0px rgba(245, 166, 35, 0);
+  }
+  15% {
+    box-shadow: 0 0 0 8px rgba(16, 185, 129, 0.9), 0 0 24px 12px rgba(245, 166, 35, 0.45);
+  }
+  35% {
+    box-shadow: 0 0 0 6px rgba(245, 166, 35, 0.9), 0 0 28px 14px rgba(16, 185, 129, 0.55);
+  }
+  60% {
+    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.7), 0 0 20px 8px rgba(236, 72, 153, 0.35);
+  }
+  100% {
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.5), 0 0 0 0px rgba(0, 0, 0, 0);
+  }
+}
+.animate-quizCardFlash {
+  animation: quizCardFlash 0.9s ease-out forwards;
+}
+
+@keyframes quizPageWash {
+  0% {
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.animate-quizPageWash {
+  animation: quizPageWash 0.28s ease-out forwards;
+}
