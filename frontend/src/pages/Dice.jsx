@@ -711,7 +711,7 @@ export default function Dice({ onNeedSettings }) {
 
           {/* Picked movie card */}
           {picked && !rolling && (
-            <article ref={resultRef} key={picked.key} className="mt-6 scroll-mt-[max(env(safe-area-inset-top),12px)] rounded-3xl bg-gradient-to-br from-zinc-900 to-zinc-900/40 ring-1 ring-amber-500/10 overflow-hidden reveal-card">
+            <article ref={resultRef} key={picked.key} className="mt-6 scroll-mt-[calc(env(safe-area-inset-top)+72px)] rounded-3xl bg-gradient-to-br from-zinc-900 to-zinc-900/40 overflow-hidden reveal-card">
               <div className="p-5 sm:p-7">
                 <div className="flex gap-4">
                   {picked.thumb_url && (
