@@ -45,10 +45,21 @@ function mmss(secs) {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-// A short text stem (the "A & B" pill of the two-stars question) needs no tall Stage —
-// let the Stage shrink to the pill so the cover options claim the lower viewport.
+// A short text stem (a "pill" — the "A & B" two-stars line, "Drehbuch: <name>", …)
+// needs no tall Stage; shrink it so the cover options claim the lower viewport. Long
+// text stems (plot / tagline / redacted plot) stay tall.
 function stemIsShortText(q) {
-  return q.stem?.kind === 'text' && q.mode === 'two_actors_to_shared';
+  if (q.stem?.kind !== 'text') return false;
+  const text = String(q.stem.content || '').trim();
+  if (!text) return false;
+  const PILL_MODES = new Set([
+    'two_actors_to_shared',
+    'writer_to_movie',
+    'slogan_to_movie',
+  ]);
+  if (PILL_MODES.has(q.mode)) return true;
+  // Belt-and-braces: any TEXT stem under 60 chars counts as a pill.
+  return text.length <= 60;
 }
 
 // Backend marks each redacted plot word as ⁣[REDACT:n]⁣ (invisible separators
@@ -658,12 +669,12 @@ export default function QuizPlay({ roundId }) {
   const stemAspectClass =
     stemAspect === '16/9' ? 'aspect-[16/9]' : stemAspect === '1/1' ? 'aspect-square' : 'aspect-[2/3]';
   const stemLandscape = stemAspect === '16/9';
+  // A short "pill" text stem shrinks the Stage so the cover options fill the Panel
+  // below; it stays panel-below on every breakpoint (never side-by-side).
+  const shortStage = stemIsShortText(q);
   // md+ only: tall image options claim the full-height stage on the right so covers
-  // never clip; text-chip trays / multi-select sit below. Below md it is always
-  // bottom (CSS handles the breakpoint).
-  const wantsRight = panelOnRight(q);
-  // Short text stem + panel-below: Stage hugs the pill, Panel grows to fill the rest.
-  const shortStage = stemIsShortText(q) && !wantsRight;
+  // never clip; pill stems and multi-select trays sit below regardless.
+  const wantsRight = panelOnRight(q) && !shortStage;
   // A text-only option grid stretches to fill the Panel; image grids keep their aspect.
   const textOptions = q.options.every((o) => o.kind === 'text');
   const gridCols = q.options.length > 4 ? 'grid-cols-3' : 'grid-cols-2';
