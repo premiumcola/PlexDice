@@ -28,7 +28,7 @@ function DifficultyBadge({ tier }) {
     </span>
   );
 }
-import { initAudio, tick, tickParams, chime, buzz } from './audio';
+import { initAudio, playSound, preloadSounds } from './audio';
 import RadialCountdown from './RadialCountdown';
 
 function basePoints(timeMs) {
@@ -290,7 +290,7 @@ export default function QuizPlay({ roundId }) {
   const roundStartRef = useRef(Date.now());
   const pausedRef = useRef(false);
   const pauseRemainRef = useRef(dur);
-  const lastTickRef = useRef(0);
+  const lastSecRef = useRef(null);
   const answersRef = useRef([]);
   const selectedRef = useRef([]);
   const lastTapRef = useRef({ id: null, ts: 0 });
@@ -344,6 +344,7 @@ export default function QuizPlay({ roundId }) {
   const startRoundTwoIntro = useCallback(() => {
     setRoundTwoIntroShown(true);
     setShowRoundTwoIntro(true);
+    if (soundOn) playSound('drumroll');
     setRoundTwoCountdown(3);
     introActiveRef.current = true; // read inside the question-timer interval to pause it
     if (roundTwoTimerRef.current) clearInterval(roundTwoTimerRef.current);
@@ -418,7 +419,7 @@ export default function QuizPlay({ roundId }) {
       if (correct) setCorrectCount((c) => c + 1);
       else setWrongCount((c) => c + 1);
       answersRef.current.push({ mode: q.mode, correct, points: pts, difficulty: q.difficulty });
-      if (soundOn) (correct ? chime : buzz)();
+      if (soundOn) playSound(correct ? 'correct' : 'loser');
       if (correct) {
         // "Die Konfettikanone vom Würfeln" — a mini burst on top of the emerald
         // ring + chime. The key bump forces a fresh remount for every answer.
@@ -443,6 +444,7 @@ export default function QuizPlay({ roundId }) {
     if (locked || pausedRef.current) return;
     initAudio();
     if (q.multi_select) {
+      if (soundOn) playSound('click');
       setSelectedIds((sel) => {
         const next = sel.includes(id) ? sel.filter((x) => x !== id) : [...sel, id];
         selectedRef.current = next;
@@ -460,30 +462,37 @@ export default function QuizPlay({ roundId }) {
       lockIn([id]);
       return;
     }
+    if (soundOn) playSound('click');
     lastTapRef.current = { id, ts: now };
     selectedRef.current = [id];
     setSelectedIds([id]);
   };
 
+  // Decode all sounds up front so the first in-game tick has zero latency.
+  useEffect(() => { preloadSounds(); }, []);
+
   useEffect(() => {
     if (locked || !q) return undefined;
     startRef.current = Date.now();
-    lastTickRef.current = 0;
+    lastSecRef.current = null;
     setRemaining(dur);
     const iv = setInterval(() => {
       if (pausedRef.current || introActiveRef.current) return;
       const rem = dur - (Date.now() - startRef.current);
       if (rem <= 0) {
         setRemaining(0);
+        if (soundOn) playSound('alarm');
         lockIn(selectedRef.current, true);
         return;
       }
       setRemaining(rem);
-      if (soundOn) {
-        const { hz, freq } = tickParams(rem / dur);
-        if (Date.now() - lastTickRef.current >= 1000 / hz) {
-          lastTickRef.current = Date.now();
-          tick(freq);
+      // One sound per whole second as it counts down: tick at 10→6, bomb at 5→1.
+      const sec = Math.ceil(rem / 1000);
+      if (sec !== lastSecRef.current) {
+        lastSecRef.current = sec;
+        if (soundOn) {
+          if (sec >= 6 && sec <= 10) playSound('tick');
+          else if (sec >= 1 && sec <= 5) playSound('bomb');
         }
       }
     }, 100);

@@ -87,11 +87,3 @@ export function playMenacePreview() {
   const seq = [['tick', 0], ['tick', 350], ['tick', 700], ['bomb', 1000], ['bomb', 1250], ['alarm', 1600]];
   seq.forEach(([name, at]) => setTimeout(() => playSound(name), at));
 }
-
-// --- transitional shims (removed in V2 once QuizPlay calls playSound directly) ---
-export const tick = () => playSound('tick');
-export const chime = () => playSound('correct');
-export const buzz = () => playSound('loser');
-export function tickParams() {
-  return { hz: 1, freq: 880 };
-}
