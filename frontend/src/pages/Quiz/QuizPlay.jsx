@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Timer, Check, X, Pause, Play, RotateCcw, LogOut, MousePointerClick } from 'lucide-react';
 import { navigate } from '../../router';
 import { quizAnswer, quizAbandon, quizState } from '../../api';
@@ -192,65 +192,140 @@ const CHIP_LABEL = {
 function QuestionTimeline({ questions, statusMap, currentQid, layout, remainingMs, durationMs }) {
   const rail = layout === 'rail';
   const n = questions.length || 1;
-  // Fit-always: shrink each chip to fit the rail height / strip width, capped per layout.
-  const size = rail
-    ? `clamp(14px, calc((100vh - 6rem) / ${n}), 32px)`
-    : `clamp(14px, calc((100vw - 1.5rem) / ${n}), 28px)`;
-  const fontSize = rail
-    ? `clamp(9px, calc((100vh - 6rem) / ${n} * 0.42), 14px)`
-    : `clamp(8px, calc((100vw - 1.5rem) / ${n} * 0.42), 12px)`;
-  // Mirror the clamp in JS to know when chips fall under 24px so the gap can tighten to 4px.
-  const avail = rail
-    ? (typeof window !== 'undefined' ? window.innerHeight : 800) - 96
-    : (typeof window !== 'undefined' ? window.innerWidth : 393) - 24;
-  const gap = Math.max(14, Math.min(rail ? 32 : 28, avail / n)) < 24 ? 'gap-1' : 'gap-1.5';
   const critical =
     remainingMs != null && (remainingMs <= 5000 || remainingMs / (durationMs || 15000) < 5 / 15);
+
+  const stripRef = useRef(null);
+  const currentRef = useRef(null);
+  const [innerW, setInnerW] = useState(0);
+
+  // Measure the strip's inner width (iPhone only) before paint, and on resize.
+  useLayoutEffect(() => {
+    if (rail) return undefined;
+    const measure = () => {
+      const el = stripRef.current;
+      if (!el) return;
+      const cs = window.getComputedStyle(el);
+      const pad = parseFloat(cs.paddingLeft || '0') + parseFloat(cs.paddingRight || '0');
+      setInnerW(Math.max(0, el.clientWidth - pad));
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [rail]);
+
+  // Keep the current chip centred when the strip scrolls (focus / overflow mode).
+  useEffect(() => {
+    if (rail) return;
+    currentRef.current?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+  }, [rail, currentQid, innerW]);
+
+  // One chip. `px`/`fontPx` may be a number (strip) or a CSS clamp string (rail).
+  const chip = (qq, i, px, fontPx) => {
+    const state = chipState(statusMap[qq.id], qq.id === currentQid);
+    const isActive = state === 'active';
+    const tier = qq.tier || qq.difficulty || 1;
+    const showRetry = state === 'retry' || state === 'retry_done';
+    const cls = isActive
+      ? critical
+        ? 'bg-rose-500 text-white ring-2 ring-rose-300'
+        : 'ring-2 ring-amber-400 text-amber-600 bg-amber-400/15'
+      : CHIP_CLASS[state];
+    const anim = isActive
+      ? critical
+        ? 'pfChipBlink 0.35s ease-in-out infinite'
+        : 'pfChipPulse 1.4s ease-in-out infinite'
+      : undefined;
+    const label = `Frage ${i + 1} · Tier ${tier} (${TIER_LABEL[tier] || '?'}) · ${CHIP_LABEL[state]}`;
+    return (
+      <div
+        key={qq.id}
+        ref={!rail && isActive ? currentRef : undefined}
+        title={label}
+        aria-label={label}
+        style={{ width: px, height: px, fontSize: fontPx, animation: anim, scrollSnapAlign: 'center' }}
+        className={`relative shrink-0 rounded-full flex items-center justify-center font-semibold tabular-nums ${cls}`}
+      >
+        {i + 1}
+        <span
+          aria-hidden="true"
+          className={`absolute rounded-full ring-1 ring-zinc-950 ${TIER_PIP[tier] || 'bg-zinc-400'}`}
+          style={{ width: 6, height: 6, right: -1, bottom: -1 }}
+        />
+        {showRetry && (
+          <RotateCcw aria-hidden="true" className="absolute text-amber-500" style={{ width: 8, height: 8, right: -2, top: -2 }} />
+        )}
+      </div>
+    );
+  };
+
+  // Collapsed 8 px tier dot for resolved questions in focus mode.
+  const dot = (qq, i, tier, state) => {
+    const label = `Frage ${i + 1} · Tier ${tier} (${TIER_LABEL[tier] || '?'}) · ${CHIP_LABEL[state]}`;
+    return (
+      <div
+        key={qq.id}
+        title={label}
+        aria-label={label}
+        style={{ width: 8, height: 8, scrollSnapAlign: 'center' }}
+        className={`shrink-0 rounded-full ${TIER_PIP[tier] || 'bg-zinc-400'}`}
+      />
+    );
+  };
+
+  if (rail) {
+    const size = `clamp(14px, calc((100vh - 6rem) / ${n}), 32px)`;
+    const fontSize = `clamp(9px, calc((100vh - 6rem) / ${n} * 0.42), 14px)`;
+    const avail = (typeof window !== 'undefined' ? window.innerHeight : 800) - 96;
+    const gap = Math.max(14, Math.min(32, avail / n)) < 24 ? 'gap-1' : 'gap-1.5';
+    return (
+      <div
+        aria-label="Fragen-Fortschritt"
+        className={`hidden md:flex absolute inset-y-0 left-0 z-20 w-16 flex-col items-center justify-center ${gap} bg-zinc-950 border-r border-amber-500/40 py-3`}
+      >
+        {questions.map((qq, i) => chip(qq, i, size, fontSize))}
+      </div>
+    );
+  }
+
+  // iPhone strip. Stage A: uniform size that fits the measured width; below the 14 px
+  // floor, Stage B "focus mode" collapses done chips to dots and emphasises the current.
+  const GAP = 4; // gap-1
+  const uniform = innerW > 0 ? Math.floor((innerW - (n - 1) * GAP) / n) : 28;
+  const base = 'md:hidden shrink-0 flex items-center gap-1 pt-0 pb-1.5 bg-zinc-100 border-b border-amber-500/50';
+  const pad = { paddingInline: 'max(8px, env(safe-area-inset-left))' };
+
+  if (uniform >= 14) {
+    const px = Math.min(28, uniform);
+    const fontPx = Math.max(8, Math.round(px * 0.42));
+    return (
+      <div ref={stripRef} aria-label="Fragen-Fortschritt" className={`${base} justify-center`} style={pad}>
+        {questions.map((qq, i) => chip(qq, i, px, fontPx))}
+      </div>
+    );
+  }
+
+  // Stage B — focus: done → 8 px dots, retry/upcoming → 16 px, current → 28 px.
+  let total = 0;
+  const nodes = questions.map((qq, i) => {
+    const state = chipState(statusMap[qq.id], qq.id === currentQid);
+    const tier = qq.tier || qq.difficulty || 1;
+    const done = state === 'first' || state === 'retry_done' || state === 'forced';
+    const px = state === 'active' ? 28 : done ? 8 : 16;
+    total += px;
+    return done ? dot(qq, i, tier, state) : chip(qq, i, px, Math.max(8, Math.round(px * 0.42)));
+  });
+  total += (n - 1) * GAP;
+  const scroll = innerW > 0 && total > innerW;
+
   return (
     <div
+      ref={stripRef}
       aria-label="Fragen-Fortschritt"
-      className={
-        rail
-          ? `hidden md:flex absolute inset-y-0 left-0 z-20 w-16 flex-col items-center justify-center ${gap} bg-zinc-950 border-r border-amber-500/40 py-3`
-          : `md:hidden shrink-0 flex items-center justify-center ${gap} px-3 pt-0 pb-1.5 bg-zinc-100 border-b border-amber-500/50`
-      }
+      className={`${base} ${scroll ? 'justify-start overflow-x-auto' : 'justify-center'}`}
+      style={scroll ? { ...pad, scrollSnapType: 'x mandatory', scrollPaddingInline: '50%' } : pad}
     >
-      {questions.map((qq, i) => {
-        const state = chipState(statusMap[qq.id], qq.id === currentQid);
-        const isActive = state === 'active';
-        const tier = qq.tier || qq.difficulty || 1;
-        const showRetry = state === 'retry' || state === 'retry_done';
-        const cls = isActive
-          ? critical
-            ? 'bg-rose-500 text-white ring-2 ring-rose-300'
-            : 'ring-2 ring-amber-400 text-amber-600 bg-amber-400/15'
-          : CHIP_CLASS[state];
-        const anim = isActive
-          ? critical
-            ? 'pfChipBlink 0.35s ease-in-out infinite'
-            : 'pfChipPulse 1.4s ease-in-out infinite'
-          : undefined;
-        const label = `Frage ${i + 1} · Tier ${tier} (${TIER_LABEL[tier] || '?'}) · ${CHIP_LABEL[state]}`;
-        return (
-          <div
-            key={qq.id}
-            title={label}
-            aria-label={label}
-            style={{ width: size, height: size, fontSize, animation: anim }}
-            className={`relative shrink-0 rounded-full flex items-center justify-center font-semibold tabular-nums ${cls}`}
-          >
-            {i + 1}
-            <span
-              aria-hidden="true"
-              className={`absolute rounded-full ring-1 ring-zinc-950 ${TIER_PIP[tier] || 'bg-zinc-400'}`}
-              style={{ width: 6, height: 6, right: -1, bottom: -1 }}
-            />
-            {showRetry && (
-              <RotateCcw aria-hidden="true" className="absolute text-amber-500" style={{ width: 8, height: 8, right: -2, top: -2 }} />
-            )}
-          </div>
-        );
-      })}
+      {nodes}
     </div>
   );
 }
@@ -720,7 +795,7 @@ export default function QuizPlay({ roundId }) {
             </div>
           )}
           {!locked && (
-            <div className="absolute top-1 right-1 sm:top-3 sm:right-3 scale-75 sm:scale-90 xl:scale-100 origin-top-right">
+            <div className="absolute top-2 right-2 sm:top-3 sm:right-3">
               <RadialCountdown remaining={remaining} duration={dur} />
             </div>
           )}
