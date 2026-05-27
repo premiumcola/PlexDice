@@ -217,6 +217,8 @@ class PlexClient:
         )
         return {
             "key": rating_key,
+            "ratingKey": rating_key,
+            "machineIdentifier": machine_id,
             "title": movie.title,
             "originalTitle": getattr(movie, "originalTitle", None) or movie.title,
             "year": getattr(movie, "year", None),

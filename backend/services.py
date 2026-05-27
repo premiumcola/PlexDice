@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 
 import urllib3
 
@@ -110,8 +111,39 @@ def _heal_stale_deep_links() -> None:
         logger.warning("Deep-link heal skipped: %s", exc)
 
 
+_SERVER_RE = re.compile(r"/server/([^/?#]+)")
+
+
+def _backfill_deeplink_fields() -> None:
+    """Add ratingKey + machineIdentifier to cached movies that predate them, in memory:
+    ratingKey from the existing key, machineIdentifier parsed from the plex_url's
+    /server/<id>/ segment. Disk JSON untouched; idempotent per boot (shared dict refs)."""
+    try:
+        movies = library_cache.movies()
+        if not movies:
+            return
+        added = 0
+        for m in movies:
+            changed = False
+            if not m.get("ratingKey") and m.get("key"):
+                m["ratingKey"] = str(m["key"])
+                changed = True
+            if not m.get("machineIdentifier"):
+                match = _SERVER_RE.search(m.get("plex_url") or "")
+                if match:
+                    m["machineIdentifier"] = match.group(1)
+                    changed = True
+            if changed:
+                added += 1
+        if added:
+            logger.info("Backfilled deep-link fields on %d cached movies", added)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Deep-link field backfill skipped: %s", exc)
+
+
 _log_persistence_diagnostics()
 _seed_from_env()
 settings_store.ensure_client_id()
 _maybe_enrich()
 _heal_stale_deep_links()
+_backfill_deeplink_fields()
