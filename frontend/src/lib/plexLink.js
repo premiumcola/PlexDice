@@ -34,16 +34,24 @@ export function plexAppUrl(ratingKey, machineId) {
 // the open (caller should preventDefault), false to let the plain web link proceed.
 export function openInPlexApp({ ratingKey, machineId, webUrl }) {
   if (!isPlexAppPlatform() || !ratingKey || !machineId) return false;
-  const fallback = setTimeout(() => {
-    if (document.visibilityState === 'visible' && webUrl) {
-      window.open(webUrl, '_blank', 'noopener');
-    }
-  }, 1500);
-  document.addEventListener(
-    'visibilitychange',
-    () => { if (document.visibilityState === 'hidden') clearTimeout(fallback); },
-    { once: true },
-  );
+  let settled = false;
+  const settle = (openWeb) => {
+    if (settled) return;
+    settled = true;
+    clearTimeout(timer);
+    document.removeEventListener('visibilitychange', onVisibility);
+    window.removeEventListener('pagehide', leave);
+    window.removeEventListener('blur', leave);
+    if (openWeb && webUrl) window.open(webUrl, '_blank', 'noopener');
+  };
+  // The app taking over fires one of these on iOS — any of them cancels the fallback,
+  // so we never pop Plex Web on top of the launched native app (the A1 false-positive).
+  const onVisibility = () => { if (document.visibilityState === 'hidden') settle(false); };
+  const leave = () => settle(false);
+  const timer = setTimeout(() => settle(document.visibilityState === 'visible'), 1500);
+  document.addEventListener('visibilitychange', onVisibility);
+  window.addEventListener('pagehide', leave);
+  window.addEventListener('blur', leave);
   window.location.href = plexAppUrl(ratingKey, machineId);
   return true;
 }
