@@ -499,7 +499,7 @@ export default function Settings({ onConnected }) {
   );
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100">
+    <div className="min-h-[100dvh] bg-zinc-950 text-zinc-100">
       {toast && (
         <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-[60] px-4 py-2.5 rounded-xl text-sm font-semibold shadow-lg flex items-center gap-2 text-white ${toast.type === 'success' ? 'bg-emerald-500' : 'bg-rose-500'}`}>
           {toast.type === 'success' ? <Check className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}

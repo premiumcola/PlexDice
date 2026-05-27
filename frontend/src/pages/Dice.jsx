@@ -415,7 +415,7 @@ export default function Dice({ onNeedSettings }) {
         .dual-range-input::-webkit-slider-runnable-track { background: transparent; height: 36px; }
         .dual-range-input::-moz-range-track { background: transparent; height: 36px; }
       `}</style>
-      <div className="min-h-screen bg-zinc-950 text-zinc-100 relative overflow-hidden">
+      <div className="min-h-[100dvh] bg-zinc-950 text-zinc-100 relative overflow-hidden">
         <div className="fixed inset-0 pointer-events-none" style={{
           background: 'radial-gradient(ellipse 80% 50% at 50% 0%, rgba(245, 166, 35, 0.08), transparent 70%), radial-gradient(ellipse 60% 40% at 50% 100%, rgba(124, 58, 237, 0.06), transparent 70%)',
         }} />

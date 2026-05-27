@@ -274,8 +274,8 @@ function QuestionTimeline({ questions, statusMap, currentQid, layout, remainingM
   };
 
   if (rail) {
-    const size = `clamp(14px, calc((100vh - 6rem) / ${n}), 32px)`;
-    const fontSize = `clamp(9px, calc((100vh - 6rem) / ${n} * 0.42), 14px)`;
+    const size = `clamp(14px, calc((100dvh - 6rem) / ${n}), 32px)`;
+    const fontSize = `clamp(9px, calc((100dvh - 6rem) / ${n} * 0.42), 14px)`;
     const avail = (typeof window !== 'undefined' ? window.innerHeight : 800) - 96;
     const gap = Math.max(14, Math.min(32, avail / n)) < 24 ? 'gap-1' : 'gap-1.5';
     return (
