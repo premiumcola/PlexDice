@@ -123,7 +123,7 @@ export default function App() {
           </nav>
 
           {/* Mobile: bottom tab bar */}
-          <nav className="sm:hidden fixed bottom-0 inset-x-0 z-40 bg-zinc-900/95 border-t border-zinc-800 backdrop-blur pb-[max(env(safe-area-inset-bottom),8px)] flex">
+          <nav className="sm:hidden fixed bottom-0 inset-x-0 z-40 bg-zinc-900/95 border-t border-zinc-800 backdrop-blur pb-[max(env(safe-area-inset-bottom),12px)] flex">
             {TABS.map((t) => (
               <NavItem key={t.id} vertical active={tab === t.id} onClick={() => navigate(t.path)} icon={t.icon} label={t.label} />
             ))}

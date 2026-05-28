@@ -198,13 +198,13 @@ export default function Dice({ onNeedSettings }) {
     window.history.replaceState({}, '', '/');
   }, [moviesReady, movies]);
 
-  // After a roll resolves, pull the result card into focus under the sticky top zone
-  // so the controls strip scrolls out of view. No auto-scroll on reset (picked === null).
+  // After a roll resolves, pull the result card into focus — but leave the AppHeader
+  // visible above (via the card's scroll-mt). No auto-scroll on reset (picked === null).
   useEffect(() => {
     if (!picked) return undefined;
     const t = setTimeout(() => {
       resultRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
-    }, 750);
+    }, 600);
     return () => clearTimeout(t);
   }, [picked]);
 
@@ -295,9 +295,14 @@ export default function Dice({ onNeedSettings }) {
       setPicked(choice);
       setHistory((h) => [choice, ...h.filter((x) => x.key !== choice.key)].slice(0, 12));
       setRolling(false);
-      setFireworksKey((k) => k + 1);
-      setFireworks(true);
-      setTimeout(() => setFireworks(false), 1800);
+      // Fire celebration AFTER the card has settled in its final position:
+      // revealCard 0.55s animation + the +600ms scroll kickoff + ~400ms smooth-scroll
+      // settle ≈ 1.05s. Trigger at 1.2s so the burst lands on the fully laid-out view.
+      setTimeout(() => {
+        setFireworksKey((k) => k + 1);
+        setFireworks(true);
+        setTimeout(() => setFireworks(false), 1800);
+      }, 1200);
     }, 2400);
   };
 
@@ -435,7 +440,7 @@ export default function Dice({ onNeedSettings }) {
         {rolling && !reduceMotion && <div className="fixed inset-0 pointer-events-none rolling-bg" />}
         {fireworks && !reduceMotion && <Fireworks key={fireworksKey} />}
 
-        <div className="relative max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-24 sm:py-10">
+        <div className="relative max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-24 sm:py-10">
           <AppHeader product="dice" />
 
           {/* Empty / error states */}
@@ -456,7 +461,7 @@ export default function Dice({ onNeedSettings }) {
           )}
 
           {/* Filter toggle bar */}
-          <div className="flex gap-2 mb-4">
+          <div className="flex gap-2 mb-3">
             <button
               onClick={() => setShowFilters((s) => !s)}
               className="flex-1 flex items-center justify-between gap-2 px-4 py-3 rounded-2xl bg-zinc-900 border border-zinc-800 active:scale-[0.98] transition-transform"
@@ -491,7 +496,7 @@ export default function Dice({ onNeedSettings }) {
                     type="button"
                     onClick={() => setFunnelExpanded((e) => !e)}
                     aria-expanded={funnelExpanded}
-                    className="w-full mb-4 flex items-center justify-between gap-2 px-4 py-3 rounded-2xl bg-zinc-900/60 active:scale-[0.99] transition-transform"
+                    className="w-full mb-3 flex items-center justify-between gap-2 px-4 py-3 rounded-2xl bg-zinc-900/60 active:scale-[0.99] transition-transform"
                   >
                     <span className="text-sm tabular-nums">
                       <span className="text-amber-400 font-semibold">{filtered.length.toLocaleString('de-DE')}</span>
@@ -677,9 +682,11 @@ export default function Dice({ onNeedSettings }) {
             disabled={filtered.length === 0 || rolling}
             style={{
               background: 'linear-gradient(135deg, #f5a623 0%, #ffaf3a 100%)',
+              // Halved offset/blur and dimmer outer wash so the orange glow frames the
+              // pill instead of bleeding down the screen behind the result card.
               boxShadow: rolling
                 ? undefined
-                : '0 8px 24px rgba(245,166,35,0.35), 0 16px 48px rgba(245,166,35,0.15), inset 0 1px 0 rgba(255,255,255,0.20)',
+                : '0 4px 12px rgba(245,166,35,0.28), 0 8px 24px rgba(245,166,35,0.10), inset 0 1px 0 rgba(255,255,255,0.20)',
             }}
             className={`w-full rounded-2xl text-zinc-950 font-semibold tracking-wide flex items-center justify-center gap-3 active:scale-[0.985] transition-transform disabled:opacity-40 disabled:active:scale-100 ${picked ? 'py-2.5 text-base' : 'py-5 text-lg'} ${rolling ? 'glow-pulse' : ''}`}
           >
@@ -711,8 +718,8 @@ export default function Dice({ onNeedSettings }) {
 
           {/* Picked movie card */}
           {picked && !rolling && (
-            <article ref={resultRef} key={picked.key} className="mt-6 scroll-mt-[calc(env(safe-area-inset-top)+72px)] rounded-3xl bg-gradient-to-br from-zinc-900 to-zinc-900/40 overflow-hidden reveal-card">
-              <div className="p-5 sm:p-7">
+            <article ref={resultRef} key={picked.key} className="mt-3 scroll-mt-[calc(env(safe-area-inset-top)+240px)] rounded-3xl bg-gradient-to-br from-zinc-900 to-zinc-900/40 overflow-hidden reveal-card">
+              <div className="p-4 sm:p-6">
                 <div className="flex gap-4">
                   {picked.thumb_url && (
                     <img
@@ -762,7 +769,7 @@ export default function Dice({ onNeedSettings }) {
 
                 {/* Genres */}
                 {(picked.g || []).length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mt-3">
+                  <div className="flex flex-wrap gap-1.5 mt-2">
                     {picked.g.map((g) => (
                       <span key={g} className="px-2 py-0.5 rounded-md bg-zinc-800/40 text-zinc-400 text-xs">{g}</span>
                     ))}
@@ -771,11 +778,11 @@ export default function Dice({ onNeedSettings }) {
 
                 {/* Plex summary */}
                 {picked.summary && (
-                  <p className="text-base text-zinc-300 leading-relaxed mt-4 line-clamp-5 opsz-20">{picked.summary}</p>
+                  <p className="text-base text-zinc-300 leading-relaxed mt-3 line-clamp-3 opsz-20">{picked.summary}</p>
                 )}
 
                 {/* AI enrichment */}
-                <div className="mt-5">
+                <div className="mt-3">
                   {!aiInfo && !aiLoading && (
                     <button onClick={() => fetchInfo()}
                       className="w-full py-3 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-200 text-sm font-medium flex items-center justify-center gap-2 active:scale-[0.98] transition-transform">
