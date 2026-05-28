@@ -85,6 +85,7 @@ export default function Dice({ onNeedSettings }) {
   const [showHistory, setShowHistory] = useState(false);
   const [highlightSection, setHighlightSection] = useState(null);
   const [funnelExpanded, setFunnelExpanded] = useState(false); // transient: result-mode funnel toggle
+  const [showFiltersOnResult, setShowFiltersOnResult] = useState(false); // sticky-header toggle
   const [prefsLoaded, setPrefsLoaded] = useState(false);
   const resultRef = useRef(null); // the rolled movie card, scrolled into focus after a roll
 
@@ -282,6 +283,7 @@ export default function Dice({ onNeedSettings }) {
     setShowHistory(false);
     setAiInfo(null);
     setFunnelExpanded(false); // each new roll starts collapsed in result mode
+    setShowFiltersOnResult(false); // …and the filter bars stay tucked away
 
     const choice = filtered[Math.floor(Math.random() * filtered.length)];
 
@@ -441,7 +443,26 @@ export default function Dice({ onNeedSettings }) {
         {fireworks && !reduceMotion && <Fireworks key={fireworksKey} />}
 
         <div className="relative max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 pt-1 pb-24 sm:py-10">
-          <AppHeader product="dice" />
+          <AppHeader
+            product="dice"
+            sticky={!!picked}
+            rightSlot={picked ? (
+              <button
+                type="button"
+                onClick={() => setShowFiltersOnResult((s) => !s)}
+                aria-label={showFiltersOnResult ? 'Filter ausblenden' : 'Filter einblenden'}
+                aria-expanded={showFiltersOnResult}
+                className="relative shrink-0 w-11 h-11 inline-flex items-center justify-center rounded-xl bg-zinc-900/70 text-zinc-300 active:scale-[0.96] transition-transform"
+              >
+                <SlidersHorizontal className="w-5 h-5" />
+                {activeFilterCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-amber-400 text-zinc-950 text-[10px] font-bold flex items-center justify-center tabular-nums">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </button>
+            ) : null}
+          />
 
           {/* Empty / error states */}
           {moviesReady && movies.length === 0 && (
@@ -460,7 +481,9 @@ export default function Dice({ onNeedSettings }) {
             </button>
           )}
 
-          {/* Filter toggle bar */}
+          {/* Filter toggle bar + headline funnel — both tucked away on a result;
+              tap the sliders icon in the sticky header to bring them back. */}
+          {(!picked || showFiltersOnResult) && (<>
           <div className="flex gap-2 mb-3">
             <button
               onClick={() => setShowFilters((s) => !s)}
@@ -523,6 +546,7 @@ export default function Dice({ onNeedSettings }) {
               </p>
             )
           )}
+          </>)}
 
           {/* Filter panel */}
           {showFilters && (
