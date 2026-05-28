@@ -766,7 +766,7 @@ export default function Dice({ onNeedSettings }) {
                   )}
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-3 mb-1">
-                      <span className="text-xs uppercase tracking-[0.2em] text-amber-400/80 font-medium">Dein Film für heute</span>
+                      <span className="text-xs uppercase tracking-[0.2em] text-amber-400/80 font-medium">Dein Zufallsfilm</span>
                       <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
                     </div>
                     <h2 className="font-display-tight text-3xl sm:text-4xl lg:text-5xl leading-tight tracking-tight mt-1">
