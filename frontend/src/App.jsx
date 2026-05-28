@@ -19,8 +19,10 @@ function activeTab(pathname) {
 }
 
 function NavItem({ active, onClick, icon: Icon, label, vertical }) {
+  // Mobile tab: min-h-[48px] is the hard floor (touch target >= 44px after rounding),
+  // with reduced vertical padding so the bar feels slim without losing tappable area.
   const base = vertical
-    ? 'flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 min-h-[48px] text-[11px]'
+    ? 'flex-1 flex flex-col items-center justify-center gap-0.5 py-1.5 min-h-[48px] text-[11px]'
     : 'flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium';
   const tone = active
     ? vertical
@@ -29,7 +31,7 @@ function NavItem({ active, onClick, icon: Icon, label, vertical }) {
     : 'text-zinc-400 active:text-zinc-200';
   return (
     <button onClick={onClick} className={`${base} ${tone} transition-colors`}>
-      <Icon className={vertical ? 'w-5 h-5' : 'w-4 h-4'} strokeWidth={2.2} />
+      <Icon className={vertical ? 'w-[22px] h-[22px]' : 'w-4 h-4'} strokeWidth={2.2} />
       <span>{label}</span>
     </button>
   );
@@ -88,20 +90,20 @@ export default function App() {
 
   return (
     <div className="min-h-[100dvh] bg-zinc-950">
-      {/* Soft scrim: solid zinc-950 behind the status bar, fading to transparent ~56px
-          below the inset so content scrolls under a gentle fade — no seam, no hairline. */}
+      {/* Soft scrim: solid zinc-950 behind the status bar, fading out quickly (~24px
+          below the inset) so the AppHeader title sits clear of the dim wash. */}
       {!immersive && (
         <div
           aria-hidden="true"
           className="fixed top-0 inset-x-0 z-50 pointer-events-none"
           style={{
-            height: 'calc(env(safe-area-inset-top) + 56px)',
+            height: 'calc(env(safe-area-inset-top) + 24px)',
             background:
               'linear-gradient(to bottom, '
               + 'rgb(9 9 11) 0px, '
               + 'rgb(9 9 11) env(safe-area-inset-top), '
-              + 'rgba(9, 9, 11, 0.85) calc(env(safe-area-inset-top) + 16px), '
-              + 'rgba(9, 9, 11, 0) calc(env(safe-area-inset-top) + 56px))',
+              + 'rgba(9, 9, 11, 0.55) calc(env(safe-area-inset-top) + 8px), '
+              + 'rgba(9, 9, 11, 0) calc(env(safe-area-inset-top) + 24px))',
           }}
         />
       )}

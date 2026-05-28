@@ -440,7 +440,7 @@ export default function Dice({ onNeedSettings }) {
         {rolling && !reduceMotion && <div className="fixed inset-0 pointer-events-none rolling-bg" />}
         {fireworks && !reduceMotion && <Fireworks key={fireworksKey} />}
 
-        <div className="relative max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-24 sm:py-10">
+        <div className="relative max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 pt-1 pb-24 sm:py-10">
           <AppHeader product="dice" />
 
           {/* Empty / error states */}
@@ -892,18 +892,9 @@ export default function Dice({ onNeedSettings }) {
             </article>
           )}
 
-          {!picked && !rolling && movies.length > 0 && (
-            <div className="mt-8 text-center py-12">
-              <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-zinc-900 border border-zinc-800 mb-4">
-                <Dices className="w-9 h-9 text-zinc-700" strokeWidth={1.5} />
-              </div>
-              <p className="text-zinc-300 text-sm">Drück den Button und lass dich überraschen</p>
-            </div>
-          )}
-
           <footer className="mt-12 pt-6 border-t border-zinc-900 text-center">
             <p className="text-xs text-zinc-500 flex items-center justify-center gap-1.5">
-              <Film className="w-3 h-3" /> PlexDice · {movies.length.toLocaleString('de-DE')} Filme
+              <Film className="w-3 h-3" /> Entdecke deine Filme neu
             </p>
           </footer>
         </div>
