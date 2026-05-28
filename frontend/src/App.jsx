@@ -19,10 +19,11 @@ function activeTab(pathname) {
 }
 
 function NavItem({ active, onClick, icon: Icon, label, vertical }) {
-  // Mobile tab: min-h-[48px] is the hard floor (touch target >= 44px after rounding),
-  // with reduced vertical padding so the bar feels slim without losing tappable area.
+  // Mobile tab: min-h-[60px] gives the larger icons real breathing room while the
+  // flex-center keeps content visually anchored. Touch target stays well above the
+  // 44px floor (60px > 44px). safe-area-inset-bottom is handled by the parent nav.
   const base = vertical
-    ? 'flex-1 flex flex-col items-center justify-center gap-0.5 py-1.5 min-h-[48px] text-[11px]'
+    ? 'flex-1 flex flex-col items-center justify-center gap-1 py-2 min-h-[60px] text-[11px]'
     : 'flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium';
   const tone = active
     ? vertical
