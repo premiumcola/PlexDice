@@ -31,7 +31,7 @@ function NavItem({ active, onClick, icon: Icon, label, vertical }) {
     : 'text-zinc-400 active:text-zinc-200';
   return (
     <button onClick={onClick} className={`${base} ${tone} transition-colors`}>
-      <Icon className={vertical ? 'w-[22px] h-[22px]' : 'w-4 h-4'} strokeWidth={2.2} />
+      <Icon className={vertical ? 'w-7 h-7' : 'w-4 h-4'} strokeWidth={2} />
       <span>{label}</span>
     </button>
   );
