@@ -700,25 +700,34 @@ export default function Dice({ onNeedSettings }) {
             </div>
           )}
 
-          {/* Roll button */}
-          <button
-            onClick={pick}
-            disabled={filtered.length === 0 || rolling}
-            style={{
-              background: 'linear-gradient(135deg, #f5a623 0%, #ffaf3a 100%)',
-              // Halved offset/blur and dimmer outer wash so the orange glow frames the
-              // pill instead of bleeding down the screen behind the result card.
-              boxShadow: rolling
-                ? undefined
-                : '0 4px 12px rgba(245,166,35,0.28), 0 8px 24px rgba(245,166,35,0.10), inset 0 1px 0 rgba(255,255,255,0.20)',
-            }}
-            className={`w-full rounded-2xl text-zinc-950 font-semibold tracking-wide flex items-center justify-center gap-3 active:scale-[0.985] transition-transform disabled:opacity-40 disabled:active:scale-100 ${picked ? 'py-2.5 text-base' : 'py-5 text-lg'} ${rolling ? 'glow-pulse' : ''}`}
-          >
-            <span className={rolling ? 'dice-shake' : 'inline-block'}>
-              <Dices className="w-7 h-7" strokeWidth={2.5} />
-            </span>
-            {rolling ? 'Würfle…' : picked ? 'Nochmal würfeln' : 'Film würfeln'}
-          </button>
+          {/* Roll button — orange primary on initial roll or while spinning, muted
+              zinc secondary once a film is picked so "In Plex abspielen" is the only
+              accent CTA. Touch target stays >= 44px (py-3 + content). */}
+          {(() => {
+            const secondary = picked && !rolling;
+            return (
+              <button
+                onClick={pick}
+                disabled={filtered.length === 0 || rolling}
+                style={secondary ? undefined : {
+                  background: 'linear-gradient(135deg, #f5a623 0%, #ffaf3a 100%)',
+                  boxShadow: rolling
+                    ? undefined
+                    : '0 4px 12px rgba(245,166,35,0.28), 0 8px 24px rgba(245,166,35,0.10), inset 0 1px 0 rgba(255,255,255,0.20)',
+                }}
+                className={`w-full rounded-2xl flex items-center justify-center gap-3 active:scale-[0.985] transition-transform disabled:opacity-40 disabled:active:scale-100 ${
+                  secondary
+                    ? 'py-3 text-sm font-medium bg-zinc-900 text-zinc-300'
+                    : `text-zinc-950 font-semibold tracking-wide ${picked ? 'py-2.5 text-base' : 'py-5 text-lg'}`
+                } ${rolling ? 'glow-pulse' : ''}`}
+              >
+                <span className={rolling ? 'dice-shake' : 'inline-block'}>
+                  <Dices className={secondary ? 'w-5 h-5' : 'w-7 h-7'} strokeWidth={2.5} />
+                </span>
+                {rolling ? 'Würfle…' : picked ? 'Nochmal würfeln' : 'Film würfeln'}
+              </button>
+            );
+          })()}
 
           {filtered.length === 0 && movies.length > 0 && (
             <div className="mt-4 p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-start gap-3">
