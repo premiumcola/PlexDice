@@ -90,20 +90,22 @@ export default function App() {
 
   return (
     <div className="min-h-[100dvh] bg-zinc-950">
-      {/* Soft scrim: solid zinc-950 behind the status bar, fading out quickly (~24px
-          below the inset) so the AppHeader title sits clear of the dim wash. */}
+      {/* Soft scrim: solid zinc-950 behind the status bar, gently ramping just below
+          the notch and then trailing off over a long distance — no hard cut-off, so
+          the wordmark and the headings underneath stay fully legible. */}
       {!immersive && (
         <div
           aria-hidden="true"
           className="fixed top-0 inset-x-0 z-50 pointer-events-none"
           style={{
-            height: 'calc(env(safe-area-inset-top) + 24px)',
+            height: 'calc(env(safe-area-inset-top) + 96px)',
             background:
               'linear-gradient(to bottom, '
               + 'rgb(9 9 11) 0px, '
               + 'rgb(9 9 11) env(safe-area-inset-top), '
-              + 'rgba(9, 9, 11, 0.55) calc(env(safe-area-inset-top) + 8px), '
-              + 'rgba(9, 9, 11, 0) calc(env(safe-area-inset-top) + 24px))',
+              + 'rgba(9, 9, 11, 0.78) calc(env(safe-area-inset-top) + 6px), '
+              + 'rgba(9, 9, 11, 0.12) calc(env(safe-area-inset-top) + 32px), '
+              + 'rgba(9, 9, 11, 0) calc(env(safe-area-inset-top) + 96px))',
           }}
         />
       )}
