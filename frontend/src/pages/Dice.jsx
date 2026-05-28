@@ -11,7 +11,7 @@ import GenrePicker from '../components/GenrePicker';
 import AppHeader from '../components/AppHeader';
 import Fireworks from '../components/Fireworks';
 import { usePrefs } from '../usePrefs';
-import { sanitizePlexUrl, openInPlexApp } from '../lib/plexLink';
+import { sanitizePlexUrl, plexWatchUrl } from '../lib/plexLink';
 
 const ACCENT = '#f5a623';
 const RUNTIME_MIN_BOUND = 60;
@@ -841,19 +841,10 @@ export default function Dice({ onNeedSettings }) {
                 <div className="mt-6 pt-5 border-t border-zinc-800/60 space-y-2">
                   {picked.plex_url && (
                     <a
-                      href={sanitizePlexUrl(picked.plex_url)}
+                      href={picked.plex_guid
+                        ? plexWatchUrl(picked.plex_guid)
+                        : sanitizePlexUrl(picked.plex_url)}
                       target="_blank" rel="noopener noreferrer"
-                      onClick={(e) => {
-                        // Mobile: open the native Plex app (web fallback if not installed).
-                        // Desktop / missing IDs: let the anchor open the web URL as before.
-                        if (openInPlexApp({
-                          ratingKey: picked.ratingKey || picked.key,
-                          machineId: picked.machineIdentifier,
-                          webUrl: sanitizePlexUrl(picked.plex_url),
-                        })) {
-                          e.preventDefault();
-                        }
-                      }}
                       className="w-full py-3 rounded-xl bg-amber-400 text-zinc-950 font-semibold flex items-center justify-center gap-2 active:scale-[0.98] transition-transform shadow-lg shadow-amber-400/20"
                     >
                       <Play className="w-4 h-4 fill-zinc-950" /> In Plex abspielen

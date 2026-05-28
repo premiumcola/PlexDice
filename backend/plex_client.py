@@ -54,6 +54,21 @@ def _lan_link_base(base_url: str, manual_url: Optional[str] = None) -> str:
     return (base_url or "").rstrip("/")
 
 
+_PLEX_GUID_RE = re.compile(r"^plex://movie/([0-9a-f]+)$")
+
+
+def _parse_plex_guid(guid: Optional[str]) -> Optional[str]:
+    """Extract the Plex Discover id from a movie guid (``plex://movie/<id>``).
+
+    Returns None for unmatched items or foreign agents (imdb://, tmdb://, …). This id
+    is what watch.plex.tv routes on, so the iOS app can open the user's local copy.
+    """
+    if not guid:
+        return None
+    m = _PLEX_GUID_RE.match(guid)
+    return m.group(1) if m else None
+
+
 class PlexClient:
     """Stateless helpers; every call connects fresh from the given credentials."""
 
@@ -154,6 +169,22 @@ class PlexClient:
         logger.info("Fetched %d movies from Plex", len(movies))
         return movies
 
+    def fetch_guids(
+        self, server: PlexServer, section_ids: Optional[List[str]] = None
+    ) -> Dict[str, Optional[str]]:
+        """Map rating_key → Plex Discover id from the section listing (no per-movie
+        fetch), to backfill plex_guid onto an existing cache without a full re-sync."""
+        wanted = {str(s) for s in section_ids} if section_ids else None
+        out: Dict[str, Optional[str]] = {}
+        for section in server.library.sections():
+            if section.type != "movie":
+                continue
+            if wanted is not None and str(section.key) not in wanted:
+                continue
+            for movie in section.all():
+                out[str(movie.ratingKey)] = _parse_plex_guid(getattr(movie, "guid", None))
+        return out
+
     def fetch_enrichment(
         self, server: PlexServer, rating_key: str, actor_limit: int = 5, crew_limit: int = 2
     ) -> Optional[Dict[str, Any]]:
@@ -219,6 +250,7 @@ class PlexClient:
             "key": rating_key,
             "ratingKey": rating_key,
             "machineIdentifier": machine_id,
+            "plex_guid": _parse_plex_guid(getattr(movie, "guid", None)),
             "title": movie.title,
             "originalTitle": getattr(movie, "originalTitle", None) or movie.title,
             "year": getattr(movie, "year", None),

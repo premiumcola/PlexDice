@@ -141,9 +141,37 @@ def _backfill_deeplink_fields() -> None:
         logger.warning("Deep-link field backfill skipped: %s", exc)
 
 
+def _backfill_plex_guid() -> None:
+    """One-time: add the Plex Discover GUID (plex_guid) to cached movies so the
+    watch.plex.tv universal link resolves without a full re-sync (enrichment preserved).
+    Reads guids from the Plex section listing and persists; idempotent (skips once set)."""
+    try:
+        movies = library_cache.movies()
+        if not movies or "plex_guid" in movies[0]:
+            return  # nothing cached, or already backfilled
+        plex = settings_store.get("plex")
+        guid_map: dict = {}
+        if plex.get("token") and (plex.get("plex_server_url") or plex.get("url")):
+            try:
+                server = plex_client.connect_from_settings(plex, timeout=15)
+                guid_map = plex_client.fetch_guids(server, plex.get("libraries") or None)
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("plex_guid fetch failed, leaving guids null: %s", exc)
+        matched = 0
+        for m in movies:
+            m["plex_guid"] = guid_map.get(str(m.get("key")))
+            if m["plex_guid"]:
+                matched += 1
+        library_cache.save()
+        logger.info("Backfilled plex_guid: %d matched of %d movies", matched, len(movies))
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("plex_guid backfill skipped: %s", exc)
+
+
 _log_persistence_diagnostics()
 _seed_from_env()
 settings_store.ensure_client_id()
 _maybe_enrich()
 _heal_stale_deep_links()
 _backfill_deeplink_fields()
+_backfill_plex_guid()
