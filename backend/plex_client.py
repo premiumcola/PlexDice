@@ -60,8 +60,8 @@ _PLEX_GUID_RE = re.compile(r"^plex://movie/([0-9a-f]+)$")
 def _parse_plex_guid(guid: Optional[str]) -> Optional[str]:
     """Extract the Plex Discover id from a movie guid (``plex://movie/<id>``).
 
-    Returns None for unmatched items or foreign agents (imdb://, tmdb://, …). This id
-    is what watch.plex.tv routes on, so the iOS app can open the user's local copy.
+    Returns None for unmatched items or foreign agents (imdb://, tmdb://, …). Retained as
+    the movie's Plex Discover id; the play path deep-links by server + ratingKey instead.
     """
     if not guid:
         return None

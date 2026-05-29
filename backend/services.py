@@ -142,9 +142,9 @@ def _backfill_deeplink_fields() -> None:
 
 
 def _backfill_plex_guid() -> None:
-    """One-time: add the Plex Discover GUID (plex_guid) to cached movies so the
-    watch.plex.tv universal link resolves without a full re-sync (enrichment preserved).
-    Reads guids from the Plex section listing and persists; idempotent (skips once set)."""
+    """One-time: add the Plex Discover GUID (plex_guid) to cached movies without a full
+    re-sync (enrichment preserved). Reads guids from the Plex section listing and persists;
+    idempotent (skips once set). The play path deep-links by server + ratingKey instead."""
     try:
         movies = library_cache.movies()
         if not movies or "plex_guid" in movies[0]:

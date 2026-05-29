@@ -12,7 +12,7 @@ import AppHeader from '../components/AppHeader';
 import DieIcon from '../components/DieIcon';
 import Fireworks from '../components/Fireworks';
 import { usePrefs } from '../usePrefs';
-import { sanitizePlexUrl, plexWatchUrl } from '../lib/plexLink';
+import { sanitizePlexUrl, plexAppUrl } from '../lib/plexLink';
 
 const ACCENT = '#f5a623';
 const RUNTIME_MIN_BOUND = 60;
@@ -884,17 +884,31 @@ export default function Dice({ onNeedSettings }) {
 
                 {/* External + Plex links */}
                 <div className="mt-6 pt-5 border-t border-zinc-800/60 space-y-2">
-                  {picked.plex_url && (
-                    <a
-                      href={picked.plex_guid
-                        ? plexWatchUrl(picked.plex_guid)
-                        : sanitizePlexUrl(picked.plex_url)}
-                      target="_blank" rel="noopener noreferrer"
-                      className="w-full py-3 rounded-xl bg-amber-400 text-zinc-950 font-semibold flex items-center justify-center gap-2 active:scale-[0.98] transition-transform shadow-lg shadow-amber-400/20"
-                    >
-                      <Play className="w-4 h-4 fill-zinc-950" /> In Plex abspielen
-                    </a>
-                  )}
+                  {picked.plex_url && (() => {
+                    // Local Plex Web deep link (LAN, built server-side from settings) — also
+                    // the fallback when the native app is not installed. Never the Plex cloud
+                    // catalog, which is empty for a local-only library.
+                    const webUrl = sanitizePlexUrl(picked.plex_url);
+                    const appUrl = plexAppUrl(picked.machineIdentifier, picked.ratingKey);
+                    const openInPlex = () => {
+                      if (!appUrl) { window.open(webUrl, '_blank', 'noopener'); return; }
+                      // Try to hand off to the native Plex app; if it doesn't take over
+                      // (page stays visible → app not installed), open the local web client.
+                      const fallback = setTimeout(() => { window.open(webUrl, '_blank', 'noopener'); }, 1000);
+                      const cancel = () => { if (document.hidden) clearTimeout(fallback); };
+                      document.addEventListener('visibilitychange', cancel, { once: true });
+                      window.location.href = appUrl;
+                    };
+                    return (
+                      <button
+                        type="button"
+                        onClick={openInPlex}
+                        className="w-full py-3 rounded-xl bg-amber-400 text-zinc-950 font-semibold flex items-center justify-center gap-2 active:scale-[0.98] transition-transform shadow-lg shadow-amber-400/20"
+                      >
+                        <Play className="w-4 h-4 fill-zinc-950" /> In Plex abspielen
+                      </button>
+                    );
+                  })()}
                   <div className="grid grid-cols-3 gap-2">
                     <button
                       onClick={() => {
