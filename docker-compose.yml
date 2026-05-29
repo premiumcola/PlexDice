@@ -1,6 +1,10 @@
 services:
   plexdice:
-    build: .
+    build:
+      context: .
+      args:
+        # Stamped into the Settings build label; set GIT_SHA in the env when building.
+        GIT_SHA: "${GIT_SHA:-local}"
     container_name: plexdice
     ports:
       - "8090:8080"

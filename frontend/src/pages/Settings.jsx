@@ -13,6 +13,9 @@ import QuizConfig from '../components/QuizConfig';
 import DieIcon from '../components/DieIcon';
 
 const APP_VERSION = import.meta.env.VITE_APP_VERSION || '1.0.0';
+// Build stamp so the live (possibly PWA-cached) build is identifiable on-device.
+const BUILD_HASH = import.meta.env.VITE_BUILD_HASH || 'local';
+const BUILD_TIME = (import.meta.env.VITE_BUILD_TIME || '').replace('T', ' ').slice(0, 16);
 
 // About-screen source rows; links restricted to the real public domains.
 const ABOUT_SOURCES = [
@@ -697,7 +700,10 @@ export default function Settings({ onConnected }) {
                   <div className="font-extrabold text-2xl text-zinc-100 leading-none">PlexDice</div>
                   <p className="text-sm text-zinc-400 mt-1">Plex Companion fürs Filmwürfeln und Quizzen.</p>
                 </div>
-                <span className="shrink-0 self-start text-xs font-mono text-zinc-400 px-2 py-1 rounded-lg bg-zinc-800">v{APP_VERSION}</span>
+                <div className="shrink-0 self-start text-right">
+                  <span className="block text-xs font-mono text-zinc-400 px-2 py-1 rounded-lg bg-zinc-800">v{APP_VERSION}</span>
+                  <span className="block mt-1 text-[10px] font-mono text-zinc-500 tabular-nums">{BUILD_HASH} · {BUILD_TIME}</span>
+                </div>
               </div>
             </div>
 

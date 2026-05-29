@@ -4,6 +4,10 @@ WORKDIR /app/frontend
 COPY frontend/package.json frontend/package-lock.json* ./
 RUN npm ci
 COPY frontend/ ./
+# Build-time git stamp (shown in Settings) so the live build is identifiable; passed from
+# docker compose. The default keeps the build working when the arg is absent.
+ARG GIT_SHA=local
+ENV GIT_SHA=$GIT_SHA
 RUN npm run build
 
 # ---- Stage 2: python runtime ----
