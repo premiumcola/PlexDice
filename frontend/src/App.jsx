@@ -122,7 +122,15 @@ export default function App() {
         </div>
       )}
 
-      <main className={`flex-1 min-h-0 overflow-y-auto ${immersive || showBanner ? '' : 'safe-top'}`}>{page}</main>
+      <main
+        className={`flex-1 min-h-0 overflow-y-auto ${
+          immersive
+            ? ''
+            : `${showBanner ? '' : 'safe-top '}pb-[calc(env(safe-area-inset-bottom)+4.5rem)] sm:pb-0`
+        }`}
+      >
+        {page}
+      </main>
 
       {!immersive && (
         <>
@@ -133,11 +141,14 @@ export default function App() {
             ))}
           </nav>
 
-          {/* Mobile: bottom tab bar — a normal flex child at the shell's bottom edge (NOT
-              position:fixed), so it is flush to the viewport bottom from first paint with no
-              black gap and no scroll jump on iOS. Padded by the home-indicator safe-area
-              only; opaque surface + top shadow for depth (no hairline border). */}
-          <nav className="sm:hidden shrink-0 z-40 bg-zinc-900 pb-[env(safe-area-inset-bottom)] flex shadow-[0_-6px_20px_rgba(0,0,0,0.45)]">
+          {/* Mobile: bottom tab bar pinned with position:fixed bottom-0 to the VISUAL
+              viewport's physical bottom — reliable regardless of the 100dvh length (a flex
+              child at the shell's bottom can fall short of the screen on iOS standalone and
+              leave a gap). bottom:0 + padding-bottom: env(safe-area-inset-bottom) makes the
+              bar's own surface fill down through the home-indicator area — never an offset
+              that would leave a black band. No transformed ancestor, so it pins to the
+              viewport. main reserves matching bottom padding so content clears it. */}
+          <nav className="sm:hidden fixed bottom-0 inset-x-0 z-40 bg-zinc-900 pb-[env(safe-area-inset-bottom)] flex shadow-[0_-6px_20px_rgba(0,0,0,0.45)]">
             {TABS.map((t) => (
               <NavItem key={t.id} vertical active={tab === t.id} onClick={() => navigate(t.path)} icon={t.icon} label={t.label} />
             ))}

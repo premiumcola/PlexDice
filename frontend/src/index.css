@@ -6,6 +6,9 @@ html {
   font-family: 'Inter', system-ui, sans-serif;
   font-feature-settings: 'cv11', 'ss01', 'ss03';
   font-variation-settings: 'opsz' 18;
+  /* zinc-950 on the root canvas too, so no area below/around the app ever renders a
+     mismatched pure-black band (e.g. the home-indicator safe area). */
+  background: #09090b;
 }
 
 /* Fraunces display faces. font-family is included so `font-display-tight`
