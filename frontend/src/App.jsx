@@ -19,11 +19,12 @@ function activeTab(pathname) {
 }
 
 function NavItem({ active, onClick, icon: Icon, label, vertical }) {
-  // Mobile tab: min-h-[60px] gives the larger icons real breathing room while the
-  // flex-center keeps content visually anchored. Touch target stays well above the
-  // 44px floor (60px > 44px). safe-area-inset-bottom is handled by the parent nav.
+  // Mobile tab: justify-end drops the icon + label to the bottom of the bar so they
+  // sit just above the home-indicator safe-area (padded by the parent nav) instead of
+  // floating with dead space beneath. min-h-[54px] keeps the touch target above the
+  // 44px floor.
   const base = vertical
-    ? 'flex-1 flex flex-col items-center justify-center gap-1 py-2 min-h-[60px] text-[11px]'
+    ? 'flex-1 flex flex-col items-center justify-end gap-1 pt-2 pb-1.5 min-h-[54px] text-[11px]'
     : 'flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium';
   const tone = active
     ? vertical
@@ -127,8 +128,9 @@ export default function App() {
             ))}
           </nav>
 
-          {/* Mobile: bottom tab bar */}
-          <nav className="sm:hidden fixed bottom-0 inset-x-0 z-40 bg-zinc-900/95 border-t border-zinc-800 backdrop-blur pb-[max(env(safe-area-inset-bottom),12px)] flex">
+          {/* Mobile: bottom tab bar — flush to the viewport edge, padded only by the
+              home-indicator safe-area so there is no extra black gap below the labels. */}
+          <nav className="sm:hidden fixed bottom-0 inset-x-0 z-40 bg-zinc-900/95 border-t border-zinc-800 backdrop-blur pb-[env(safe-area-inset-bottom)] flex">
             {TABS.map((t) => (
               <NavItem key={t.id} vertical active={tab === t.id} onClick={() => navigate(t.path)} icon={t.icon} label={t.label} />
             ))}
