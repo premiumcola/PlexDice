@@ -15,8 +15,12 @@ createRoot(document.getElementById('root')).render(
 // controllerchange here; the guard prevents a reload loop.
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   let reloading = false;
+  // Only reload on an UPDATE (a worker already controlled this page at load). On a
+  // first-ever install the SW's clients.claim() also fires controllerchange, but there's
+  // nothing stale then — reloading would just flicker the first launch.
+  const hadController = !!navigator.serviceWorker.controller;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (reloading) return;
+    if (reloading || !hadController) return;
     reloading = true;
     window.location.reload();
   });
