@@ -2,15 +2,17 @@ import DieIcon from './DieIcon';
 
 // Shared product header: the PlexDice die + a sans-serif wordmark. The active product
 // gets the bold zinc-100 half; the sibling trails muted and smaller on the same baseline.
-// `sticky` pins the header just under the safe-area inset (z-30, below the scrim);
-// `rightSlot` lets callers inject a contextual control beside the wordmark.
+// Idle: no fill, no rounded surface, no border — the wordmark sits transparently on the
+// page background and blends in. `sticky` (post-roll) pins it just under the safe-area
+// inset (z-30, below the scrim) with a translucent backdrop so scrolled content reads
+// through. `rightSlot` lets callers inject a contextual control beside the wordmark.
 export default function AppHeader({ product, sticky = false, rightSlot = null }) {
   const dice = product === 'dice';
   const primary = dice ? 'Plex Dice' : 'Plex Quiz';
   const secondary = dice ? '& Quiz' : '& Dice';
   const stickyClass = sticky
     ? 'sticky top-[calc(env(safe-area-inset-top)+12px)] z-30 bg-zinc-950/95 backdrop-blur-sm'
-    : '';
+    : 'bg-transparent';
   return (
     <header className={`mb-2 ${stickyClass}`}>
       <div className="flex items-center gap-3">
