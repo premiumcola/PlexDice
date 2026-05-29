@@ -218,50 +218,8 @@ export default function FilterFunnel({ stages, total, onOpenStage, onResetStage 
                 </span>
               </div>
 
-              {stages.map((s, i) => {
-                const Icon = s.icon;
-                return (
-                  <button
-                    key={s.id}
-                    type="button"
-                    onClick={guarded(() => onOpenStage(s.drawer_target))}
-                    {...hover(s, i, 'gate')}
-                    className="absolute -translate-x-1/2 pointer-events-auto flex items-center gap-1 text-xs text-zinc-300 tabular-nums whitespace-nowrap transition-colors hover:text-amber-300"
-                    style={{ left: gateX[i], top: 4 }}
-                  >
-                    <Icon className="w-3.5 h-3.5 text-amber-400/90" />
-                    <span className="hidden md:inline">{fmt(s.count_out)}</span>
-                  </button>
-                );
-              })}
-
-              {/* Per-gate delta pill set into the stream: how many films this filter
-                  removed. Skip the first gate (its drop dominates) and any no-op gate. */}
-              {stages.map((s, i) => {
-                const delta = s.count_in - s.count_out;
-                if (i === 0 || delta <= 0) return null;
-                const PILL_W = 52;
-                const cx = Math.min(Math.max(gateX[i], flowStart + PILL_W / 2), flowEnd - PILL_W / 2);
-                // Place each reduction label on its gate's stream band: cascade gently
-                // downward where the band is tall enough, otherwise centre on the (thin)
-                // band. Guards against an inverted clamp (hi < lo) that would otherwise jam
-                // every thin-band pill to the same y near the chart top.
-                const band = yTop + h(s.count_out);
-                const lo = yTop + 12;
-                const hi = band - 12;
-                const target = yTop + HCHART * 0.3 + i * 9;
-                const pillTop = hi >= lo ? Math.min(Math.max(target, lo), hi) : (yTop + band) / 2;
-                return (
-                  <div
-                    key={s.id}
-                    className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center rounded bg-zinc-950/85 px-1 py-0.5 leading-tight"
-                    style={{ left: cx, top: pillTop, width: PILL_W }}
-                  >
-                    <span className="text-[10px] text-zinc-400 truncate max-w-full">{s.label}</span>
-                    <span className="text-xs font-semibold text-amber-300 tabular-nums">−{fmt(delta)}</span>
-                  </div>
-                );
-              })}
+              {/* Gate icons + per-filter reduction labels live in a legend row BELOW the
+                  chart (see below), so nothing sits on top of the flow timeline. */}
 
               <div
                 className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center text-white"
@@ -297,6 +255,28 @@ export default function FilterFunnel({ stages, total, onOpenStage, onResetStage 
             </div>
           </>
         )}
+      </div>
+
+      {/* Per-filter legend — each filter's icon, name and how many films it removed, in a
+          tidy row beneath the chart so the numbers never overlap the flow. Tap to adjust. */}
+      <div className="mt-2.5 flex flex-wrap gap-1.5">
+        {stages.map((s) => {
+          const Icon = s.icon;
+          const delta = s.count_in - s.count_out;
+          return (
+            <button
+              key={s.id}
+              type="button"
+              onClick={() => onOpenStage(s.drawer_target)}
+              aria-label={`Filter ${s.label} anpassen, ${fmt(delta)} herausgefiltert`}
+              className="flex items-center gap-1.5 rounded-lg bg-zinc-800/70 px-2 py-1 text-xs active:scale-[0.97] transition-transform"
+            >
+              <Icon className="w-3.5 h-3.5 text-amber-400/90 shrink-0" />
+              <span className="text-zinc-300">{s.label}</span>
+              <span className="font-semibold text-amber-300 tabular-nums">−{fmt(delta)}</span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
