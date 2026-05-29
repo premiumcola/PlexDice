@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import {
   Dices, SlidersHorizontal, ChevronDown, ChevronUp, Clock, Calendar, Star,
-  ShieldAlert, Tag, Film, X, AlertCircle, History as HistoryIcon, Youtube,
+  ShieldAlert, Tag, X, AlertCircle, History as HistoryIcon, Youtube,
   ExternalLink, Tv2, Sparkles, Play, Loader2, Eye, EyeOff, Check, Shield, RefreshCw, BarChart3,
 } from 'lucide-react';
 import { getLibrary, movieInfo, getSettings, saveSettings } from '../api';
@@ -9,6 +9,7 @@ import { HistogramRange } from '../components/HistogramRange';
 import FilterFunnel from '../components/FilterFunnel';
 import GenrePicker from '../components/GenrePicker';
 import AppHeader from '../components/AppHeader';
+import DieIcon from '../components/DieIcon';
 import Fireworks from '../components/Fireworks';
 import { usePrefs } from '../usePrefs';
 import { sanitizePlexUrl, plexWatchUrl } from '../lib/plexLink';
@@ -434,7 +435,7 @@ export default function Dice({ onNeedSettings }) {
         .dual-range-input::-webkit-slider-runnable-track { background: transparent; height: 36px; }
         .dual-range-input::-moz-range-track { background: transparent; height: 36px; }
       `}</style>
-      <div className="min-h-[100dvh] bg-zinc-950 text-zinc-100 relative overflow-hidden">
+      <div className="flex flex-col min-h-[calc(100dvh_-_env(safe-area-inset-top)_-_4rem)] sm:min-h-[100dvh] bg-zinc-950 text-zinc-100 relative overflow-hidden">
         <div className="fixed inset-0 pointer-events-none" style={{
           background: 'radial-gradient(ellipse 80% 50% at 50% 0%, rgba(245, 166, 35, 0.08), transparent 70%), radial-gradient(ellipse 60% 40% at 50% 100%, rgba(124, 58, 237, 0.06), transparent 70%)',
         }} />
@@ -442,7 +443,7 @@ export default function Dice({ onNeedSettings }) {
         {rolling && !reduceMotion && <div className="fixed inset-0 pointer-events-none rolling-bg" />}
         {fireworks && !reduceMotion && <Fireworks key={fireworksKey} />}
 
-        <div className="relative max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 pb-24 sm:py-10">
+        <div className="relative w-full max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 pb-24 sm:py-10 flex-1 flex flex-col">
           <AppHeader
             product="dice"
             sticky={!!picked}
@@ -929,9 +930,11 @@ export default function Dice({ onNeedSettings }) {
             </article>
           )}
 
-          <footer className="mt-12 text-center">
-            <p className="text-xs text-zinc-500 flex items-center justify-center gap-1.5">
-              <Film className="w-3 h-3" /> Entdecke deine Filme neu
+          {/* Subtle bottom branding — pushed to the bottom of the content area (just
+              above the tab bar) via mt-auto, low-emphasis, no divider above it. */}
+          <footer className="mt-auto pt-8 text-center">
+            <p className="inline-flex items-center justify-center gap-2 text-xs text-zinc-500">
+              <DieIcon className="w-4 h-4 opacity-70" /> Entdecke deine Filme neu!
             </p>
           </footer>
         </div>
