@@ -33,16 +33,23 @@ html {
 html,
 body {
   height: 100%;
+  overflow: hidden;
 }
 
-/* The app shell is an exact-viewport flex column (App.jsx); #root hands it a definite
-   dynamic-viewport height so the bottom nav sits flush from first paint (dvh, never vh). */
+/* body is locked to the TRUE visual viewport (position:fixed; inset:0) so the whole height
+   chain is `height:100%` of the real screen — never a dvh/vh length that iOS standalone
+   computes short. #root fills it and App.jsx's flex shell + its bottom-nav flex child then
+   sit flush at the real screen bottom, identically in Safari and standalone. */
 #root {
-  height: 100dvh;
+  height: 100%;
 }
 
 body {
   margin: 0;
+  /* Pin to the visual viewport and kill rubber-band overscroll so the shell is exactly the
+     screen and nothing (esp. the bottom nav) can float above a gap. */
+  position: fixed;
+  inset: 0;
   background: #09090b;
   -webkit-tap-highlight-color: transparent;
 }

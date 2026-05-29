@@ -93,10 +93,11 @@ export default function App() {
   const showBanner = needSettings && tab === 'settings';
 
   return (
-    // App shell: an exact-viewport (100dvh) flex column. <main> is the only scroll area;
-    // the bottom nav is a normal flex child pinned at the shell's bottom edge (NOT
-    // position:fixed), so it sits flush from first paint with no black gap or scroll jump.
-    <div className="flex flex-col h-[100dvh] overflow-hidden bg-zinc-950">
+    // App shell: a flex column filling the viewport-locked body (index.css pins body to the
+    // visual viewport), so h-full = the real screen height in Safari AND standalone — no dvh
+    // length quirk. <main> is the only scroll area; the mobile bottom nav is a flex child at
+    // the end, sitting flush at the true screen bottom from first paint with no gap or jump.
+    <div className="flex flex-col h-full overflow-hidden bg-zinc-950">
       {/* Status-bar scrim: fully saturated across only the status-bar / notch region
           (clock, dynamic island, battery), then a short fade that is completely gone by
           ~the bottom of the notch (~72% of the inset). Nothing shows below the notch.
@@ -122,15 +123,7 @@ export default function App() {
         </div>
       )}
 
-      <main
-        className={`flex-1 min-h-0 overflow-y-auto ${
-          immersive
-            ? ''
-            : `${showBanner ? '' : 'safe-top '}pb-[calc(env(safe-area-inset-bottom)+4.5rem)] sm:pb-0`
-        }`}
-      >
-        {page}
-      </main>
+      <main className={`flex-1 min-h-0 overflow-y-auto ${immersive || showBanner ? '' : 'safe-top'}`}>{page}</main>
 
       {!immersive && (
         <>
@@ -141,14 +134,12 @@ export default function App() {
             ))}
           </nav>
 
-          {/* Mobile: bottom tab bar pinned with position:fixed bottom-0 to the VISUAL
-              viewport's physical bottom — reliable regardless of the 100dvh length (a flex
-              child at the shell's bottom can fall short of the screen on iOS standalone and
-              leave a gap). bottom:0 + padding-bottom: env(safe-area-inset-bottom) makes the
-              bar's own surface fill down through the home-indicator area — never an offset
-              that would leave a black band. No transformed ancestor, so it pins to the
-              viewport. main reserves matching bottom padding so content clears it. */}
-          <nav className="sm:hidden fixed bottom-0 inset-x-0 z-40 bg-zinc-900 pb-[env(safe-area-inset-bottom)] flex shadow-[0_-6px_20px_rgba(0,0,0,0.45)]">
+          {/* Mobile: bottom tab bar as a NORMAL flex child at the end of the shell
+              (shrink-0, NOT position:fixed). Because body is locked to the visual viewport,
+              the shell's bottom IS the real screen bottom, so the bar sits flush there from
+              first paint — no dvh gap, no fixed-position quirk, no scroll jump. Its surface
+              fills the home-indicator area via padding-bottom: env(safe-area-inset-bottom). */}
+          <nav className="sm:hidden shrink-0 z-40 bg-zinc-900 pb-[env(safe-area-inset-bottom)] flex shadow-[0_-6px_20px_rgba(0,0,0,0.45)]">
             {TABS.map((t) => (
               <NavItem key={t.id} vertical active={tab === t.id} onClick={() => navigate(t.path)} icon={t.icon} label={t.label} />
             ))}
