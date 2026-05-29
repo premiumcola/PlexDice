@@ -74,8 +74,8 @@ export default function QuizSetup() {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-zinc-950 text-zinc-100">
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-24 sm:py-10">
+    <div className="min-h-full bg-zinc-950 text-zinc-100">
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-6 sm:py-10">
         <header className="mb-6 flex items-center gap-3">
           <button type="button" onClick={() => navigate('/quiz')} aria-label="Zurück"
             className="w-10 h-10 rounded-xl bg-zinc-900 ring-1 ring-zinc-800 flex items-center justify-center active:scale-95 transition-transform">

@@ -64,8 +64,8 @@ export default function QuizHome() {
   const castLoading = status && !status.meta_enriched;
 
   return (
-    <div className="min-h-[100dvh] bg-zinc-950 text-zinc-100">
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-24 sm:py-10">
+    <div className="min-h-full bg-zinc-950 text-zinc-100">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-6 sm:py-10">
         <AppHeader product="quiz" />
 
         {castLoading && <CastBanner progress={status.meta_progress} />}

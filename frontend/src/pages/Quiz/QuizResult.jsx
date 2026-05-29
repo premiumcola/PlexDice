@@ -69,7 +69,7 @@ export default function QuizResult({ roundId }) {
 
   if (!results) {
     return (
-      <div className="min-h-[100dvh] bg-zinc-950 text-zinc-100 flex flex-col items-center justify-center gap-4 px-6 text-center">
+      <div className="min-h-full bg-zinc-950 text-zinc-100 flex flex-col items-center justify-center gap-4 px-6 text-center">
         <p className="text-zinc-400">Kein Rundenergebnis gefunden.</p>
         <button type="button" onClick={() => navigate('/quiz')} className="px-5 py-3 rounded-xl bg-amber-400 text-zinc-950 font-semibold">Zum Quiz</button>
       </div>
@@ -153,9 +153,9 @@ export default function QuizResult({ roundId }) {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-zinc-950 text-zinc-100">
+    <div className="min-h-full bg-zinc-950 text-zinc-100">
       {accuracy >= 0.7 && <Confetti />}
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-24 sm:py-12">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-6 sm:py-12">
         <div className="text-center">
           <div className="text-[11px] uppercase tracking-widest text-zinc-500 mb-2">Ergebnis</div>
           <div
