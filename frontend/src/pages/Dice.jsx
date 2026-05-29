@@ -753,10 +753,9 @@ export default function Dice({ onNeedSettings }) {
           {picked && !rolling && (
             <article ref={resultRef} key={picked.key} className="mt-3 scroll-mt-[calc(env(safe-area-inset-top)+240px)] rounded-3xl bg-gradient-to-br from-zinc-900 to-zinc-900/40 overflow-hidden reveal-card">
               <div className="p-4 sm:p-6">
-                {/* Title-above-cover: title gets the full card width to breathe, the
-                    poster sits centered below as a single visual anchor. Reads cleaner
-                    on a phone than the old cover-left/title-right grid which crammed
-                    long titles into a narrow column. */}
+                {/* Kicker + title span the full card width; underneath, a two-column
+                    band sets the poster beside the meta chips and plot so the card
+                    spends its horizontal space instead of stacking one tall column. */}
                 <div className="flex items-start justify-between gap-3 mb-2">
                   <span className="text-xs uppercase tracking-[0.2em] text-amber-400/80 font-medium">Dein Zufallsfilm</span>
                   <Sparkles className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
@@ -767,51 +766,56 @@ export default function Dice({ onNeedSettings }) {
                 {picked.o && picked.o !== picked.t && (
                   <p className="text-sm text-zinc-400 mt-1 italic">{picked.o}</p>
                 )}
-                <div className="flex flex-wrap items-center gap-2 mt-3 tabular-nums">
-                  {picked.y && (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-800/60 text-zinc-300 text-sm">
-                      <Calendar className="w-3.5 h-3.5" /> {picked.y}
-                    </span>
-                  )}
-                  {picked.r && (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-800/60 text-zinc-300 text-sm">
-                      <Clock className="w-3.5 h-3.5" /> {formatRuntime(picked.r)}
-                    </span>
-                  )}
-                  {picked.s != null && (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-300 border border-amber-500/20 text-sm font-medium">
-                      <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" /> {picked.s.toFixed(1).replace('.', ',')}
-                    </span>
-                  )}
-                  {picked.f != null && (
-                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-sm font-medium ${fskColor(picked.f)}`}>
-                      FSK {picked.f}
-                    </span>
-                  )}
-                </div>
-                {picked.thumb_url && (
-                  <img
-                    src={picked.thumb_url}
-                    alt=""
-                    loading="lazy"
-                    className="w-[170px] sm:w-[200px] aspect-[2/3] rounded-xl object-cover bg-zinc-800 mx-auto mt-4 block"
-                    style={{ boxShadow: '0 8px 24px rgba(0,0,0,0.35), 0 0 32px rgba(245, 166, 35, 0.15)' }}
-                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                  />
-                )}
 
-                {/* Genres */}
+                <div className="mt-4 flex gap-4">
+                  {picked.thumb_url && (
+                    <img
+                      src={picked.thumb_url}
+                      alt=""
+                      loading="lazy"
+                      className="w-[132px] sm:w-[180px] shrink-0 aspect-[2/3] rounded-xl object-cover bg-zinc-800 block"
+                      style={{ boxShadow: '0 8px 24px rgba(0,0,0,0.35), 0 0 32px rgba(245, 166, 35, 0.15)' }}
+                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                    />
+                  )}
+                  <div className="min-w-0 flex-1 space-y-3">
+                    <div className="flex flex-wrap items-center gap-2 tabular-nums">
+                      {picked.y && (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-800/60 text-zinc-300 text-sm">
+                          <Calendar className="w-3.5 h-3.5" /> {picked.y}
+                        </span>
+                      )}
+                      {picked.r && (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-800/60 text-zinc-300 text-sm">
+                          <Clock className="w-3.5 h-3.5" /> {formatRuntime(picked.r)}
+                        </span>
+                      )}
+                      {picked.s != null && (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-300 border border-amber-500/20 text-sm font-medium">
+                          <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" /> {picked.s.toFixed(1).replace('.', ',')}
+                        </span>
+                      )}
+                      {picked.f != null && (
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-sm font-medium ${fskColor(picked.f)}`}>
+                          FSK {picked.f}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Plex summary — clamps beside the poster so the band stays tidy */}
+                    {picked.summary && (
+                      <p className="text-sm sm:text-base text-zinc-300 leading-relaxed line-clamp-5 sm:line-clamp-6 opsz-20">{picked.summary}</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Genres — full width below the band, where pills wrap cleanly */}
                 {(picked.g || []).length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mt-2">
+                  <div className="flex flex-wrap gap-1.5 mt-3">
                     {picked.g.map((g) => (
                       <span key={g} className="px-2 py-0.5 rounded-md bg-zinc-800/40 text-zinc-400 text-xs">{g}</span>
                     ))}
                   </div>
-                )}
-
-                {/* Plex summary */}
-                {picked.summary && (
-                  <p className="text-base text-zinc-300 leading-relaxed mt-3 line-clamp-3 opsz-20">{picked.summary}</p>
                 )}
 
                 {/* AI enrichment */}
