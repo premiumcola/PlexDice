@@ -92,10 +92,10 @@ export default function App() {
 
   return (
     <div className="min-h-[100dvh] bg-zinc-950">
-      {/* Status-bar scrim: full opacity only at the very top edge, then a soft, airy
-          fade that reaches fully transparent by the bottom of the dynamic-island pill
-          (≈ env(safe-area-inset-top)). Nothing of it shows below the pill. Pinned to the
-          top and promoted to its own layer so it never jumps on iOS scroll. */}
+      {/* Status-bar scrim: fully saturated across only the status-bar / notch region
+          (clock, dynamic island, battery), then a short fade that is completely gone by
+          ~the bottom of the notch (~72% of the inset). Nothing shows below the notch.
+          Pinned to the top, on its own layer so it never jumps on iOS scroll. */}
       {!immersive && (
         <div
           aria-hidden="true"
@@ -105,9 +105,9 @@ export default function App() {
             transform: 'translateZ(0)',
             background:
               'linear-gradient(to bottom, '
-              + 'rgb(9 9 11) 0px, '
-              + 'rgba(9, 9, 11, 0.5) 45%, '
-              + 'rgba(9, 9, 11, 0) 100%)',
+              + 'rgb(9 9 11) 0%, '
+              + 'rgb(9 9 11) 30%, '
+              + 'rgba(9, 9, 11, 0) 72%)',
           }}
         />
       )}
