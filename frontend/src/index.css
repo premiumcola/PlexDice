@@ -32,10 +32,10 @@ body {
   height: 100%;
 }
 
-/* Anchor the app to the dynamic viewport so the fixed bottom nav resolves at the true
-   bottom edge from first paint on iOS (dvh, never vh). */
+/* The app shell is an exact-viewport flex column (App.jsx); #root hands it a definite
+   dynamic-viewport height so the bottom nav sits flush from first paint (dvh, never vh). */
 #root {
-  min-height: 100dvh;
+  height: 100dvh;
 }
 
 body {

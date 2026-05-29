@@ -444,7 +444,7 @@ export default function Dice({ onNeedSettings }) {
         .dual-range-input::-webkit-slider-runnable-track { background: transparent; height: 36px; }
         .dual-range-input::-moz-range-track { background: transparent; height: 36px; }
       `}</style>
-      <div className="flex flex-col min-h-[calc(100dvh_-_env(safe-area-inset-top)_-_4rem)] sm:min-h-[100dvh] bg-zinc-950 text-zinc-100 relative overflow-hidden">
+      <div className="flex flex-col min-h-full bg-zinc-950 text-zinc-100 relative overflow-hidden">
         <div className="fixed inset-0 pointer-events-none" style={{
           background: 'radial-gradient(ellipse 80% 50% at 50% 0%, rgba(245, 166, 35, 0.08), transparent 70%), radial-gradient(ellipse 60% 40% at 50% 100%, rgba(124, 58, 237, 0.06), transparent 70%)',
         }} />
@@ -452,7 +452,7 @@ export default function Dice({ onNeedSettings }) {
         {rolling && !reduceMotion && <div className="fixed inset-0 pointer-events-none rolling-bg" />}
         {fireworks && !reduceMotion && <Fireworks key={fireworksKey} />}
 
-        <div className="relative w-full max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 pb-24 sm:py-10 flex-1 flex flex-col">
+        <div className="relative w-full max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 pb-6 sm:py-10 flex-1 flex flex-col">
           <AppHeader
             product="dice"
             sticky={!!picked}

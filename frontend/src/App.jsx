@@ -90,8 +90,13 @@ export default function App() {
   else if (tab === 'quiz') page = <QuizRouter pathname={pathname} />;
   else page = <Dice onNeedSettings={handleNeedSettings} />;
 
+  const showBanner = needSettings && tab === 'settings';
+
   return (
-    <div className="min-h-[100dvh] bg-zinc-950">
+    // App shell: an exact-viewport (100dvh) flex column. <main> is the only scroll area;
+    // the bottom nav is a normal flex child pinned at the shell's bottom edge (NOT
+    // position:fixed), so it sits flush from first paint with no black gap or scroll jump.
+    <div className="flex flex-col h-[100dvh] overflow-hidden bg-zinc-950">
       {/* Status-bar scrim: fully saturated across only the status-bar / notch region
           (clock, dynamic island, battery), then a short fade that is completely gone by
           ~the bottom of the notch (~72% of the inset). Nothing shows below the notch.
@@ -111,13 +116,13 @@ export default function App() {
           }}
         />
       )}
-      {needSettings && tab === 'settings' && (
-        <div className="safe-top sticky top-0 z-50 bg-amber-400 text-zinc-950 text-sm font-semibold px-4 py-2 flex items-center gap-2">
+      {showBanner && (
+        <div className="safe-top shrink-0 z-50 bg-amber-400 text-zinc-950 text-sm font-semibold px-4 py-2 flex items-center gap-2">
           <AlertCircle className="w-4 h-4 shrink-0" /> Bitte zuerst Plex verbinden
         </div>
       )}
 
-      <main className={immersive ? '' : 'safe-top pb-16 sm:pb-0'}>{page}</main>
+      <main className={`flex-1 min-h-0 overflow-y-auto ${immersive || showBanner ? '' : 'safe-top'}`}>{page}</main>
 
       {!immersive && (
         <>
@@ -128,12 +133,11 @@ export default function App() {
             ))}
           </nav>
 
-          {/* Mobile: bottom tab bar — flush to the viewport edge, padded only by the
-              home-indicator safe-area. Solid (no backdrop-blur): a backdrop-filter on a
-              fixed element makes iOS Safari mis-composite it on first paint and jump on
-              scroll, which left a black gap below the bar. An opaque surface + top shadow
-              gives the same depth and pins to the bottom from the first frame. */}
-          <nav className="sm:hidden fixed bottom-0 inset-x-0 z-40 bg-zinc-900 pb-[env(safe-area-inset-bottom)] flex shadow-[0_-6px_20px_rgba(0,0,0,0.45)]">
+          {/* Mobile: bottom tab bar — a normal flex child at the shell's bottom edge (NOT
+              position:fixed), so it is flush to the viewport bottom from first paint with no
+              black gap and no scroll jump on iOS. Padded by the home-indicator safe-area
+              only; opaque surface + top shadow for depth (no hairline border). */}
+          <nav className="sm:hidden shrink-0 z-40 bg-zinc-900 pb-[env(safe-area-inset-bottom)] flex shadow-[0_-6px_20px_rgba(0,0,0,0.45)]">
             {TABS.map((t) => (
               <NavItem key={t.id} vertical active={tab === t.id} onClick={() => navigate(t.path)} icon={t.icon} label={t.label} />
             ))}
