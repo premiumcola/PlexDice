@@ -11,7 +11,7 @@ export default function AppHeader({ product, sticky = false, rightSlot = null })
   const primary = dice ? 'Plex Dice' : 'Plex Quiz';
   const secondary = dice ? '& Quiz' : '& Dice';
   const stickyClass = sticky
-    ? 'sticky top-[calc(env(safe-area-inset-top)+12px)] z-30 bg-zinc-950/95 backdrop-blur-sm'
+    ? 'sticky top-[env(safe-area-inset-top)] z-30 bg-zinc-950/95 backdrop-blur-sm'
     : 'bg-transparent';
   return (
     <header className={`mb-2 ${stickyClass}`}>
