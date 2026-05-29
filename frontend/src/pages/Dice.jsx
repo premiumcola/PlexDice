@@ -762,7 +762,7 @@ export default function Dice({ onNeedSettings }) {
 
           {/* Picked movie card */}
           {picked && !rolling && (
-            <article ref={resultRef} key={picked.key} className="mt-3 scroll-mt-[calc(env(safe-area-inset-top)+240px)] rounded-3xl bg-gradient-to-br from-zinc-900 to-zinc-900/40 overflow-hidden reveal-card">
+            <article ref={resultRef} key={picked.key} className="mt-3 scroll-mt-[calc(env(safe-area-inset-top)+88px)] rounded-3xl bg-gradient-to-br from-zinc-900 to-zinc-900/40 overflow-hidden reveal-card">
               <div className="p-4 sm:p-6">
                 {/* Kicker + title span the full card width; underneath, a two-column
                     band sets the poster beside the meta chips and plot so the card
