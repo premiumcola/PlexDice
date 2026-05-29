@@ -49,20 +49,23 @@ export default function FilterFunnel({ stages, total, onOpenStage, onResetStage 
   const n = stages.length;
   const finalCount = stages[n - 1].count_out;
 
-  // Vertical geometry (px, scale 1).
-  const HCHART = W < 420 ? 92 : W < 700 ? 118 : 132;
-  const PAD_TOP = 26;
-  const EXIT_DROP = 38;
-  const TERM_H = 14;
-  // Breath below the exit terminals — the old label row is now in-stream pills.
-  const BOTTOM_PAD = 6;
+  // Vertical geometry (px, scale 1). Shorter chart: a tighter main stream and a shallow
+  // exit band whose terminals CASCADE — each filter's bleed-off lands a little lower than
+  // the previous (DROP_MIN → DROP_MAX) instead of all hanging at one deep row.
+  const HCHART = W < 420 ? 74 : W < 700 ? 96 : 108;
+  const PAD_TOP = 20;
+  const TERM_H = 12;
+  const DROP_MIN = 8;
+  const DROP_MAX = W < 420 ? 22 : 28;
+  const BOTTOM_PAD = 8;
   const yTop = PAD_TOP;
   const baseY = yTop + HCHART;
-  const termTop = baseY + EXIT_DROP;
-  const H = termTop + TERM_H + BOTTOM_PAD;
+  // Staggered terminal top for gate i: cascades from DROP_MIN to DROP_MAX below baseY.
+  const termYof = (i) => baseY + (n <= 1 ? DROP_MIN : DROP_MIN + ((DROP_MAX - DROP_MIN) * i) / (n - 1));
+  const H = baseY + DROP_MAX + TERM_H + BOTTOM_PAD;
 
-  // Horizontal geometry.
-  const SRC_W = 14;
+  // Horizontal geometry. A slightly wider source bar carries the vertical start-count label.
+  const SRC_W = W < 420 ? 18 : 20;
   const TARGET_W = W < 420 ? 84 : 104;
   const flowStart = SRC_W;
   const flowEnd = W - TARGET_W;
@@ -74,9 +77,6 @@ export default function FilterFunnel({ stages, total, onOpenStage, onResetStage 
 
   const h = (c) => (total > 0 ? (c / total) * HCHART : 0);
   const gateX = stages.map((_, i) => flowStart + colW * (i + 1));
-  // Keep the source label from bleeding into the first gate chip on narrow widths.
-  const srcMax = Math.max(0, gateX[0] - SRC_W - 30);
-  const srcText = srcMax >= 92 ? `${fmt(total)} · Bibliothek` : fmt(total);
 
   // Bottom edge of the main stream (top edge stays flat at yTop).
   const knots = [
@@ -146,12 +146,13 @@ export default function FilterFunnel({ stages, total, onOpenStage, onResetStage 
                 const TW = Math.min(40, Math.max(16, (yIn - yOut) * 0.7));
                 const tl = xt - TW / 2;
                 const tr = xt + TW / 2;
-                const m1 = (yOut + termTop) / 2;
-                const m2 = (yIn + termTop) / 2;
+                const ty = termYof(i);
+                const m1 = (yOut + ty) / 2;
+                const m2 = (yIn + ty) / 2;
                 const ribbonD =
                   `M ${x0} ${yOut} ` +
-                  `C ${x0} ${m1}, ${tl} ${m1}, ${tl} ${termTop} ` +
-                  `L ${tr} ${termTop} ` +
+                  `C ${x0} ${m1}, ${tl} ${m1}, ${tl} ${ty} ` +
+                  `L ${tr} ${ty} ` +
                   `C ${tr} ${m2}, ${x0} ${m2}, ${x0} ${yIn} Z`;
                 return (
                   <g key={s.id}>
@@ -169,7 +170,7 @@ export default function FilterFunnel({ stages, total, onOpenStage, onResetStage 
                           {...hover(s, i, 'exit')}
                           className="cursor-pointer outline-none transition-[filter] hover:brightness-150 focus-visible:brightness-150"
                         />
-                        <rect x={tl} y={termTop} width={TW} height={TERM_H} rx="3" fill="#1c1917" stroke={COL.exit} strokeWidth="1" pointerEvents="none" />
+                        <rect x={tl} y={ty} width={TW} height={TERM_H} rx="3" fill="#1c1917" stroke={COL.exit} strokeWidth="1" pointerEvents="none" />
                       </>
                     )}
                     {/* gate hit area: column above the narrowed stream */}
@@ -206,11 +207,15 @@ export default function FilterFunnel({ stages, total, onOpenStage, onResetStage 
 
             {/* HTML overlay: crisp text + lucide icons (Safari-safe, no foreignObject) */}
             <div className="absolute inset-0 pointer-events-none text-white">
+              {/* Start total — the full library pool feeding the funnel, drawn vertically
+                  on the source bar so the count reads clearly and never truncates. */}
               <div
-                className="absolute text-[10px] text-zinc-400 tabular-nums truncate"
-                style={{ left: SRC_W + 4, top: 4, maxWidth: srcMax }}
+                className="absolute left-0 flex items-center justify-center pointer-events-none"
+                style={{ top: yTop, height: HCHART, width: SRC_W + 8 }}
               >
-                {srcText}
+                <span className="text-[10px] font-semibold text-zinc-200 tabular-nums whitespace-nowrap [writing-mode:vertical-rl] rotate-180">
+                  {fmt(total)} Filme
+                </span>
               </div>
 
               {stages.map((s, i) => {
@@ -237,11 +242,14 @@ export default function FilterFunnel({ stages, total, onOpenStage, onResetStage 
                 if (i === 0 || delta <= 0) return null;
                 const PILL_W = 52;
                 const cx = Math.min(Math.max(gateX[i], flowStart + PILL_W / 2), flowEnd - PILL_W / 2);
+                // Cascade the reduction labels gently downward (step by step), but clamp
+                // each to its gate's stream band so the pill stays on the amber flow.
+                const pillTop = Math.max(yTop + 12, Math.min(yTop + HCHART * 0.3 + i * 9, yTop + h(s.count_out) - 12));
                 return (
                   <div
                     key={s.id}
                     className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center rounded bg-zinc-950/85 px-1 py-0.5 leading-tight"
-                    style={{ left: cx, top: yTop + HCHART * 0.45, width: PILL_W }}
+                    style={{ left: cx, top: pillTop, width: PILL_W }}
                   >
                     <span className="text-[10px] text-zinc-400 truncate max-w-full">{s.label}</span>
                     <span className="text-xs font-semibold text-amber-300 tabular-nums">−{fmt(delta)}</span>
