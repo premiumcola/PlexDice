@@ -52,7 +52,7 @@ export default function FilterFunnel({ stages, total, onOpenStage, onResetStage 
   // Vertical geometry (px, scale 1). Shorter chart: a tighter main stream and a shallow
   // exit band whose terminals CASCADE — each filter's bleed-off lands a little lower than
   // the previous (DROP_MIN → DROP_MAX) instead of all hanging at one deep row.
-  const HCHART = W < 420 ? 74 : W < 700 ? 96 : 108;
+  const HCHART = W < 420 ? 108 : W < 700 ? 132 : 150;
   const PAD_TOP = 20;
   const TERM_H = 12;
   const DROP_MIN = 8;

@@ -85,7 +85,7 @@ export default function Dice({ onNeedSettings }) {
   const [history, setHistory] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
   const [highlightSection, setHighlightSection] = useState(null);
-  const [funnelExpanded, setFunnelExpanded] = useState(false); // transient: result-mode funnel toggle
+  const [funnelExpanded, setFunnelExpanded] = useState(true); // open by default; collapses after a roll
   const [showFiltersOnResult, setShowFiltersOnResult] = useState(false); // sticky-header toggle
   const [prefsLoaded, setPrefsLoaded] = useState(false);
   const resultRef = useRef(null); // the rolled movie card, scrolled into focus after a roll
@@ -186,6 +186,15 @@ export default function Dice({ onNeedSettings }) {
     if (!settingsLoaded) return;
     saveSettings({ ui: { last_filters: { watched } } }).catch(() => {});
   }, [settingsLoaded, watched]);
+
+  // Re-open the funnel whenever a filter changes, so the effect on the hit count is
+  // visible even after a roll collapsed it. The ref skips the initial mount + the
+  // prefs/settings hydration (which fire before the user touches anything).
+  const filterTouched = useRef(false);
+  useEffect(() => {
+    if (!filterTouched.current) { filterTouched.current = true; return; }
+    setFunnelExpanded(true);
+  }, [genreGroups, yearMin, yearMax, runtimeMin, runtimeMax, fskMin, fskMax, ratingMin, ratingMax, watched]);
 
   // Deep-link from the Quiz review (/?movie=<key>) → show that movie's card.
   useEffect(() => {
@@ -510,29 +519,30 @@ export default function Dice({ onNeedSettings }) {
             )}
           </div>
 
-          {/* Headline funnel — collapses to a slim bar once a movie is picked, so the
-              result reaches into the viewport. Tap "Statistik" to bring it back. */}
+          {/* Headline funnel — a one-line "start → Treffer" summary that toggles the full
+              chart. Expanded by default; a roll collapses it so the result gets room, and
+              any filter change re-opens it (see effect above). */}
           {movies.length > 0 && (
             funnelStages.length > 0 ? (
               <>
-                {picked && (
-                  <button
-                    type="button"
-                    onClick={() => setFunnelExpanded((e) => !e)}
-                    aria-expanded={funnelExpanded}
-                    className="w-full mb-3 flex items-center justify-between gap-2 px-4 py-3 rounded-2xl bg-zinc-900/60 active:scale-[0.99] transition-transform"
-                  >
-                    <span className="text-sm tabular-nums">
-                      <span className="text-amber-400 font-semibold">{filtered.length.toLocaleString('de-DE')}</span>
-                      <span className="text-zinc-400"> Treffer</span>
-                    </span>
-                    <span className="flex items-center gap-1.5 text-xs text-zinc-400">
-                      <BarChart3 className="w-4 h-4" /> Statistik
-                      {funnelExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                    </span>
-                  </button>
-                )}
-                {(!picked || funnelExpanded) && (
+                <button
+                  type="button"
+                  onClick={() => setFunnelExpanded((e) => !e)}
+                  aria-expanded={funnelExpanded}
+                  className="w-full min-h-[44px] mb-3 flex items-center justify-between gap-3 px-4 py-3 rounded-2xl bg-zinc-900/60 active:scale-[0.99] transition-transform"
+                >
+                  <span className="text-sm tabular-nums">
+                    <span className="text-zinc-400">{movies.length.toLocaleString('de-DE')}</span>
+                    <span className="text-zinc-600 mx-1.5">→</span>
+                    <span className="text-amber-400 font-semibold">{filtered.length.toLocaleString('de-DE')}</span>
+                    <span className="text-zinc-400"> Treffer</span>
+                  </span>
+                  <span className="flex items-center gap-1.5 text-xs text-zinc-400">
+                    <BarChart3 className="w-4 h-4" />
+                    {funnelExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  </span>
+                </button>
+                {funnelExpanded && (
                   <FilterFunnel
                     stages={funnelStages}
                     total={movies.length}
