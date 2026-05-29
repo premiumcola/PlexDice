@@ -91,22 +91,22 @@ export default function App() {
 
   return (
     <div className="min-h-[100dvh] bg-zinc-950">
-      {/* Soft scrim: solid zinc-950 behind the status bar, gently ramping just below
-          the notch and then trailing off over a long distance — no hard cut-off, so
-          the wordmark and the headings underneath stay fully legible. */}
+      {/* Status-bar scrim: fully opaque zinc-950 across the whole safe-area inset
+          (clock, signal, battery / dynamic island), then a fast fade to transparent
+          just below the clock line (~12px). Pinned to the safe-area top and promoted
+          to its own layer so it never jumps on iOS scroll. */}
       {!immersive && (
         <div
           aria-hidden="true"
           className="fixed top-0 inset-x-0 z-50 pointer-events-none"
           style={{
-            height: 'calc(env(safe-area-inset-top) + 96px)',
+            height: 'calc(env(safe-area-inset-top) + 12px)',
+            transform: 'translateZ(0)',
             background:
               'linear-gradient(to bottom, '
               + 'rgb(9 9 11) 0px, '
               + 'rgb(9 9 11) env(safe-area-inset-top), '
-              + 'rgba(9, 9, 11, 0.78) calc(env(safe-area-inset-top) + 6px), '
-              + 'rgba(9, 9, 11, 0.12) calc(env(safe-area-inset-top) + 32px), '
-              + 'rgba(9, 9, 11, 0) calc(env(safe-area-inset-top) + 96px))',
+              + 'rgba(9, 9, 11, 0) calc(env(safe-area-inset-top) + 12px))',
           }}
         />
       )}
