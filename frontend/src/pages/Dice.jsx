@@ -442,7 +442,7 @@ export default function Dice({ onNeedSettings }) {
         {rolling && !reduceMotion && <div className="fixed inset-0 pointer-events-none rolling-bg" />}
         {fireworks && !reduceMotion && <Fireworks key={fireworksKey} />}
 
-        <div className="relative max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 pt-1 pb-24 sm:py-10">
+        <div className="relative max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 pb-24 sm:py-10">
           <AppHeader
             product="dice"
             sticky={!!picked}

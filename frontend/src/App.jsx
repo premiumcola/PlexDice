@@ -116,7 +116,7 @@ export default function App() {
         </div>
       )}
 
-      <main className={immersive ? '' : 'safe-top pt-3 pb-16 sm:pb-0'}>{page}</main>
+      <main className={immersive ? '' : 'safe-top pb-16 sm:pb-0'}>{page}</main>
 
       {!immersive && (
         <>
