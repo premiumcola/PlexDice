@@ -242,9 +242,15 @@ export default function FilterFunnel({ stages, total, onOpenStage, onResetStage 
                 if (i === 0 || delta <= 0) return null;
                 const PILL_W = 52;
                 const cx = Math.min(Math.max(gateX[i], flowStart + PILL_W / 2), flowEnd - PILL_W / 2);
-                // Cascade the reduction labels gently downward (step by step), but clamp
-                // each to its gate's stream band so the pill stays on the amber flow.
-                const pillTop = Math.max(yTop + 12, Math.min(yTop + HCHART * 0.3 + i * 9, yTop + h(s.count_out) - 12));
+                // Place each reduction label on its gate's stream band: cascade gently
+                // downward where the band is tall enough, otherwise centre on the (thin)
+                // band. Guards against an inverted clamp (hi < lo) that would otherwise jam
+                // every thin-band pill to the same y near the chart top.
+                const band = yTop + h(s.count_out);
+                const lo = yTop + 12;
+                const hi = band - 12;
+                const target = yTop + HCHART * 0.3 + i * 9;
+                const pillTop = hi >= lo ? Math.min(Math.max(target, lo), hi) : (yTop + band) / 2;
                 return (
                   <div
                     key={s.id}
