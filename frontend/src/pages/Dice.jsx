@@ -929,7 +929,7 @@ export default function Dice({ onNeedSettings }) {
             </article>
           )}
 
-          <footer className="mt-12 pt-6 border-t border-zinc-900 text-center">
+          <footer className="mt-12 text-center">
             <p className="text-xs text-zinc-500 flex items-center justify-center gap-1.5">
               <Film className="w-3 h-3" /> Entdecke deine Filme neu
             </p>
