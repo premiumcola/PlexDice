@@ -28,9 +28,14 @@ html {
 }
 
 html,
-body,
-#root {
+body {
   height: 100%;
+}
+
+/* Anchor the app to the dynamic viewport so the fixed bottom nav resolves at the true
+   bottom edge from first paint on iOS (dvh, never vh). */
+#root {
+  min-height: 100dvh;
 }
 
 body {

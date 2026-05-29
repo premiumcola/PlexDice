@@ -129,8 +129,11 @@ export default function App() {
           </nav>
 
           {/* Mobile: bottom tab bar — flush to the viewport edge, padded only by the
-              home-indicator safe-area so there is no extra black gap below the labels. */}
-          <nav className="sm:hidden fixed bottom-0 inset-x-0 z-40 bg-zinc-900/95 border-t border-zinc-800 backdrop-blur pb-[env(safe-area-inset-bottom)] flex">
+              home-indicator safe-area. Solid (no backdrop-blur): a backdrop-filter on a
+              fixed element makes iOS Safari mis-composite it on first paint and jump on
+              scroll, which left a black gap below the bar. An opaque surface + top shadow
+              gives the same depth and pins to the bottom from the first frame. */}
+          <nav className="sm:hidden fixed bottom-0 inset-x-0 z-40 bg-zinc-900 pb-[env(safe-area-inset-bottom)] flex shadow-[0_-6px_20px_rgba(0,0,0,0.45)]">
             {TABS.map((t) => (
               <NavItem key={t.id} vertical active={tab === t.id} onClick={() => navigate(t.path)} icon={t.icon} label={t.label} />
             ))}
