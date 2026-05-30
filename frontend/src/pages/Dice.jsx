@@ -952,8 +952,7 @@ export default function Dice({ onNeedSettings }) {
 
           {/* Subtle bottom branding — pushed to the bottom of the content area (just
               above the tab bar) via mt-auto, low-emphasis, no divider above it. */}
-          <footer className="mt-auto pt-8 text-center" style={{ background: 'rgba(255,140,0,0.55)', outline: '2px solid #000', position: 'relative' }}>
-            <span style={{ position: 'absolute', top: 0, left: 0, zIndex: 99999, background: 'rgba(255,255,255,0.92)', color: '#000', font: 'bold 10px/13px monospace', padding: '0 3px', pointerEvents: 'none', whiteSpace: 'nowrap' }}>FOOTER</span>
+          <footer className="mt-auto pt-8 text-center">
             <p className="inline-flex items-center justify-center gap-2 text-xs text-zinc-500">
               <DieIcon className="w-4 h-4 opacity-70" /> Entdecke deine Filme neu!
             </p>
