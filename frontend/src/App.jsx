@@ -24,7 +24,7 @@ function NavItem({ active, onClick, icon: Icon, label, vertical }) {
   // floating with dead space beneath. min-h-[54px] keeps the touch target above the
   // 44px floor.
   const base = vertical
-    ? 'flex-1 flex flex-col items-center justify-end gap-1 pt-2 pb-1.5 min-h-[54px] text-[11px]'
+    ? 'flex-1 flex flex-col items-center justify-end gap-1 pt-2 pb-0.5 min-h-[54px] text-[11px]'
     : 'flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium';
   const tone = active
     ? vertical
@@ -134,11 +134,24 @@ export default function App() {
             ))}
           </nav>
 
+          {/* Full-bleed backstop: a zinc-900 layer pinned with position:fixed to the
+              physical viewport bottom (fixed resolves against the viewport — the locked
+              body is NOT its containing block), so the home-indicator + rounded-corner
+              region always reads as the nav surface, never a black gap. It sits BEHIND the
+              nav (z-30 < z-40), so it's invisible when the nav already reaches the bottom
+              and only shows through to fill the safe-area otherwise. */}
+          <div
+            aria-hidden="true"
+            className="sm:hidden fixed inset-x-0 bottom-0 z-30 bg-zinc-900 pointer-events-none"
+            style={{ height: 'calc(env(safe-area-inset-bottom) + 16px)' }}
+          />
+
           {/* Mobile: bottom tab bar as a NORMAL flex child at the end of the shell
               (shrink-0, NOT position:fixed). Because body is locked to the visual viewport,
               the shell's bottom IS the real screen bottom, so the bar sits flush there from
               first paint — no dvh gap, no fixed-position quirk, no scroll jump. Its surface
-              fills the home-indicator area via padding-bottom: env(safe-area-inset-bottom). */}
+              fills the home-indicator area via padding-bottom: env(safe-area-inset-bottom),
+              backed by the full-bleed backstop above. */}
           <nav className="sm:hidden shrink-0 z-40 bg-zinc-900 pb-[env(safe-area-inset-bottom)] flex shadow-[0_-6px_20px_rgba(0,0,0,0.45)]">
             {TABS.map((t) => (
               <NavItem key={t.id} vertical active={tab === t.id} onClick={() => navigate(t.path)} icon={t.icon} label={t.label} />
