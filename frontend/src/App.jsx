@@ -19,11 +19,11 @@ function activeTab(pathname) {
 }
 
 function NavItem({ active, onClick, icon: Icon, label, vertical }) {
-  // Mobile tab: icon over label, pinned to the BOTTOM of the bar (justify-end) so they sit just
-  // above the home-indicator inset (the nav's padding-bottom). min-h-[54px] keeps the touch
-  // target above the 44px floor.
+  // Mobile tab: icon over label, vertically CENTERED in the bar (justify-center) so the pair sits
+  // nicely rather than being pushed down into the home-indicator inset (the nav's padding-bottom).
+  // min-h-[54px] keeps the touch target above the 44px floor.
   const base = vertical
-    ? 'flex-1 flex flex-col items-center justify-end gap-1 pt-2 pb-1 min-h-[54px] text-[11px]'
+    ? 'flex-1 flex flex-col items-center justify-center gap-1 py-1.5 min-h-[54px] text-[11px]'
     : 'flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium';
   const tone = active
     ? vertical
