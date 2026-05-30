@@ -3,16 +3,20 @@ import { createRoot } from 'react-dom/client';
 import App from './App.jsx';
 import './index.css';
 
-// JS-driven viewport height. In an iOS standalone PWA (black-translucent status bar +
-// viewport-fit=cover) window.innerHeight EXCLUDES the top safe-area inset — e.g. on an
-// iPhone 15 Pro Max it reports 873 while the true screen is 932, ~59px short — so a bottom
-// flex child pinned to innerHeight floats above the real edge and the page BODY peeks below
-// the nav. PlexDice is a portrait PWA, so when launched standalone window.screen.height is the
-// reliable full-screen height; drive --app-height straight from it. In a normal browser tab
-// (not standalone) innerHeight is the right value. NO vh/dvh anywhere.
+// JS-driven viewport height for the #root flex column (no vh/dvh anywhere). On an iOS standalone
+// PWA (black-translucent status bar + viewport-fit=cover) the three height measures disagree:
+// window.innerHeight is the VISUAL viewport and under-reports by the top inset (e.g. 873 on an
+// iPhone 15 Pro Max), while documentElement.clientHeight (the LAYOUT viewport that cover paints)
+// and window.screen.height are the full screen (932). Pinning #root to innerHeight leaves the
+// page BODY peeking below the bottom nav. Taking the MAX of all three always reaches the true
+// bottom edge, and — unlike a standalone-mode branch — it never falls back to the short value
+// when iOS reports display-mode/navigator.standalone unreliably right after install.
 function setAppHeight() {
-  const isStandalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
-  const h = isStandalone ? window.screen.height : window.innerHeight;
+  const h = Math.max(
+    document.documentElement.clientHeight,
+    window.innerHeight,
+    window.screen.height,
+  );
   document.documentElement.style.setProperty('--app-height', `${h}px`);
 }
 setAppHeight();
