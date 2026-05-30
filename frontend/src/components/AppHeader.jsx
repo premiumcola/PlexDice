@@ -1,21 +1,17 @@
 import DieIcon from './DieIcon';
 
-// Shared product header: the PlexDice die + a sans-serif wordmark. The active product
-// gets the bold zinc-100 half; the sibling trails muted and smaller on the same baseline.
-// Idle: NO fill, NO rounded surface, NO border — the wordmark sits transparently on the
-// page background (so the page's subtle gradient shows through, never a pasted-on box).
-// `sticky` (post-roll) pins it under the safe-area inset (z-30, below the scrim) with a
-// SOLID zinc-950 background so scrolled card content slides cleanly BEHIND it — a
-// transparent/translucent bar lets the title/poster/facts bleed through and read as a
-// half-clipped overlay over the wordmark. A small pt gives breathing room below the notch.
-// `rightSlot` injects a control beside it.
-export default function AppHeader({ product, sticky = false, rightSlot = null }) {
+// Shared product header: the PlexDice die + a sans-serif wordmark. Fully TRANSPARENT — it
+// inherits the page background (no fill, no rounded surface, no border) and is NOT sticky,
+// so it sits flush at the top of <main>'s content (already inset below the notch via main's
+// safe-area padding) with one small fixed breathing gap (pt-2). Because it never pins and
+// has no scroll-margin/offset hacks, the top spacing is identical in the idle and post-roll
+// states — no dead space appears after a roll. `rightSlot` injects a control beside it.
+export default function AppHeader({ product, rightSlot = null }) {
   const dice = product === 'dice';
   const primary = dice ? 'Plex Dice' : 'Plex Quiz';
   const secondary = dice ? '& Quiz' : '& Dice';
-  const stickyClass = sticky ? 'sticky top-[env(safe-area-inset-top)] z-30 bg-zinc-950' : '';
   return (
-    <header className={`pt-2 mb-2 ${stickyClass}`}>
+    <header className="pt-2 mb-2">
       <div className="flex items-center gap-3">
         <DieIcon className="w-12 h-12 sm:w-14 sm:h-14 shrink-0" />
         <h1 className="font-sans font-extrabold tracking-tight leading-none flex-1 min-w-0 text-2xl sm:text-3xl lg:text-4xl">

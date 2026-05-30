@@ -209,12 +209,13 @@ export default function Dice({ onNeedSettings }) {
     window.history.replaceState({}, '', '/');
   }, [moviesReady, movies]);
 
-  // After a roll resolves, pull the result card into focus — but leave the AppHeader
-  // visible above (via the card's scroll-mt). No auto-scroll on reset (picked === null).
+  // After a roll resolves, scroll the result column back to the top so the post-roll stack
+  // reads cleanly from the (non-sticky) header down — header → mini-filter → Nochmal würfeln
+  // → film, with no gap above the header. No auto-scroll on reset (picked === null).
   useEffect(() => {
     if (!picked) return undefined;
     const t = setTimeout(() => {
-      resultRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      resultRef.current?.closest('main')?.scrollTo({ top: 0, behavior: 'smooth' });
     }, 600);
     return () => clearTimeout(t);
   }, [picked]);
@@ -455,7 +456,6 @@ export default function Dice({ onNeedSettings }) {
         <div className="relative w-full max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 pb-6 sm:py-10 flex-1 flex flex-col">
           <AppHeader
             product="dice"
-            sticky={!!picked}
             rightSlot={picked ? (
               <button
                 type="button"
@@ -758,7 +758,7 @@ export default function Dice({ onNeedSettings }) {
 
           {/* Picked movie card */}
           {picked && !rolling && (
-            <article ref={resultRef} key={picked.key} className="mt-3 scroll-mt-[calc(env(safe-area-inset-top)+116px)] rounded-3xl bg-gradient-to-br from-zinc-900 to-zinc-900/40 overflow-hidden reveal-card">
+            <article ref={resultRef} key={picked.key} className="mt-3 rounded-3xl bg-gradient-to-br from-zinc-900 to-zinc-900/40 overflow-hidden reveal-card">
               <div className="p-4 pb-3 sm:p-6 sm:pb-4">
                 {/* Kicker + title span the full card width; underneath, a two-column
                     band sets the poster beside the meta chips and plot so the card
