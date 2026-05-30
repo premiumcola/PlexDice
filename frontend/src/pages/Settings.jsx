@@ -18,21 +18,21 @@ const BUILD_HASH = import.meta.env.VITE_BUILD_HASH || 'local';
 const BUILD_TIME = (import.meta.env.VITE_BUILD_TIME || '').replace('T', ' ').slice(0, 16);
 
 // Shell-geometry diagnostics — a safety net for the iOS standalone app-height fix, shown next to
-// the build stamp. appH is --app-height = max(innerH, screenH); after the fix it must EQUAL screenH
-// (innerH under-reports by the top inset on iOS standalone). The "full" flag reads ✓ once they
-// match. Hidden fixed probes resolve the safe-area insets to px. Live: resize / orientation.
+// the build stamp. html, body AND #root must ALL equal screenH (932): if a parent (html/body)
+// stays the short 873 layout viewport it CLIPS the taller #root and drops the nav below the fold.
+// The "full" flag reads ✓ once html == body == root == screenH. A hidden probe resolves safe-bottom.
 function ShellDiag() {
-  const topRef = useRef(null);
   const botRef = useRef(null);
-  const [d, setD] = useState({ innerH: 0, topInset: 0, appH: 0, screenH: 0, safeBot: 0 });
+  const [d, setD] = useState({ innerH: 0, htmlH: 0, bodyH: 0, rootH: 0, screenH: 0, safeBot: 0 });
 
   useEffect(() => {
     const read = () => {
-      const appRaw = getComputedStyle(document.documentElement).getPropertyValue('--app-height');
+      const root = document.getElementById('root');
       setD({
         innerH: window.innerHeight,
-        topInset: topRef.current ? topRef.current.offsetHeight : 0,
-        appH: parseInt(appRaw, 10) || 0,
+        htmlH: document.documentElement.offsetHeight,
+        bodyH: document.body.offsetHeight,
+        rootH: root ? root.offsetHeight : 0,
         screenH: window.screen.height,
         safeBot: botRef.current ? botRef.current.offsetHeight : 0,
       });
@@ -53,10 +53,9 @@ function ShellDiag() {
   });
   return (
     <>
-      <div ref={topRef} aria-hidden="true" style={probe({ top: 0, height: 'env(safe-area-inset-top)' })} />
       <div ref={botRef} aria-hidden="true" style={probe({ bottom: 0, height: 'env(safe-area-inset-bottom)' })} />
       <span className="block mt-2 text-[10px] font-mono text-zinc-500 tabular-nums break-all">
-        innerH {d.innerH} · topInset {d.topInset} · appH {d.appH} · screenH {d.screenH} · full {d.appH === d.screenH ? '✓' : '✗'} · safeBot {d.safeBot} · build {BUILD_HASH}
+        innerH {d.innerH} · html {d.htmlH} · body {d.bodyH} · root {d.rootH} · screenH {d.screenH} · full {d.htmlH === d.screenH && d.bodyH === d.screenH && d.rootH === d.screenH ? '✓' : '✗'} · safeBot {d.safeBot} · build {BUILD_HASH}
       </span>
     </>
   );
