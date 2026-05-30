@@ -1,15 +1,15 @@
-import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, MoreVertical, Dices, BarChart3, Trophy, Loader2 } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowLeft, MoreVertical, Dices, BarChart3, Trophy, Loader2, Medal } from 'lucide-react';
 import { navigate } from '../../router';
 import { quizHistory, quizTopMovies, quizDeleteRound } from '../../api';
-import { relativeDate, fmt } from './util';
+import { relativeDate, fmt, scoreRank } from './util';
 
 const MEDALS = ['🥇', '🥈', '🥉'];
 
-function RoundCard({ round, medal, onDelete }) {
+function RoundCard({ round, medal, onDelete, highlight, cardRef }) {
   const [menu, setMenu] = useState(false);
   return (
-    <div className="relative flex items-center gap-3 rounded-2xl bg-zinc-900/60 ring-1 ring-zinc-800 p-3">
+    <div ref={cardRef} className={`relative flex items-center gap-3 rounded-2xl bg-zinc-900/60 p-3 ${highlight ? 'ring-2 ring-amber-400' : 'ring-1 ring-zinc-800'}`}>
       <button
         type="button"
         onClick={() => navigate(`/quiz/review/${round.id}`)}
@@ -79,13 +79,19 @@ function StatsTab({ topMovies }) {
 }
 
 export default function QuizHistory() {
+  // Arriving straight from a just-saved round: highlight it and rank by score so its placement is
+  // obvious. The id rides in a ?saved= query param (the path-only router ignores the query).
+  const [savedId] = useState(() => {
+    try { return new URLSearchParams(window.location.search).get('saved'); } catch { return null; }
+  });
   const [rounds, setRounds] = useState([]);
   const [topMovies, setTopMovies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('alle');
-  const [sort, setSort] = useState('neueste');
+  const [sort, setSort] = useState(savedId ? 'beste' : 'neueste');
   const [tab, setTab] = useState('rounds');
   const [confirmDel, setConfirmDel] = useState(null);
+  const savedRef = useRef(null);
 
   const reload = () => {
     quizHistory().then((d) => setRounds(d.rounds || [])).catch(() => {}).finally(() => setLoading(false));
@@ -115,6 +121,16 @@ export default function QuizHistory() {
     else if (sort === 'laengste') list.sort((a, b) => (b.size || 0) - (a.size || 0));
     return list;
   }, [rounds, filter, sort]);
+
+  const savedRound = savedId ? rounds.find((r) => r.id === savedId) : null;
+  const savedRank = savedRound
+    ? scoreRank(savedRound.score, rounds.filter((r) => r.id !== savedId).map((r) => r.score))
+    : null;
+
+  // Bring the just-saved round into view once the list has rendered.
+  useEffect(() => {
+    if (savedRound) savedRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }, [savedRound]);
 
   const doDelete = async () => {
     const r = confirmDel;
@@ -159,6 +175,13 @@ export default function QuizHistory() {
           </button>
         </div>
 
+        {savedId && savedRound && tab === 'rounds' && (
+          <div className="mb-4 flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-amber-400/15 ring-1 ring-amber-500/30 text-amber-200 text-center">
+            <Medal className="w-5 h-5 shrink-0" />
+            <span className="font-semibold">Gespeichert! Dein Platz: {savedRank} von {rounds.length}</span>
+          </div>
+        )}
+
         {loading ? (
           <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-zinc-500" /></div>
         ) : tab === 'stats' ? (
@@ -178,7 +201,8 @@ export default function QuizHistory() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               {view.map((r) => (
-                <RoundCard key={r.id} round={r} medal={medalMap[r.id]} onDelete={setConfirmDel} />
+                <RoundCard key={r.id} round={r} medal={medalMap[r.id]} onDelete={setConfirmDel}
+                  highlight={r.id === savedId} cardRef={r.id === savedId ? savedRef : undefined} />
               ))}
             </div>
           </>
