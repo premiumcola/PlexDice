@@ -126,29 +126,18 @@ export default function App() {
 
       <main className={`flex-1 min-h-0 overflow-y-auto ${immersive || showBanner ? '' : 'safe-top'}`}>{page}</main>
 
+      {/* Desktop (lg+): a VERTICAL nav stacked in the very top-right corner — no hairline
+          border (depth via the translucent surface + shadow). Only at lg+, where the
+          centered content column leaves a clear right gutter, so it never overlaps the
+          header or the J1 mini-filters (which live right-aligned inside the column).
+          NOTE: the mobile bottom tab bar is TEMPORARILY removed for a bottom-edge
+          diagnostic (see BottomTestBanner); it will be rebuilt after the test. */}
       {!immersive && (
-        <>
-          {/* Desktop (lg+): a VERTICAL nav stacked in the very top-right corner — no hairline
-              border (depth via the translucent surface + shadow). Only at lg+, where the
-              centered content column leaves a clear right gutter, so it never overlaps the
-              header or the J1 mini-filters (which live right-aligned inside the column). */}
-          <nav className="hidden lg:flex lg:flex-col fixed top-4 right-4 z-40 gap-1 p-1 rounded-2xl bg-zinc-900/90 backdrop-blur shadow-lg shadow-black/40">
-            {TABS.map((t) => (
-              <NavItem key={t.id} active={tab === t.id} onClick={() => navigate(t.path)} icon={t.icon} label={t.label} />
-            ))}
-          </nav>
-
-          {/* Mobile: bottom tab bar — the LAST flex child of the fixed #root column
-              (flex:0 0 auto via shrink-0, NOT position:fixed, no bottom offset). #root is the
-              visual viewport, so the bar's bottom IS the physical screen bottom; its zinc-900
-              background fills through padding-bottom: env(safe-area-inset-bottom), bleeding
-              into the home-indicator + rounded corners with no black gap. Flat/low bar. */}
-          <nav className="lg:hidden shrink-0 z-40 bg-zinc-900 pb-[env(safe-area-inset-bottom)] flex shadow-[0_-6px_20px_rgba(0,0,0,0.45)]">
-            {TABS.map((t) => (
-              <NavItem key={t.id} vertical active={tab === t.id} onClick={() => navigate(t.path)} icon={t.icon} label={t.label} />
-            ))}
-          </nav>
-        </>
+        <nav className="hidden lg:flex lg:flex-col fixed top-4 right-4 z-40 gap-1 p-1 rounded-2xl bg-zinc-900/90 backdrop-blur shadow-lg shadow-black/40">
+          {TABS.map((t) => (
+            <NavItem key={t.id} active={tab === t.id} onClick={() => navigate(t.path)} icon={t.icon} label={t.label} />
+          ))}
+        </nav>
       )}
     </div>
   );
