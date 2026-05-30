@@ -1,4 +1,5 @@
 import DieIcon from './DieIcon';
+import { handleLogoTap } from '../debug';
 
 // Shared product header: the PlexDice die + a sans-serif wordmark. Fully TRANSPARENT — it
 // inherits the page background (no fill, no rounded surface, no border) and is NOT sticky,
@@ -11,7 +12,7 @@ export default function AppHeader({ product, rightSlot = null }) {
   const primary = dice ? 'Plex Dice' : 'Plex Quiz';
   const secondary = dice ? '& Quiz' : '& Dice';
   return (
-    <header className="pt-2 mb-2">
+    <header className="pt-2 mb-2" onClick={handleLogoTap}>
       <div className="flex items-center gap-3">
         <DieIcon className="w-12 h-12 sm:w-14 sm:h-14 shrink-0" />
         <h1 className="font-sans font-extrabold tracking-tight leading-none flex-1 min-w-0 text-2xl sm:text-3xl lg:text-4xl">

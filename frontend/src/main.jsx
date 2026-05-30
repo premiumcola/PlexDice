@@ -1,7 +1,12 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.jsx';
+import { initDebug } from './debug';
 import './index.css';
+
+// Start on-device devtools (eruda) before anything renders, but only when debug mode is enabled
+// (?debug=1 or the plexdice_debug flag). Lazy — when disabled nothing is imported. See debug.js.
+initDebug();
 
 // JS-driven viewport height for the #root flex column (no vh/dvh anywhere). On an iOS standalone
 // PWA (black-translucent status bar + viewport-fit=cover) the three height measures disagree:
