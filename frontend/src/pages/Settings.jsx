@@ -17,6 +17,51 @@ const APP_VERSION = import.meta.env.VITE_APP_VERSION || '1.0.0';
 const BUILD_HASH = import.meta.env.VITE_BUILD_HASH || 'local';
 const BUILD_TIME = (import.meta.env.VITE_BUILD_TIME || '').replace('T', ' ').slice(0, 16);
 
+// Shell-geometry diagnostics — a safety net for the iOS standalone app-height fix, shown next
+// to the build stamp. After the fix appH should EQUAL screenH; innerH under-reports by the top
+// inset on iOS standalone, and appH = innerH + topInset adds it back. Hidden fixed probes
+// resolve the safe-area insets to px. Live: updates on resize / orientation / visualViewport.
+function ShellDiag() {
+  const topRef = useRef(null);
+  const botRef = useRef(null);
+  const [d, setD] = useState({ innerH: 0, topInset: 0, appH: 0, screenH: 0, safeBot: 0 });
+
+  useEffect(() => {
+    const read = () => {
+      const appRaw = getComputedStyle(document.documentElement).getPropertyValue('--app-height');
+      setD({
+        innerH: window.innerHeight,
+        topInset: topRef.current ? topRef.current.offsetHeight : 0,
+        appH: parseInt(appRaw, 10) || 0,
+        screenH: window.screen.height,
+        safeBot: botRef.current ? botRef.current.offsetHeight : 0,
+      });
+    };
+    read();
+    window.addEventListener('resize', read);
+    window.addEventListener('orientationchange', read);
+    window.visualViewport?.addEventListener('resize', read);
+    return () => {
+      window.removeEventListener('resize', read);
+      window.removeEventListener('orientationchange', read);
+      window.visualViewport?.removeEventListener('resize', read);
+    };
+  }, []);
+
+  const probe = (extra) => ({
+    position: 'fixed', left: 0, width: 0, visibility: 'hidden', pointerEvents: 'none', ...extra,
+  });
+  return (
+    <>
+      <div ref={topRef} aria-hidden="true" style={probe({ top: 0, height: 'env(safe-area-inset-top)' })} />
+      <div ref={botRef} aria-hidden="true" style={probe({ bottom: 0, height: 'env(safe-area-inset-bottom)' })} />
+      <span className="block mt-2 text-[10px] font-mono text-zinc-500 tabular-nums break-all">
+        innerH {d.innerH} · topInset {d.topInset} · appH {d.appH} · screenH {d.screenH} · safeBot {d.safeBot} · build {BUILD_HASH}
+      </span>
+    </>
+  );
+}
+
 // About-screen source rows; links restricted to the real public domains.
 const ABOUT_SOURCES = [
   { text: 'Plex (api.plex.tv) — Bibliothek + Metadaten', href: 'https://api.plex.tv' },
@@ -705,6 +750,7 @@ export default function Settings({ onConnected }) {
                   <span className="block mt-1 text-[10px] font-mono text-zinc-500 tabular-nums">{BUILD_HASH} · {BUILD_TIME}</span>
                 </div>
               </div>
+              <ShellDiag />
             </div>
 
             <div className="rounded-2xl bg-zinc-900 ring-1 ring-zinc-800 p-4">
