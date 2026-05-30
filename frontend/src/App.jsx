@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Dices, Target, Settings as SettingsIcon, AlertCircle } from 'lucide-react';
 import Dice from './pages/Dice';
 import Settings from './pages/Settings';
@@ -28,7 +28,7 @@ function NavItem({ active, onClick, icon: Icon, label, vertical }) {
     : 'flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium';
   const tone = active
     ? vertical
-      ? 'text-amber-400'
+      ? 'text-[#f5a623]' // PlexDice accent on the active mobile tab
       : 'bg-amber-400 text-zinc-950'
     : 'text-zinc-400 active:text-zinc-200';
   return (
@@ -36,61 +36,6 @@ function NavItem({ active, onClick, icon: Icon, label, vertical }) {
       <Icon className={vertical ? 'w-7 h-7' : 'w-4 h-4'} strokeWidth={2} />
       <span>{label}</span>
     </button>
-  );
-}
-
-// TEMP DIAGNOSTIC (Task M): a bright-pink banner pinned as the LAST flex child of the
-// JS-driven #root column (height = var(--app-height) = window.innerHeight). It proves whether
-// an element can sit flush on the physical bottom edge of an iOS standalone PWA: the pink fills
-// through padding-bottom: env(safe-area-inset-bottom) so no black shows below it, and a 3px
-// yellow border frames all four sides. Live values are printed so a screenshot self-documents.
-// No bottom offset/margin — placement is purely "last flex child". Remove after the test.
-function BottomTestBanner() {
-  const ref = useRef(null);
-  const [v, setV] = useState({
-    innerH: window.innerHeight,
-    screenH: window.screen.height,
-    appH: '—',
-    safeBot: '—',
-    standalone: window.matchMedia('(display-mode: standalone)').matches,
-  });
-
-  useEffect(() => {
-    const read = () => {
-      const appH = getComputedStyle(document.documentElement).getPropertyValue('--app-height').trim();
-      // env(safe-area-inset-bottom) resolves to a px value once it is a real element's padding.
-      const safeBot = ref.current ? getComputedStyle(ref.current).paddingBottom : '';
-      setV({
-        innerH: window.innerHeight,
-        screenH: window.screen.height,
-        appH: appH || '—',
-        safeBot: safeBot || '—',
-        standalone: window.matchMedia('(display-mode: standalone)').matches,
-      });
-    };
-    read();
-    window.addEventListener('resize', read);
-    window.addEventListener('orientationchange', read);
-    window.visualViewport?.addEventListener('resize', read);
-    return () => {
-      window.removeEventListener('resize', read);
-      window.removeEventListener('orientationchange', read);
-      window.visualViewport?.removeEventListener('resize', read);
-    };
-  }, []);
-
-  return (
-    <div
-      ref={ref}
-      className="lg:hidden shrink-0"
-      style={{ background: '#ec4899', border: '3px solid #facc15', paddingBottom: 'env(safe-area-inset-bottom)' }}
-    >
-      <div className="flex items-center justify-center text-center px-3" style={{ minHeight: '56px' }}>
-        <span style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: '11px', lineHeight: 1.35, color: '#000', wordBreak: 'break-word' }}>
-          innerH {v.innerH} · screenH {v.screenH} · appH {v.appH} · safeBot {v.safeBot} · standalone {String(v.standalone)}
-        </span>
-      </div>
-    </div>
   );
 }
 
@@ -148,11 +93,11 @@ export default function App() {
   const showBanner = needSettings && tab === 'settings';
 
   return (
-    // App shell: a flex column filling #root (the FIXED, viewport-locked flex container in
-    // index.css) at height:100% of the real screen — no vh/dvh length anywhere. <main> is
-    // the only scroll area; the mobile bottom nav is the LAST flex child, sitting flush at
-    // the true screen bottom — its own background + padding-bottom env(safe-area-inset-bottom)
-    // bleed into the rounded corners. No fixed positioning, no bottom-space reserved on main.
+    // App shell: a flex column filling #root (the JS-height-driven flex container in index.css,
+    // height = var(--app-height) = window.innerHeight + top safe-area inset = the full screen).
+    // <main> is the only scroll area; the mobile bottom nav is the LAST flex child, sitting
+    // flush at the true screen bottom — its own background + padding-bottom
+    // env(safe-area-inset-bottom) bleed into the rounded corners. No vh/dvh, no fixed shell.
     <div className="flex flex-col h-full overflow-hidden bg-zinc-950">
       {/* Status-bar scrim: fully saturated across only the status-bar / notch region
           (clock, dynamic island, battery), then a short fade that is completely gone by
@@ -181,22 +126,31 @@ export default function App() {
 
       <main className={`flex-1 min-h-0 overflow-y-auto ${immersive || showBanner ? '' : 'safe-top'}`}>{page}</main>
 
-      {/* Desktop (lg+): a VERTICAL nav stacked in the very top-right corner — no hairline
-          border (depth via the translucent surface + shadow). Only at lg+, where the
-          centered content column leaves a clear right gutter, so it never overlaps the
-          header or the J1 mini-filters (which live right-aligned inside the column).
-          NOTE: the mobile bottom tab bar is TEMPORARILY removed for a bottom-edge
-          diagnostic (see BottomTestBanner); it will be rebuilt after the test. */}
       {!immersive && (
-        <nav className="hidden lg:flex lg:flex-col fixed top-4 right-4 z-40 gap-1 p-1 rounded-2xl bg-zinc-900/90 backdrop-blur shadow-lg shadow-black/40">
-          {TABS.map((t) => (
-            <NavItem key={t.id} active={tab === t.id} onClick={() => navigate(t.path)} icon={t.icon} label={t.label} />
-          ))}
-        </nav>
-      )}
+        <>
+          {/* Desktop (lg+): a VERTICAL nav stacked in the very top-right corner — no hairline
+              border (depth via the translucent surface + shadow). Only at lg+, where the
+              centered content column leaves a clear right gutter, so it never overlaps the
+              header or the J1 mini-filters (which live right-aligned inside the column). */}
+          <nav className="hidden lg:flex lg:flex-col fixed top-4 right-4 z-40 gap-1 p-1 rounded-2xl bg-zinc-900/90 backdrop-blur shadow-lg shadow-black/40">
+            {TABS.map((t) => (
+              <NavItem key={t.id} active={tab === t.id} onClick={() => navigate(t.path)} icon={t.icon} label={t.label} />
+            ))}
+          </nav>
 
-      {/* TEMP DIAGNOSTIC: bottom-edge test banner as the last flex child (see component). */}
-      {!immersive && <BottomTestBanner />}
+          {/* Mobile: bottom tab bar — the LAST flex child of the #root flex column
+              (flex:0 0 auto via shrink-0; NORMAL flow, NOT fixed/absolute, no bottom offset).
+              #root's height is the JS-corrected full screen (window.innerHeight + top inset),
+              so the bar's bottom IS the physical screen bottom. The zinc-900 background sits on
+              the nav itself and fills THROUGH padding-bottom: env(safe-area-inset-bottom) — no
+              inner wrapper — so it bleeds into the home-indicator + rounded corners, no gap. */}
+          <nav className="lg:hidden shrink-0 z-40 bg-zinc-900 pb-[env(safe-area-inset-bottom)] flex shadow-[0_-6px_20px_rgba(0,0,0,0.45)]">
+            {TABS.map((t) => (
+              <NavItem key={t.id} vertical active={tab === t.id} onClick={() => navigate(t.path)} icon={t.icon} label={t.label} />
+            ))}
+          </nav>
+        </>
+      )}
     </div>
   );
 }
