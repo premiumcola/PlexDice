@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Loader2, Save, Trophy, TrendingUp, AlertTriangle, Clock, Check, RotateCcw, SkipForward } from 'lucide-react';
+import { Loader2, Save, Trophy, TrendingUp, AlertTriangle, Clock, Check, RotateCcw, SkipForward, Camera, Medal } from 'lucide-react';
 import { navigate } from '../../router';
-import { quizComplete, quizAbandon, quizHistory } from '../../api';
+import { quizComplete, quizAbandon, quizHistory, quizRound, quizUploadPhoto } from '../../api';
 import { loadResults, loadRound, clearRound } from './store';
-import { MODE_LABEL, fmt } from './util';
+import { MODE_LABEL, fmt, scoreRank } from './util';
 
 function Confetti() {
   const bits = useMemo(
@@ -60,8 +60,15 @@ function Stat({ icon, label, value, sub }) {
 export default function QuizResult({ roundId }) {
   const results = useMemo(() => loadResults(roundId), [roundId]);
   const round = useMemo(() => loadRound(roundId), [roundId]);
+  const setup = round?.setup || {};
   const [history, setHistory] = useState([]);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(false);
+  // Optional photo for this entry — additive, never blocks the save. Seeds from the setup if one
+  // was chosen up front; otherwise the user can add one here before saving.
+  const [photoId, setPhotoId] = useState(setup.photoId || null);
+  const [photoUrl, setPhotoUrl] = useState(setup.photoId ? `/api/quiz/photo/${setup.photoId}?w=200` : null);
+  const [photoBusy, setPhotoBusy] = useState(false);
 
   useEffect(() => {
     quizHistory().then((d) => setHistory(d.rounds || [])).catch(() => {});
@@ -82,6 +89,12 @@ export default function QuizResult({ roundId }) {
   const correct = stats?.first_try ?? answers.filter((a) => a.correct).length;
   const maxScore = size * 100;
   const accuracy = maxScore ? results.score / maxScore : 0;
+
+  // Placement among saved rounds. This round may not be persisted yet, so rank against the OTHERS
+  // (by id) and add it in — gives a stable "Platz X von Y" both before and after saving.
+  const rivalRounds = history.filter((r) => r.id !== roundId);
+  const rank = scoreRank(results.score, rivalRounds.map((r) => r.score));
+  const rankTotal = rivalRounds.length + 1;
 
   // Per-mode breakdown: first-try correctness from the server when available,
   // otherwise derived from the client's answer log.
@@ -119,20 +132,46 @@ export default function QuizResult({ roundId }) {
     chips.push({ icon: <AlertTriangle className="w-4 h-4" />, text: `Stolperfalle: ${MODE_LABEL[worst[0]] || worst[0]}`, tone: 'rose' });
   }
 
+  const onPickPhoto = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setPhotoBusy(true);
+    try {
+      const res = await quizUploadPhoto(file);
+      setPhotoId(res.photo_id);
+      setPhotoUrl(res.url || `/api/quiz/photo/${res.photo_id}`);
+    } catch {
+      /* photo is optional — ignore the upload failure, the round still saves without it */
+    } finally {
+      setPhotoBusy(false);
+    }
+  };
+
   const save = async () => {
     if (saving) return;
     setSaving(true);
-    const setup = round?.setup || {};
+    setSaveError(false);
     try {
       await quizComplete(roundId, {
         name: setup.name,
         player_names: setup.playerNames || [],
-        photo_id: setup.photoId || null,
+        photo_id: photoId || null,
       });
       clearRound(roundId);
-      navigate(`/quiz/review/${roundId}`);
+      navigate(`/quiz/history?saved=${roundId}`);
     } catch {
-      setSaving(false);
+      // The in-memory round session may be gone (e.g. the server restarted between play and save).
+      // If the round already reached the persistent history, treat it as saved and show the board;
+      // otherwise surface a retry instead of failing silently.
+      try {
+        await quizRound(roundId);
+        clearRound(roundId);
+        navigate(`/quiz/history?saved=${roundId}`);
+      } catch {
+        setSaving(false);
+        setSaveError(true);
+      }
     }
   };
 
@@ -167,6 +206,11 @@ export default function QuizResult({ roundId }) {
           <div className="mt-3 text-zinc-300 tabular-nums">
             {correct} / {size} beim ersten Versuch
           </div>
+          {rankTotal > 1 && (
+            <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-400/15 text-amber-300 ring-1 ring-amber-500/30 text-sm font-semibold">
+              <Medal className="w-4 h-4" /> Platz {rank} von {rankTotal}
+            </div>
+          )}
         </div>
 
         {stats && (
@@ -216,16 +260,29 @@ export default function QuizResult({ roundId }) {
           )}
         </div>
 
+        {/* Optional photo for this entry — additive, never blocks the save. */}
+        <div className="mt-8 flex items-center justify-center gap-3">
+          {photoUrl && <img src={photoUrl} alt="" className="w-12 h-12 rounded-xl object-cover ring-1 ring-zinc-700 shrink-0" />}
+          <label className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-zinc-800 text-zinc-200 text-sm font-medium cursor-pointer active:scale-[0.98] transition-transform">
+            {photoBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
+            {photoId ? 'Foto ändern' : 'Foto hinzufügen'}
+            <input type="file" accept="image/*" className="hidden" onChange={onPickPhoto} />
+          </label>
+        </div>
+
         <button
           type="button"
           onClick={save}
           disabled={saving}
-          className="mt-8 w-full py-4 rounded-2xl text-zinc-950 font-semibold text-lg tracking-wide flex items-center justify-center gap-2 active:scale-[0.985] transition-transform disabled:opacity-50"
+          className="mt-4 w-full py-4 rounded-2xl text-zinc-950 font-semibold text-lg tracking-wide flex items-center justify-center gap-2 active:scale-[0.985] transition-transform disabled:opacity-50"
           style={{ background: 'linear-gradient(135deg, #f5a623 0%, #ffaf3a 100%)' }}
         >
           {saving ? <Loader2 className="w-6 h-6 animate-spin" /> : <Save className="w-6 h-6" />}
           Runde speichern
         </button>
+        {saveError && (
+          <p className="mt-3 text-center text-sm text-rose-300">Speichern fehlgeschlagen — bitte erneut versuchen.</p>
+        )}
         <button type="button" onClick={discard} className="mt-3 w-full py-2 text-sm text-zinc-500 active:text-zinc-300">
           Verwerfen
         </button>

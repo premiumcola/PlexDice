@@ -16,6 +16,12 @@ export function relativeDate(iso) {
   return then.toLocaleDateString('de-DE');
 }
 
+// Rank of `score` among `scores` (highest score = Platz 1; ties share the better rank). Used by the
+// result screen and the leaderboard to show "Platz X von Y".
+export function scoreRank(score, scores) {
+  return scores.filter((s) => (s || 0) > (score || 0)).length + 1;
+}
+
 export const MODE_PROMPT = {
   cover_to_title: 'Welcher Film ist das?',
   cover_to_decade: 'Aus welchem Jahrzehnt?',
