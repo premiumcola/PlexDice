@@ -211,7 +211,7 @@ export default function FilterFunnel({ stages, total, onOpenStage, onResetStage 
                   on the source bar so the count reads clearly and never truncates. */}
               <div
                 className="absolute left-0 flex items-center justify-center pointer-events-none"
-                style={{ top: yTop, height: HCHART, width: SRC_W + 8 }}
+                style={{ top: yTop, height: HCHART, width: SRC_W }}
               >
                 <span className="text-[10px] font-semibold text-zinc-200 tabular-nums whitespace-nowrap [writing-mode:vertical-rl] rotate-180">
                   {fmt(total)} Filme
