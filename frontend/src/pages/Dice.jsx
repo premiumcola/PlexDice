@@ -491,71 +491,67 @@ export default function Dice({ onNeedSettings }) {
             </button>
           )}
 
-          {/* Filter toggle bar + headline funnel — both tucked away on a result;
-              tap the sliders icon in the sticky header to bring them back. */}
+          {/* Mini-filter row — compact "Filter (n)" (opens the drawer) on the left, a wider
+              "start → hits" summary chip (toggles the funnel chart) on the right; tucked away
+              on a result until the sliders icon reveals it. Desktop: the cluster right-aligns
+              to the top-right. The expanded chart renders full-width below, unchanged. */}
           {(!picked || showFiltersOnResult) && (<>
-          <div className="flex gap-2 mb-3">
+          <div className="flex items-stretch gap-2 mb-3 sm:w-auto sm:ml-auto">
             <button
+              type="button"
               onClick={() => setShowFilters((s) => !s)}
-              className="flex-1 flex items-center justify-between gap-2 px-4 py-3 rounded-2xl bg-zinc-900 border border-zinc-800 active:scale-[0.98] transition-transform"
+              aria-expanded={showFilters}
+              className="shrink-0 inline-flex items-center gap-2 px-3 min-h-[44px] rounded-2xl bg-zinc-900 active:scale-[0.98] transition-transform"
             >
-              <span className="flex items-center gap-2">
-                <SlidersHorizontal className="w-4 h-4 text-zinc-400" />
-                <span className="font-medium">Filter</span>
-                {activeFilterCount > 0 && (
-                  <span className="px-2 py-0.5 rounded-full bg-amber-400 text-zinc-950 text-xs font-bold">{activeFilterCount}</span>
-                )}
-              </span>
-              {showFilters ? <ChevronUp className="w-4 h-4 text-zinc-400" /> : <ChevronDown className="w-4 h-4 text-zinc-400" />}
+              <SlidersHorizontal className="w-4 h-4 text-zinc-400 shrink-0" />
+              <span className="text-sm font-medium">Filter</span>
+              {activeFilterCount > 0 && (
+                <span className="px-1.5 py-0.5 rounded-full bg-amber-400 text-zinc-950 text-xs font-bold tabular-nums">{activeFilterCount}</span>
+              )}
+              {showFilters ? <ChevronUp className="w-3.5 h-3.5 text-zinc-500" /> : <ChevronDown className="w-3.5 h-3.5 text-zinc-500" />}
             </button>
             {history.length > 0 && (
               <button
+                type="button"
                 onClick={() => setShowHistory((s) => !s)}
-                className="px-4 py-3 rounded-2xl bg-zinc-900 border border-zinc-800 active:scale-[0.98] transition-transform"
                 aria-label="Verlauf"
+                className="shrink-0 w-11 min-h-[44px] inline-flex items-center justify-center rounded-2xl bg-zinc-900 active:scale-[0.98] transition-transform"
               >
                 <HistoryIcon className="w-4 h-4 text-zinc-400" />
               </button>
             )}
+            {movies.length > 0 && (funnelStages.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => setFunnelExpanded((e) => !e)}
+                aria-expanded={funnelExpanded}
+                className="flex-1 sm:flex-none min-w-0 inline-flex items-center justify-between gap-2 px-3 min-h-[44px] rounded-2xl bg-zinc-900/60 active:scale-[0.98] transition-transform"
+              >
+                <span className="flex items-center gap-2 min-w-0">
+                  <BarChart3 className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span className="text-sm tabular-nums truncate">
+                    <span className="text-zinc-400">{movies.length.toLocaleString('de-DE')}</span>
+                    <span className="text-zinc-600 mx-1">→</span>
+                    <span className="text-amber-400 font-semibold">{filtered.length.toLocaleString('de-DE')}</span>
+                  </span>
+                </span>
+                {funnelExpanded ? <ChevronUp className="w-4 h-4 text-zinc-400 shrink-0" /> : <ChevronDown className="w-4 h-4 text-zinc-400 shrink-0" />}
+              </button>
+            ) : (
+              <div className="flex-1 sm:flex-none min-w-0 inline-flex items-center gap-2 px-3 min-h-[44px] rounded-2xl bg-zinc-900/60 text-sm text-zinc-500">
+                <BarChart3 className="w-4 h-4 shrink-0" />
+                <span className="tabular-nums truncate">{movies.length.toLocaleString('de-DE')} Filme</span>
+              </div>
+            ))}
           </div>
 
-          {/* Headline funnel — a one-line "start → Treffer" summary that toggles the full
-              chart. Expanded by default; a roll collapses it so the result gets room, and
-              any filter change re-opens it (see effect above). */}
-          {movies.length > 0 && (
-            funnelStages.length > 0 ? (
-              <>
-                <button
-                  type="button"
-                  onClick={() => setFunnelExpanded((e) => !e)}
-                  aria-expanded={funnelExpanded}
-                  className="w-full min-h-[44px] mb-3 flex items-center justify-between gap-3 px-4 py-3 rounded-2xl bg-zinc-900/60 active:scale-[0.99] transition-transform"
-                >
-                  <span className="text-sm tabular-nums">
-                    <span className="text-zinc-400">{movies.length.toLocaleString('de-DE')}</span>
-                    <span className="text-zinc-600 mx-1.5">→</span>
-                    <span className="text-amber-400 font-semibold">{filtered.length.toLocaleString('de-DE')}</span>
-                    <span className="text-zinc-400"> Treffer</span>
-                  </span>
-                  <span className="flex items-center gap-1.5 text-xs text-zinc-400">
-                    <BarChart3 className="w-4 h-4" />
-                    {funnelExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                  </span>
-                </button>
-                {funnelExpanded && (
-                  <FilterFunnel
-                    stages={funnelStages}
-                    total={movies.length}
-                    onOpenStage={openStage}
-                    onResetStage={resetStage}
-                  />
-                )}
-              </>
-            ) : (
-              <p className="mb-4 text-center text-sm text-zinc-500">
-                {movies.length.toLocaleString('de-DE')} Filme · keine Filter aktiv
-              </p>
-            )
+          {movies.length > 0 && funnelStages.length > 0 && funnelExpanded && (
+            <FilterFunnel
+              stages={funnelStages}
+              total={movies.length}
+              onOpenStage={openStage}
+              onResetStage={resetStage}
+            />
           )}
           </>)}
 

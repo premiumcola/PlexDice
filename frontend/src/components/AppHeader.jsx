@@ -2,20 +2,17 @@ import DieIcon from './DieIcon';
 
 // Shared product header: the PlexDice die + a sans-serif wordmark. The active product
 // gets the bold zinc-100 half; the sibling trails muted and smaller on the same baseline.
-// Idle: no fill, no rounded surface, no border — the wordmark sits transparently on the
-// page background and blends in. `sticky` (post-roll) pins it flush under the safe-area
-// inset (z-30, below the scrim) with a SOLID background so scrolled content slides
-// cleanly behind it — a translucent/blurred bar let content bleed through and read as a
-// half-clipped overlay. `rightSlot` lets callers inject a control beside the wordmark.
+// NO fill, NO rounded surface, NO border in either state — the wordmark sits transparently
+// on the page background (so the page's subtle gradient shows through, never a pasted-on
+// box). `sticky` (post-roll) just pins it under the safe-area inset (z-30, below the scrim).
+// A small pt gives breathing room below the notch. `rightSlot` injects a control beside it.
 export default function AppHeader({ product, sticky = false, rightSlot = null }) {
   const dice = product === 'dice';
   const primary = dice ? 'Plex Dice' : 'Plex Quiz';
   const secondary = dice ? '& Quiz' : '& Dice';
-  const stickyClass = sticky
-    ? 'sticky top-[env(safe-area-inset-top)] z-30 bg-zinc-950'
-    : 'bg-transparent';
+  const stickyClass = sticky ? 'sticky top-[env(safe-area-inset-top)] z-30' : '';
   return (
-    <header className={`mb-2 ${stickyClass}`}>
+    <header className={`pt-2 mb-2 ${stickyClass}`}>
       <div className="flex items-center gap-3">
         <DieIcon className="w-12 h-12 sm:w-14 sm:h-14 shrink-0" />
         <h1 className="font-sans font-extrabold tracking-tight leading-none flex-1 min-w-0 text-2xl sm:text-3xl lg:text-4xl">
