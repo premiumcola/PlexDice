@@ -17,10 +17,10 @@ const APP_VERSION = import.meta.env.VITE_APP_VERSION || '1.0.0';
 const BUILD_HASH = import.meta.env.VITE_BUILD_HASH || 'local';
 const BUILD_TIME = (import.meta.env.VITE_BUILD_TIME || '').replace('T', ' ').slice(0, 16);
 
-// Shell-geometry diagnostics — a safety net for the iOS standalone app-height fix, shown next
-// to the build stamp. After the fix appH should EQUAL screenH; innerH under-reports by the top
-// inset on iOS standalone, and appH = innerH + topInset adds it back. Hidden fixed probes
-// resolve the safe-area insets to px. Live: updates on resize / orientation / visualViewport.
+// Shell-geometry diagnostics — a safety net for the iOS standalone app-height fix, shown next to
+// the build stamp. appH is --app-height = max(innerH, screenH); after the fix it must EQUAL screenH
+// (innerH under-reports by the top inset on iOS standalone). The "full" flag reads ✓ once they
+// match. Hidden fixed probes resolve the safe-area insets to px. Live: resize / orientation.
 function ShellDiag() {
   const topRef = useRef(null);
   const botRef = useRef(null);
@@ -56,7 +56,7 @@ function ShellDiag() {
       <div ref={topRef} aria-hidden="true" style={probe({ top: 0, height: 'env(safe-area-inset-top)' })} />
       <div ref={botRef} aria-hidden="true" style={probe({ bottom: 0, height: 'env(safe-area-inset-bottom)' })} />
       <span className="block mt-2 text-[10px] font-mono text-zinc-500 tabular-nums break-all">
-        innerH {d.innerH} · topInset {d.topInset} · appH {d.appH} · screenH {d.screenH} · safeBot {d.safeBot} · build {BUILD_HASH}
+        innerH {d.innerH} · topInset {d.topInset} · appH {d.appH} · screenH {d.screenH} · full {d.appH === d.screenH ? '✓' : '✗'} · safeBot {d.safeBot} · build {BUILD_HASH}
       </span>
     </>
   );
