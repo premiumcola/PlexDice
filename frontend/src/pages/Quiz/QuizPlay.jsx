@@ -1,34 +1,12 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Timer, Check, X, Pause, Play, RotateCcw, LogOut, MousePointerClick } from 'lucide-react';
 import { navigate } from '../../router';
 import { quizAnswer, quizAbandon, quizState } from '../../api';
 import { loadRound, saveResults, clearRound } from './store';
-import { MODE_PROMPT, TIER_LABEL, STEM_IS_PERSON, OPTIONS_ARE_PERSONS, panelOnRight, fmt } from './util';
+import { MODE_PROMPT, MODE_CATEGORY, STEM_IS_PERSON, OPTIONS_ARE_PERSONS, panelOnRight, fmt } from './util';
 import Fireworks from '../../components/Fireworks';
+import DifficultyIcon from '../../components/DifficultyIcon';
 import { usePrefs } from '../../usePrefs';
-
-const TIER_DOT = { 1: '#34d399', 2: '#f5a623', 3: '#fb7185' }; // emerald / amber / rose
-// Timeline chip difficulty pip — Tailwind bg classes (emerald / amber / rose-400).
-const TIER_PIP = { 1: 'bg-emerald-400', 2: 'bg-amber-400', 3: 'bg-rose-400' };
-
-// Three pips + tier label, for the light Stage HUD. No lucide icon by design.
-function DifficultyBadge({ tier }) {
-  const dot = TIER_DOT[tier] || '#a1a1aa';
-  return (
-    <span className="inline-flex items-center gap-1.5">
-      <span className="inline-flex items-center gap-0.5">
-        {[1, 2, 3].map((i) => (
-          <span
-            key={i}
-            className="inline-block w-1.5 h-1.5 rounded-full"
-            style={i <= tier ? { background: dot } : { border: '1px solid #d4d4d8' }}
-          />
-        ))}
-      </span>
-      <span className="hidden sm:inline text-zinc-600">{TIER_LABEL[tier]}</span>
-    </span>
-  );
-}
 import { initAudio, playSound, preloadSounds, setSoundEnabled } from './audio';
 import RadialCountdown from './RadialCountdown';
 
@@ -169,178 +147,80 @@ function OptionButton({ option, mode, fill, selected, locked, reveal, onTap, hin
   );
 }
 
-// Per-question status for the timeline chip. Active beats every resolved state.
-function chipState(st, isActive) {
-  if (isActive) return 'active';
-  if (!st) return 'idle';
-  if (st.forced_resolve) return 'forced';
-  if (st.resolved) return st.first_try_correct ? 'first' : 'retry_done';
-  if (st.attempts > 0) return 'retry';
-  return 'idle';
+// Per-question attempt history for the chip strip, reconstructed from the server status (no new
+// client state): each entry true = right, false = wrong, in attempt order; [] = not yet answered.
+// A resolved question got its LAST attempt right and every earlier attempt wrong; a forced-resolve
+// (skipped after 5 tries) or still-unresolved retry question has only wrong attempts so far.
+function resultDots(st) {
+  if (!st || !st.attempts) return [];
+  if (st.forced_resolve) return Array(st.attempts).fill(false);
+  if (st.resolved) {
+    if (st.first_try_correct) return [true];
+    return [...Array(Math.max(0, st.attempts - 1)).fill(false), true];
+  }
+  return Array(st.attempts).fill(false);
 }
 
-const CHIP_CLASS = {
-  first: 'bg-emerald-500 text-zinc-950 ring-1 ring-emerald-400',
-  retry_done: 'bg-amber-400 text-zinc-950 ring-1 ring-amber-300',
-  retry: 'bg-rose-500 text-white ring-1 ring-rose-400',
-  forced: 'bg-zinc-400 text-zinc-900 ring-1 ring-zinc-300 line-through',
-  idle: 'text-zinc-400 ring-1 ring-zinc-400/50',
-};
+// Flat single-row progress strip. One chip per question encodes: the attempt history (dots, red =
+// wrong / green = right, in chronological order — a re-asked question shows its full sequence), the
+// difficulty (DifficultyIcon above the chip → a difficulty profile across the whole row), and the
+// CURRENT question (a wider accent tile with position, category and a prominent difficulty icon).
+// Horizontally scrollable with the active tile auto-centred when 20 questions overflow one iPhone row.
+function ChipStrip({ questions, statusMap, currentQid }) {
+  const total = questions.length;
+  const currentIndex = questions.findIndex((qq) => qq.id === currentQid);
+  const activeRef = useRef(null);
 
-const CHIP_LABEL = {
-  active: 'aktiv',
-  first: 'beim ersten Versuch gelöst',
-  retry_done: 'nach Wiederholung gelöst',
-  retry: 'in Wiederholungs-Runde',
-  forced: 'übersprungen',
-  idle: 'offen',
-};
-
-// Read-only progress chips, one per question. Vertical rail on md+, collapsed
-// horizontal strip on iPhone. Chips are circles, sized so the whole set always fits
-// without a scrollbar; the active chip breathes gently, then blinks sharply rose
-// once time is critical (≤ 5 s) to telegraph the pressure.
-function QuestionTimeline({ questions, statusMap, currentQid, layout, remainingMs, durationMs }) {
-  const rail = layout === 'rail';
-  const n = questions.length || 1;
-  const critical =
-    remainingMs != null && (remainingMs <= 5000 || remainingMs / (durationMs || 15000) < 5 / 15);
-
-  const stripRef = useRef(null);
-  const currentRef = useRef(null);
-  const [innerW, setInnerW] = useState(0);
-
-  // Measure the strip's inner width (iPhone only) before paint, and on resize.
-  useLayoutEffect(() => {
-    if (rail) return undefined;
-    const measure = () => {
-      const el = stripRef.current;
-      if (!el) return;
-      const cs = window.getComputedStyle(el);
-      const pad = parseFloat(cs.paddingLeft || '0') + parseFloat(cs.paddingRight || '0');
-      setInnerW(Math.max(0, el.clientWidth - pad));
-    };
-    measure();
-    window.addEventListener('resize', measure);
-    return () => window.removeEventListener('resize', measure);
-  }, [rail]);
-
-  // Keep the current chip centred when the strip scrolls (focus / overflow mode).
+  // Keep the active tile centred as the quiz advances. block:'nearest' stops it scrolling the page.
   useEffect(() => {
-    if (rail) return;
-    currentRef.current?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
-  }, [rail, currentQid, innerW]);
-
-  // One chip. `px`/`fontPx` may be a number (strip) or a CSS clamp string (rail).
-  const chip = (qq, i, px, fontPx) => {
-    const state = chipState(statusMap[qq.id], qq.id === currentQid);
-    const isActive = state === 'active';
-    const tier = qq.tier || qq.difficulty || 1;
-    const showRetry = state === 'retry' || state === 'retry_done';
-    const cls = isActive
-      ? critical
-        ? 'bg-rose-500 text-white ring-2 ring-rose-300'
-        : 'ring-2 ring-amber-400 text-amber-600 bg-amber-400/15'
-      : CHIP_CLASS[state];
-    const anim = isActive
-      ? critical
-        ? 'pfChipBlink 0.35s ease-in-out infinite'
-        : 'pfChipPulse 1.4s ease-in-out infinite'
-      : undefined;
-    const label = `Frage ${i + 1} · Tier ${tier} (${TIER_LABEL[tier] || '?'}) · ${CHIP_LABEL[state]}`;
-    return (
-      <div
-        key={qq.id}
-        ref={!rail && isActive ? currentRef : undefined}
-        title={label}
-        aria-label={label}
-        style={{ width: px, height: px, fontSize: fontPx, animation: anim, scrollSnapAlign: 'center' }}
-        className={`relative shrink-0 rounded-full flex items-center justify-center font-semibold tabular-nums ${cls}`}
-      >
-        {i + 1}
-        <span
-          aria-hidden="true"
-          className={`absolute rounded-full ring-1 ring-zinc-950 ${TIER_PIP[tier] || 'bg-zinc-400'}`}
-          style={{ width: 6, height: 6, right: -1, bottom: -1 }}
-        />
-        {showRetry && (
-          <RotateCcw aria-hidden="true" className="absolute text-amber-500" style={{ width: 8, height: 8, right: -2, top: -2 }} />
-        )}
-      </div>
-    );
-  };
-
-  // Collapsed 8 px tier dot for resolved questions in focus mode.
-  const dot = (qq, i, tier, state) => {
-    const label = `Frage ${i + 1} · Tier ${tier} (${TIER_LABEL[tier] || '?'}) · ${CHIP_LABEL[state]}`;
-    return (
-      <div
-        key={qq.id}
-        title={label}
-        aria-label={label}
-        style={{ width: 8, height: 8, scrollSnapAlign: 'center' }}
-        className={`shrink-0 rounded-full ${TIER_PIP[tier] || 'bg-zinc-400'}`}
-      />
-    );
-  };
-
-  if (rail) {
-    // Size the rail chips from the live viewport height in JS (no viewport-unit CSS): avail =
-    // window.innerHeight − 6rem (96px), divided across n chips, then clamped.
-    const avail = (typeof window !== 'undefined' ? window.innerHeight : 800) - 96;
-    const cell = Math.max(14, Math.min(32, avail / n));
-    const size = `${cell}px`;
-    const fontSize = `${Math.max(9, Math.min(14, (avail / n) * 0.42))}px`;
-    const gap = cell < 24 ? 'gap-1' : 'gap-1.5';
-    return (
-      <div
-        aria-label="Fragen-Fortschritt"
-        className={`hidden md:flex absolute inset-y-0 left-0 z-20 w-16 flex-col items-center justify-center ${gap} bg-zinc-950 border-r border-amber-500/40 py-3`}
-      >
-        {questions.map((qq, i) => chip(qq, i, size, fontSize))}
-      </div>
-    );
-  }
-
-  // iPhone strip. Stage A: uniform size that fits the measured width; below the 14 px
-  // floor, Stage B "focus mode" collapses done chips to dots and emphasises the current.
-  const GAP = 4; // gap-1
-  const uniform = innerW > 0 ? Math.floor((innerW - (n - 1) * GAP) / n) : 28;
-  // py-1.5 gives the active chip's pulse ring room so it isn't clipped at the strip edge.
-  const base = 'md:hidden shrink-0 flex items-center gap-1 py-1.5 bg-zinc-100 border-b border-amber-500/50';
-  const pad = { paddingInline: 'max(8px, env(safe-area-inset-left))' };
-
-  if (uniform >= 14) {
-    const px = Math.min(28, uniform);
-    const fontPx = Math.max(8, Math.round(px * 0.42));
-    return (
-      <div ref={stripRef} aria-label="Fragen-Fortschritt" className={`${base} justify-center`} style={pad}>
-        {questions.map((qq, i) => chip(qq, i, px, fontPx))}
-      </div>
-    );
-  }
-
-  // Stage B — focus: done → 8 px dots, retry/upcoming → 16 px, current → 28 px.
-  let total = 0;
-  const nodes = questions.map((qq, i) => {
-    const state = chipState(statusMap[qq.id], qq.id === currentQid);
-    const tier = qq.tier || qq.difficulty || 1;
-    const done = state === 'first' || state === 'retry_done' || state === 'forced';
-    const px = state === 'active' ? 28 : done ? 8 : 16;
-    total += px;
-    return done ? dot(qq, i, tier, state) : chip(qq, i, px, Math.max(8, Math.round(px * 0.42)));
-  });
-  total += (n - 1) * GAP;
-  const scroll = innerW > 0 && total > innerW;
+    activeRef.current?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+  }, [currentQid]);
 
   return (
     <div
-      ref={stripRef}
       aria-label="Fragen-Fortschritt"
-      className={`${base} ${scroll ? 'justify-start overflow-x-auto overflow-y-visible' : 'justify-center'}`}
-      style={scroll ? { ...pad, scrollSnapType: 'x mandatory', scrollPaddingInline: '50%' } : pad}
+      className="quiz-chipstrip shrink-0 flex items-end gap-1.5 overflow-x-auto bg-zinc-900 py-2"
+      style={{ paddingInline: 'max(0.75rem, env(safe-area-inset-left))' }}
     >
-      {nodes}
+      {questions.map((qq, i) => {
+        // Questions carry a 1-3 tier; TODO: default to 2 (mittel) if a future question type omits it.
+        const level = Math.max(1, Math.min(3, qq.tier || qq.difficulty || 2));
+        if (qq.id === currentQid) {
+          return (
+            <div
+              key={qq.id}
+              ref={activeRef}
+              aria-current="step"
+              aria-label={`Frage ${currentIndex + 1} von ${total} · ${MODE_CATEGORY[qq.mode] || 'Frage'}`}
+              className="shrink-0 flex flex-col items-center justify-center gap-0.5 rounded-xl bg-[#f5a623] px-3 py-1 text-zinc-950"
+            >
+              <span className="text-[9px] font-bold uppercase tracking-wide leading-none">{MODE_CATEGORY[qq.mode] || 'Frage'}</span>
+              <span className="text-sm font-extrabold tabular-nums leading-none">{currentIndex + 1} / {total}</span>
+              <DifficultyIcon level={level} className="w-7 text-zinc-950" />
+            </div>
+          );
+        }
+        const dots = resultDots(statusMap[qq.id]);
+        return (
+          <div key={qq.id} className="shrink-0 flex flex-col items-center gap-1">
+            <DifficultyIcon level={level} className="w-5 text-zinc-400" />
+            <div className="flex items-center justify-center gap-0.5 rounded-lg bg-zinc-800 px-1.5 min-h-[20px] min-w-[20px]">
+              {dots.length === 0 ? (
+                <span className="w-1.5 h-1.5 rounded-full" style={{ border: '1.5px solid #52525b' }} aria-hidden="true" />
+              ) : (
+                dots.map((ok, di) => (
+                  <span
+                    key={di}
+                    className="w-1.5 h-1.5 rounded-full"
+                    style={{ background: ok ? '#22c55e' : '#ef4444' }}
+                    aria-hidden="true"
+                  />
+                ))
+              )}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -696,7 +576,7 @@ export default function QuizPlay({ roundId }) {
   };
 
   return (
-    <div className={`h-full flex flex-col overflow-hidden relative md:pl-[68px] ${wantsRight ? 'md:flex-row' : ''}`}>
+    <div className={`h-full flex flex-col overflow-hidden relative ${wantsRight ? 'md:flex-row' : ''}`}>
       <style>{`
         @keyframes quizTitleFade {0%{opacity:0;transform:translateY(6px)}100%{opacity:1;transform:translateY(0)}}
         @keyframes pfVignette {0%,100%{opacity:0.6}50%{opacity:1}}
@@ -729,17 +609,12 @@ export default function QuizPlay({ roundId }) {
         </div>
       )}
 
-      <QuestionTimeline questions={questions} statusMap={statusMap} currentQid={currentQid} layout="rail" remainingMs={locked ? null : remaining} durationMs={dur} />
-
       {/* Stage + Panel hide behind the round-2 overlay so the retry question
           never flashes before the countdown completes. */}
       {!showRoundTwoIntro && (
       <>
       {/* Stage — light neutral surface */}
       <div className={`relative flex flex-col w-full bg-zinc-100 text-zinc-900 ${shortStage ? 'shrink-0 h-auto' : `h-[55%] ${wantsRight ? 'md:h-full md:w-[62%]' : ''}`}`}>
-        {/* md+ connector: a short amber tick at the Stage's left edge continues the
-            rail's amber line up into the HUD, tying the band to the vertical timeline. */}
-        <span aria-hidden="true" className="hidden md:block absolute left-0 top-2 w-0.5 h-12 rounded-full bg-amber-500/50" />
         {/* HUD — three readable groups: progress · status · actions */}
         <div className="shrink-0 flex items-center gap-1 px-3 sm:px-6 py-1.5 pt-[max(0.5rem,env(safe-area-inset-top))] text-base sm:text-lg min-h-[56px]">
           {/* Group A · progress */}
@@ -748,7 +623,6 @@ export default function QuizPlay({ roundId }) {
               <span className="text-xl sm:text-2xl font-bold text-zinc-900 tabular-nums">{resolvedCount}/{total}</span>
               <span className="text-xs text-zinc-500">gelöst</span>
             </div>
-            <DifficultyBadge tier={q.tier || q.difficulty || 1} />
             {visit === 'retry' && (
               <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-400/20 text-amber-600" role="img" aria-label="Wiederholung" title="Wiederholung">
                 <RotateCcw className="w-3.5 h-3.5" />
@@ -774,7 +648,7 @@ export default function QuizPlay({ roundId }) {
           </button>
         </div>
 
-        <QuestionTimeline questions={questions} statusMap={statusMap} currentQid={currentQid} layout="strip" remainingMs={locked ? null : remaining} durationMs={dur} />
+        <ChipStrip questions={questions} statusMap={statusMap} currentQid={currentQid} />
 
         <div className="shrink-0 px-4 sm:px-6 pt-1 text-center font-display text-lg md:text-2xl lg:text-3xl text-zinc-900">
           {MODE_PROMPT[q.mode] || 'Frage'}

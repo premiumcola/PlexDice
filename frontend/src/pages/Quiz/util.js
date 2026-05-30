@@ -62,6 +62,31 @@ export const MODE_LABEL = {
   collection_member: 'Filmreihe',
 };
 
+// Short uppercase category for the progress chip strip's active tile — derived from the existing
+// question `mode` (no new backend field). Keeps the active tile compact (FILM / GENRE / JAHR …).
+export const MODE_CATEGORY = {
+  cover_to_title: 'FILM',
+  cover_to_decade: 'JAHRZEHNT',
+  cover_to_genre: 'GENRE',
+  cover_to_studio: 'STUDIO',
+  title_year_to_cover: 'COVER',
+  actor_to_movie: 'SCHAUSPIELER',
+  movie_to_actor: 'SCHAUSPIELER',
+  plot_to_movie: 'PLOT',
+  tagline_to_movie: 'SLOGAN',
+  director_to_movie: 'REGIE',
+  movie_to_fsk: 'FSK',
+  movie_to_country: 'LAND',
+  movie_to_director: 'REGIE',
+  movie_to_year_exact: 'JAHR',
+  movie_to_runtime: 'LAUFZEIT',
+  plot_redacted_to_movie: 'PLOT',
+  actor_filmography_multi: 'FILMOGRAFIE',
+  writer_to_movie: 'DREHBUCH',
+  two_actors_to_shared: 'STARS',
+  collection_member: 'REIHE',
+};
+
 export const TIER_LABEL = { 1: 'Leicht', 2: 'Mittel', 3: 'Schwer' };
 
 // Modes whose image stem is a person photo (anchor the crop to the top → faces).
