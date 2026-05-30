@@ -21,7 +21,15 @@ function measureTopInset() {
 
 function setAppHeight() {
   const topInset = measureTopInset();
-  document.documentElement.style.setProperty('--app-height', `${window.innerHeight + topInset}px`);
+  let h = window.innerHeight + topInset;
+  // Portrait only: never shorter than the physical screen height (CSS px). innerHeight + topInset
+  // can land a few px short of the true bottom, which lets the page BODY peek below the nav;
+  // flooring at screen.height closes that strip. Guarded so landscape (where iOS keeps
+  // screen.height at its portrait value) is unaffected.
+  if (window.innerHeight >= window.innerWidth) {
+    h = Math.max(h, window.screen.height);
+  }
+  document.documentElement.style.setProperty('--app-height', `${h}px`);
 }
 setAppHeight();
 window.addEventListener('load', setAppHeight);

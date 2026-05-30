@@ -19,11 +19,11 @@ function activeTab(pathname) {
 }
 
 function NavItem({ active, onClick, icon: Icon, label, vertical }) {
-  // Mobile tab: icon over label, the group vertically centred in a flat, low bar. min-h-[54px]
-  // keeps the touch target above the 44px floor; the parent nav's padding-bottom already lifts
-  // the row clear of the home-indicator inset, so no per-button bottom nudge is needed.
+  // Mobile tab: icon over label, pinned to the BOTTOM of the bar (justify-end) so they sit just
+  // above the home-indicator inset (the nav's padding-bottom). min-h-[54px] keeps the touch
+  // target above the 44px floor.
   const base = vertical
-    ? 'flex-1 flex flex-col items-center justify-center gap-1 py-2 min-h-[54px] text-[11px]'
+    ? 'flex-1 flex flex-col items-center justify-end gap-1 pt-2 pb-1 min-h-[54px] text-[11px]'
     : 'flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium';
   const tone = active
     ? vertical
@@ -97,7 +97,7 @@ export default function App() {
     // <main> is the only scroll area; the mobile bottom nav is the LAST flex child, sitting
     // flush at the true screen bottom — its own background + padding-bottom
     // env(safe-area-inset-bottom) bleed into the rounded corners. No vh/dvh, no fixed shell.
-    <div className="flex flex-col h-full min-h-full overflow-hidden bg-zinc-950" style={{ background: 'rgba(0,255,0,0.55)', outline: '2px solid #000' }}>
+    <div className="flex flex-col flex-1 min-h-0 overflow-hidden bg-zinc-950" style={{ background: 'rgba(0,255,0,0.55)', outline: '2px solid #000' }}>
       {/* TEMP DEBUG (Task P): bottom-region tints — REMOVE AFTER DIAGNOSIS */}
       <span style={{ position: 'fixed', top: 26, left: 0, zIndex: 99999, background: 'rgba(255,255,255,0.92)', color: '#000', font: 'bold 10px/13px monospace', padding: '0 3px', pointerEvents: 'none', whiteSpace: 'nowrap' }}>SHELL</span>
       {/* Status-bar scrim — the STRONG top dark gradient: fully opaque #09090b at the very top
