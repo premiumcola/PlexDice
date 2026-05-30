@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Dices, Target, Settings as SettingsIcon, AlertCircle } from 'lucide-react';
 import Dice from './pages/Dice';
 import Settings from './pages/Settings';
@@ -36,6 +36,61 @@ function NavItem({ active, onClick, icon: Icon, label, vertical }) {
       <Icon className={vertical ? 'w-7 h-7' : 'w-4 h-4'} strokeWidth={2} />
       <span>{label}</span>
     </button>
+  );
+}
+
+// TEMP DIAGNOSTIC (Task M): a bright-pink banner pinned as the LAST flex child of the
+// JS-driven #root column (height = var(--app-height) = window.innerHeight). It proves whether
+// an element can sit flush on the physical bottom edge of an iOS standalone PWA: the pink fills
+// through padding-bottom: env(safe-area-inset-bottom) so no black shows below it, and a 3px
+// yellow border frames all four sides. Live values are printed so a screenshot self-documents.
+// No bottom offset/margin — placement is purely "last flex child". Remove after the test.
+function BottomTestBanner() {
+  const ref = useRef(null);
+  const [v, setV] = useState({
+    innerH: window.innerHeight,
+    screenH: window.screen.height,
+    appH: '—',
+    safeBot: '—',
+    standalone: window.matchMedia('(display-mode: standalone)').matches,
+  });
+
+  useEffect(() => {
+    const read = () => {
+      const appH = getComputedStyle(document.documentElement).getPropertyValue('--app-height').trim();
+      // env(safe-area-inset-bottom) resolves to a px value once it is a real element's padding.
+      const safeBot = ref.current ? getComputedStyle(ref.current).paddingBottom : '';
+      setV({
+        innerH: window.innerHeight,
+        screenH: window.screen.height,
+        appH: appH || '—',
+        safeBot: safeBot || '—',
+        standalone: window.matchMedia('(display-mode: standalone)').matches,
+      });
+    };
+    read();
+    window.addEventListener('resize', read);
+    window.addEventListener('orientationchange', read);
+    window.visualViewport?.addEventListener('resize', read);
+    return () => {
+      window.removeEventListener('resize', read);
+      window.removeEventListener('orientationchange', read);
+      window.visualViewport?.removeEventListener('resize', read);
+    };
+  }, []);
+
+  return (
+    <div
+      ref={ref}
+      className="lg:hidden shrink-0"
+      style={{ background: '#ec4899', border: '3px solid #facc15', paddingBottom: 'env(safe-area-inset-bottom)' }}
+    >
+      <div className="flex items-center justify-center text-center px-3" style={{ minHeight: '56px' }}>
+        <span style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: '11px', lineHeight: 1.35, color: '#000', wordBreak: 'break-word' }}>
+          innerH {v.innerH} · screenH {v.screenH} · appH {v.appH} · safeBot {v.safeBot} · standalone {String(v.standalone)}
+        </span>
+      </div>
+    </div>
   );
 }
 
@@ -139,6 +194,9 @@ export default function App() {
           ))}
         </nav>
       )}
+
+      {/* TEMP DIAGNOSTIC: bottom-edge test banner as the last flex child (see component). */}
+      {!immersive && <BottomTestBanner />}
     </div>
   );
 }
