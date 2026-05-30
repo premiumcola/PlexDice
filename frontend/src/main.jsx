@@ -3,14 +3,28 @@ import { createRoot } from 'react-dom/client';
 import App from './App.jsx';
 import './index.css';
 
-// JS-driven viewport height: expose --app-height = window.innerHeight (px) so the FIXED
-// #root flex column is exactly the visual viewport — NO vh/dvh anywhere. Kept in sync on
-// resize / orientation / visualViewport changes so the bottom flex child sits flush on the
-// true screen bottom even in an iOS standalone PWA, where 100vh / inset:0 can mismatch.
+// JS-driven viewport height. In an iOS standalone PWA (black-translucent status bar +
+// viewport-fit=cover) window.innerHeight EXCLUDES the top safe-area inset — e.g. on an
+// iPhone 15 Pro Max it reports 873 while the screen is 932, ~59px short — so a bottom flex
+// child pinned to innerHeight floats above the true edge. Fix: --app-height = innerHeight +
+// the measured top inset, which equals the full physical screen height. NO vh/dvh anywhere.
+function measureTopInset() {
+  // A throwaway fixed probe resolves env(safe-area-inset-top) to a concrete px height.
+  const probe = document.createElement('div');
+  probe.style.cssText =
+    'position:fixed;top:0;left:0;width:0;height:env(safe-area-inset-top);visibility:hidden;pointer-events:none';
+  document.body.appendChild(probe);
+  const px = probe.offsetHeight;
+  probe.remove();
+  return px;
+}
+
 function setAppHeight() {
-  document.documentElement.style.setProperty('--app-height', `${window.innerHeight}px`);
+  const topInset = measureTopInset();
+  document.documentElement.style.setProperty('--app-height', `${window.innerHeight + topInset}px`);
 }
 setAppHeight();
+window.addEventListener('load', setAppHeight);
 window.addEventListener('resize', setAppHeight);
 window.addEventListener('orientationchange', setAppHeight);
 window.visualViewport?.addEventListener('resize', setAppHeight);

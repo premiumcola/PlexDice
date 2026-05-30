@@ -7,6 +7,9 @@ html {
   font-feature-settings: 'cv11', 'ss01', 'ss03';
   font-variation-settings: 'opsz' 18;
   height: 100%;
+  margin: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
   /* zinc-950 on the root canvas too, so no area below/around the app ever renders a
      mismatched pure-black band (e.g. the home-indicator safe area). */
   background: #09090b;
@@ -31,10 +34,11 @@ html {
   font-variation-settings: 'opsz' 20;
 }
 
-/* Viewport lock (K1): html/body fill the page with no scroll; #root is the FIXED flex
-   column that exactly is the visual viewport — the app shell + its bottom-nav flex child
-   sit flush at the true screen bottom. No vh/dvh length anywhere → no float, and
-   overflow/overscroll locked → no rubber-band. The only scroller is <main>. */
+/* Viewport lock: html/body fill the page with no scroll; #root is a normal-flow flex column
+   whose height is JS-driven (--app-height = window.innerHeight + top safe-area inset = the
+   full screen) — the app shell + its bottom-nav flex child sit flush at the true screen
+   bottom. No vh/dvh length anywhere → no float; overflow/overscroll locked → no rubber-band.
+   The only scroller is <main>. */
 body {
   height: 100%;
   margin: 0;
@@ -45,12 +49,9 @@ body {
 }
 
 #root {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  /* JS-driven height: main.jsx sets --app-height = window.innerHeight (px). The 100%
-     fallback keeps the column full-height before/without JS. NO vh/dvh length anywhere. */
+  /* JS-driven height: main.jsx sets --app-height = window.innerHeight + top safe-area inset
+     (= full screen height). Normal-flow block — NO position:fixed / inset — so it cannot
+     mismatch the visual viewport. 100% fallback before/without JS. NO vh/dvh anywhere. */
   height: var(--app-height, 100%);
   display: flex;
   flex-direction: column;
