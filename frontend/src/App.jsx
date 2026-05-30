@@ -5,6 +5,7 @@ import Settings from './pages/Settings';
 import QuizRouter from './pages/Quiz';
 import { getSettings } from './api';
 import { usePathname, navigate } from './router';
+import { homePath } from './home';
 
 const TABS = [
   { id: 'dice', label: 'Würfeln', icon: Dices, path: '/' },
@@ -50,21 +51,16 @@ export default function App() {
     (async () => {
       try {
         const s = await getSettings();
+        // Cache the Startseite preference so the logo "home" tap (home.js) resolves the same path.
+        try { localStorage.setItem('plexdice:startTab', s?.ui?.start_tab || 'last'); } catch { /* storage unavailable */ }
         if (!(s?.plex?.tokenSet && s?.plex?.url)) {
           setNeedSettings(true);
           if (!window.location.pathname.startsWith('/settings')) navigate('/settings');
           return;
         }
         if (window.location.pathname === '/') {
-          const start = s?.ui?.start_tab || 'last';
-          let dest = null;
-          if (start === 'quiz') dest = '/quiz';
-          else if (start === 'last') {
-            let last = null;
-            try { last = localStorage.getItem('plexdice:lastTab'); } catch { /* storage unavailable */ }
-            if (last === 'quiz') dest = '/quiz';
-          }
-          if (dest) navigate(dest, { replace: true });
+          const dest = homePath();
+          if (dest !== '/') navigate(dest, { replace: true });
         }
       } catch {
         setNeedSettings(true);

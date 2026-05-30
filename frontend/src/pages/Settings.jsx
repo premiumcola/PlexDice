@@ -206,6 +206,8 @@ export default function Settings({ onConnected }) {
 
   const changeStartTab = (v) => {
     setStartTab(v);
+    // Keep the home.js cache fresh so the logo "home" tap honours the new choice without a reload.
+    try { localStorage.setItem('plexdice:startTab', v); } catch { /* storage unavailable */ }
     saveSettings({ ui: { start_tab: v } }).catch(() => {});
   };
 
