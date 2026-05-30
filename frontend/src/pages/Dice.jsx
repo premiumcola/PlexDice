@@ -448,9 +448,10 @@ export default function Dice({ onNeedSettings }) {
         .dual-range-input::-moz-range-track { background: transparent; height: 36px; }
       `}</style>
       <div className="flex flex-col min-h-full bg-zinc-950 text-zinc-100 relative overflow-x-clip">
-        <div className="fixed inset-0 pointer-events-none" style={{
-          background: 'radial-gradient(ellipse 80% 50% at 50% 0%, rgba(245, 166, 35, 0.08), transparent 70%), radial-gradient(ellipse 60% 40% at 50% 100%, rgba(124, 58, 237, 0.06), transparent 70%)',
-        }} />
+        {/* TEMP DEBUG (Task P): was the ambient radial gradient — tinted YELLOW to find bottom band */}
+        <div className="fixed inset-0 pointer-events-none" style={{ background: 'rgba(255,255,0,0.55)', outline: '2px solid #000' }}>
+          <span style={{ position: 'fixed', top: 52, left: 0, zIndex: 99999, background: 'rgba(255,255,255,0.92)', color: '#000', font: 'bold 10px/13px monospace', padding: '0 3px', pointerEvents: 'none', whiteSpace: 'nowrap' }}>OVERLAY</span>
+        </div>
 
         {rolling && !reduceMotion && <div className="fixed inset-0 pointer-events-none rolling-bg" />}
         {fireworks && !reduceMotion && <Fireworks key={fireworksKey} />}
@@ -956,7 +957,8 @@ export default function Dice({ onNeedSettings }) {
 
           {/* Subtle bottom branding — pushed to the bottom of the content area (just
               above the tab bar) via mt-auto, low-emphasis, no divider above it. */}
-          <footer className="mt-auto pt-8 text-center">
+          <footer className="mt-auto pt-8 text-center" style={{ background: 'rgba(255,140,0,0.55)', outline: '2px solid #000', position: 'relative' }}>
+            <span style={{ position: 'absolute', top: 0, left: 0, zIndex: 99999, background: 'rgba(255,255,255,0.92)', color: '#000', font: 'bold 10px/13px monospace', padding: '0 3px', pointerEvents: 'none', whiteSpace: 'nowrap' }}>FOOTER</span>
             <p className="inline-flex items-center justify-center gap-2 text-xs text-zinc-500">
               <DieIcon className="w-4 h-4 opacity-70" /> Entdecke deine Filme neu!
             </p>

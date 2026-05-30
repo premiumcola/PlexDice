@@ -156,3 +156,39 @@ body {
 .animate-quizPageWash {
   animation: quizPageWash 0.28s ease-out forwards;
 }
+
+/* === TEMP DEBUG (Task P): bottom-region element tints — REMOVE AFTER DIAGNOSIS ===
+   Distinct neon fills (semi-transparent so stacking shows) + 2px outlines + corner labels,
+   to reveal which DOM element fills the black band below the bottom-nav icons. */
+body {
+  background: rgba(255, 0, 0, 0.55) !important; /* RED — BODY */
+  outline: 2px solid #fff !important;
+}
+body::before {
+  content: 'BODY';
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 99999;
+  background: rgba(255, 255, 255, 0.92);
+  color: #000;
+  font: bold 10px/13px monospace;
+  padding: 0 3px;
+  pointer-events: none;
+}
+#root {
+  background: rgba(0, 0, 255, 0.55) !important; /* BLUE — ROOT */
+  outline: 2px solid #fff !important;
+}
+#root::before {
+  content: 'ROOT';
+  position: fixed;
+  top: 13px;
+  left: 0;
+  z-index: 99999;
+  background: rgba(255, 255, 255, 0.92);
+  color: #000;
+  font: bold 10px/13px monospace;
+  padding: 0 3px;
+  pointer-events: none;
+}

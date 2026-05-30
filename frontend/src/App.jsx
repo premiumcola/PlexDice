@@ -97,7 +97,9 @@ export default function App() {
     // <main> is the only scroll area; the mobile bottom nav is the LAST flex child, sitting
     // flush at the true screen bottom — its own background + padding-bottom
     // env(safe-area-inset-bottom) bleed into the rounded corners. No vh/dvh, no fixed shell.
-    <div className="flex flex-col h-full overflow-hidden bg-zinc-950">
+    <div className="flex flex-col h-full overflow-hidden bg-zinc-950" style={{ background: 'rgba(0,255,0,0.55)', outline: '2px solid #000' }}>
+      {/* TEMP DEBUG (Task P): bottom-region tints — REMOVE AFTER DIAGNOSIS */}
+      <span style={{ position: 'fixed', top: 26, left: 0, zIndex: 99999, background: 'rgba(255,255,255,0.92)', color: '#000', font: 'bold 10px/13px monospace', padding: '0 3px', pointerEvents: 'none', whiteSpace: 'nowrap' }}>SHELL</span>
       {/* Status-bar scrim: fully saturated across only the status-bar / notch region
           (clock, dynamic island, battery), then a short fade that is completely gone by
           ~the bottom of the notch (~72% of the inset). Nothing shows below the notch.
@@ -123,7 +125,7 @@ export default function App() {
         </div>
       )}
 
-      <main className={`flex-1 min-h-0 overflow-y-auto ${immersive || showBanner ? '' : 'safe-top'}`}>{page}</main>
+      <main className={`flex-1 min-h-0 overflow-y-auto ${immersive || showBanner ? '' : 'safe-top'}`} style={{ background: 'rgba(170,0,255,0.55)', outline: '2px solid #fff' }}><span style={{ position: 'fixed', top: 39, left: 0, zIndex: 99999, background: 'rgba(255,255,255,0.92)', color: '#000', font: 'bold 10px/13px monospace', padding: '0 3px', pointerEvents: 'none', whiteSpace: 'nowrap' }}>MAIN</span>{page}</main>
 
       {!immersive && (
         <>
@@ -145,10 +147,14 @@ export default function App() {
               inner wrapper — so it bleeds into the home-indicator + rounded corners, no gap.
               FLAT: separation comes from the zinc-900↔zinc-950 colour step alone — NO drop-shadow
               scrim above the bar (the old upward shadow read as a stray dark band over content). */}
-          <nav className="lg:hidden shrink-0 z-40 bg-zinc-900 pb-[env(safe-area-inset-bottom)] flex">
-            {TABS.map((t) => (
-              <NavItem key={t.id} vertical active={tab === t.id} onClick={() => navigate(t.path)} icon={t.icon} label={t.label} />
-            ))}
+          <nav className="lg:hidden shrink-0 z-40 bg-zinc-900 pb-[env(safe-area-inset-bottom)] flex" style={{ background: 'rgba(0,255,255,0.55)', outline: '2px solid #000', position: 'relative' }}>
+            <span style={{ position: 'absolute', top: 0, left: 0, zIndex: 99999, background: 'rgba(255,255,255,0.92)', color: '#000', font: 'bold 10px/13px monospace', padding: '0 3px', pointerEvents: 'none', whiteSpace: 'nowrap' }}>NAV</span>
+            <div className="flex flex-1" style={{ background: 'rgba(255,0,255,0.55)', outline: '2px solid #fff', position: 'relative' }}>
+              <span style={{ position: 'absolute', top: 0, left: 70, zIndex: 99999, background: 'rgba(255,255,255,0.92)', color: '#000', font: 'bold 10px/13px monospace', padding: '0 3px', pointerEvents: 'none', whiteSpace: 'nowrap' }}>NAV-INNER</span>
+              {TABS.map((t) => (
+                <NavItem key={t.id} vertical active={tab === t.id} onClick={() => navigate(t.path)} icon={t.icon} label={t.label} />
+              ))}
+            </div>
           </nav>
         </>
       )}
