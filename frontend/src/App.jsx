@@ -143,8 +143,10 @@ export default function App() {
               #root's height is the JS-corrected full screen (window.innerHeight + top inset),
               so the bar's bottom IS the physical screen bottom. The zinc-900 background sits on
               the nav itself and fills THROUGH padding-bottom: env(safe-area-inset-bottom) — no
-              inner wrapper — so it bleeds into the home-indicator + rounded corners, no gap. */}
-          <nav className="lg:hidden shrink-0 z-40 bg-zinc-900 pb-[env(safe-area-inset-bottom)] flex shadow-[0_-6px_20px_rgba(0,0,0,0.45)]">
+              inner wrapper — so it bleeds into the home-indicator + rounded corners, no gap.
+              FLAT: separation comes from the zinc-900↔zinc-950 colour step alone — NO drop-shadow
+              scrim above the bar (the old upward shadow read as a stray dark band over content). */}
+          <nav className="lg:hidden shrink-0 z-40 bg-zinc-900 pb-[env(safe-area-inset-bottom)] flex">
             {TABS.map((t) => (
               <NavItem key={t.id} vertical active={tab === t.id} onClick={() => navigate(t.path)} icon={t.icon} label={t.label} />
             ))}
