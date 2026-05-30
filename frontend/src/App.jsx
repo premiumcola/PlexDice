@@ -100,22 +100,21 @@ export default function App() {
     <div className="flex flex-col h-full overflow-hidden bg-zinc-950" style={{ background: 'rgba(0,255,0,0.55)', outline: '2px solid #000' }}>
       {/* TEMP DEBUG (Task P): bottom-region tints — REMOVE AFTER DIAGNOSIS */}
       <span style={{ position: 'fixed', top: 26, left: 0, zIndex: 99999, background: 'rgba(255,255,255,0.92)', color: '#000', font: 'bold 10px/13px monospace', padding: '0 3px', pointerEvents: 'none', whiteSpace: 'nowrap' }}>SHELL</span>
-      {/* Status-bar scrim: fully saturated across only the status-bar / notch region
-          (clock, dynamic island, battery), then a short fade that is completely gone by
-          ~the bottom of the notch (~72% of the inset). Nothing shows below the notch.
-          Pinned to the top, on its own layer so it never jumps on iOS scroll. */}
+      {/* Status-bar scrim: an even LINEAR vertical fade — opaque #09090b at the very top
+          (status bar: clock, Dynamic Island, battery) → transparent, with the transparent
+          end pulled to ~16px BELOW the Dynamic Island (height = safe-area-inset-top + 16px).
+          No hard stop. Pinned to the top, on its own layer so it never jumps on iOS scroll. */}
       {!immersive && (
         <div
           aria-hidden="true"
           className="fixed top-0 inset-x-0 z-50 pointer-events-none"
           style={{
-            height: 'env(safe-area-inset-top)',
+            height: 'calc(env(safe-area-inset-top) + 16px)',
             transform: 'translateZ(0)',
             background:
               'linear-gradient(to bottom, '
-              + 'rgb(9 9 11) 0%, '
-              + 'rgb(9 9 11) 30%, '
-              + 'rgba(9, 9, 11, 0) 72%)',
+              + '#09090b 0%, '
+              + 'rgba(9, 9, 11, 0) 100%)',
           }}
         />
       )}
