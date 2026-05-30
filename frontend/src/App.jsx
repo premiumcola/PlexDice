@@ -97,7 +97,7 @@ export default function App() {
     // <main> is the only scroll area; the mobile bottom nav is the LAST flex child, sitting
     // flush at the true screen bottom — its own background + padding-bottom
     // env(safe-area-inset-bottom) bleed into the rounded corners. No vh/dvh, no fixed shell.
-    <div className="flex flex-col h-full overflow-hidden bg-zinc-950" style={{ background: 'rgba(0,255,0,0.55)', outline: '2px solid #000' }}>
+    <div className="flex flex-col h-full min-h-full overflow-hidden bg-zinc-950" style={{ background: 'rgba(0,255,0,0.55)', outline: '2px solid #000' }}>
       {/* TEMP DEBUG (Task P): bottom-region tints — REMOVE AFTER DIAGNOSIS */}
       <span style={{ position: 'fixed', top: 26, left: 0, zIndex: 99999, background: 'rgba(255,255,255,0.92)', color: '#000', font: 'bold 10px/13px monospace', padding: '0 3px', pointerEvents: 'none', whiteSpace: 'nowrap' }}>SHELL</span>
       {/* Status-bar scrim: an even LINEAR vertical fade — opaque #09090b at the very top
