@@ -20,11 +20,12 @@ function activeTab(pathname) {
 }
 
 function NavItem({ active, onClick, icon: Icon, label, vertical }) {
-  // Mobile tab: icon over label, vertically CENTERED in the bar (justify-center) so the pair sits
-  // nicely rather than being pushed down into the home-indicator inset (the nav's padding-bottom).
-  // min-h-[54px] keeps the touch target above the 44px floor.
+  // Mobile tab: icon over label, vertically CENTERED across the FULL bar. The safe-area space lives
+  // in the button's min-height (calc below) — not the nav's padding — so justify-center centres the
+  // icon+label in the whole bar instead of leaving them at the top with empty space toward the home
+  // indicator. min-height also keeps the touch target well above the 44px floor.
   const base = vertical
-    ? 'flex-1 flex flex-col items-center justify-center gap-1 py-1.5 min-h-[54px] text-[11px]'
+    ? 'flex-1 flex flex-col items-center justify-center gap-1 py-1.5 text-[11px]'
     : 'flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium';
   const tone = active
     ? vertical
@@ -32,7 +33,11 @@ function NavItem({ active, onClick, icon: Icon, label, vertical }) {
       : 'bg-amber-400 text-zinc-950'
     : 'text-zinc-400 active:text-zinc-200';
   return (
-    <button onClick={onClick} className={`${base} ${tone} transition-colors`}>
+    <button
+      onClick={onClick}
+      className={`${base} ${tone} transition-colors`}
+      style={vertical ? { minHeight: 'calc(54px + env(safe-area-inset-bottom))' } : undefined}
+    >
       <Icon className={vertical ? 'w-7 h-7' : 'w-4 h-4'} strokeWidth={2} />
       <span>{label}</span>
     </button>
@@ -133,15 +138,13 @@ export default function App() {
             ))}
           </nav>
 
-          {/* Mobile: bottom tab bar — the LAST flex child of the #root flex column
-              (flex:0 0 auto via shrink-0; NORMAL flow, NOT fixed/absolute, no bottom offset).
-              #root's height is the JS-corrected full screen (window.innerHeight + top inset),
-              so the bar's bottom IS the physical screen bottom. The zinc-900 background sits on
-              the nav itself and fills THROUGH padding-bottom: env(safe-area-inset-bottom) — no
-              inner wrapper — so it bleeds into the home-indicator + rounded corners, no gap.
-              FLAT: separation comes from the zinc-900↔zinc-950 colour step alone — NO drop-shadow
-              scrim above the bar (the old upward shadow read as a stray dark band over content). */}
-          <nav className="lg:hidden shrink-0 z-40 bg-zinc-900 pb-[env(safe-area-inset-bottom)] flex">
+          {/* Mobile: bottom tab bar — the LAST flex child of #root (flex:0 0 auto via shrink-0;
+              NORMAL flow, NOT fixed), reaching the physical screen bottom. The zinc-900 background
+              sits on the nav; each tab's min-height includes env(safe-area-inset-bottom) so the
+              icon+label pair centres across the FULL bar (not the top edge) while the bg still
+              fills to the home-indicator edge. FLAT: separation is the zinc-900↔zinc-950 colour
+              step alone — no drop-shadow scrim above the bar. */}
+          <nav className="lg:hidden shrink-0 z-40 bg-zinc-900 flex">
             <div className="flex flex-1">
               {TABS.map((t) => (
                 <NavItem key={t.id} vertical active={tab === t.id} onClick={() => navigate(t.path)} icon={t.icon} label={t.label} />
