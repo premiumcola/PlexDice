@@ -331,7 +331,7 @@ export default function Settings({ onConnected }) {
       popup.document.write(
         '<!doctype html><meta charset="utf-8"><title>Plex</title>'
         + '<body style="margin:0;display:flex;align-items:center;justify-content:center;'
-        + 'height:100vh;background:#09090b;color:#a1a1aa;font:16px system-ui,sans-serif">'
+        + 'position:fixed;inset:0;background:#09090b;color:#a1a1aa;font:16px system-ui,sans-serif">'
         + 'Verbinde mit Plex …</body>',
       );
     } catch { /* popup already navigated cross-origin */ }

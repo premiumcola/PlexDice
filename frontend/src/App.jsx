@@ -93,10 +93,11 @@ export default function App() {
   const showBanner = needSettings && tab === 'settings';
 
   return (
-    // App shell: a flex column filling the viewport-locked body (index.css pins body to the
-    // visual viewport), so h-full = the real screen height in Safari AND standalone — no dvh
-    // length quirk. <main> is the only scroll area; the mobile bottom nav is a flex child at
-    // the end, sitting flush at the true screen bottom from first paint with no gap or jump.
+    // App shell: a flex column filling #root (the FIXED, viewport-locked flex container in
+    // index.css) at height:100% of the real screen — no vh/dvh length anywhere. <main> is
+    // the only scroll area; the mobile bottom nav is the LAST flex child, sitting flush at
+    // the true screen bottom — its own background + padding-bottom env(safe-area-inset-bottom)
+    // bleed into the rounded corners. No fixed positioning, no bottom-space reserved on main.
     <div className="flex flex-col h-full overflow-hidden bg-zinc-950">
       {/* Status-bar scrim: fully saturated across only the status-bar / notch region
           (clock, dynamic island, battery), then a short fade that is completely gone by
@@ -137,24 +138,11 @@ export default function App() {
             ))}
           </nav>
 
-          {/* Full-bleed backstop: a zinc-900 layer pinned with position:fixed to the
-              physical viewport bottom (fixed resolves against the viewport — the locked
-              body is NOT its containing block), so the home-indicator + rounded-corner
-              region always reads as the nav surface, never a black gap. It sits BEHIND the
-              nav (z-30 < z-40), so it's invisible when the nav already reaches the bottom
-              and only shows through to fill the safe-area otherwise. */}
-          <div
-            aria-hidden="true"
-            className="lg:hidden fixed inset-x-0 bottom-0 z-30 bg-zinc-900 pointer-events-none"
-            style={{ height: 'calc(env(safe-area-inset-bottom) + 16px)' }}
-          />
-
-          {/* Mobile: bottom tab bar as a NORMAL flex child at the end of the shell
-              (shrink-0, NOT position:fixed). Because body is locked to the visual viewport,
-              the shell's bottom IS the real screen bottom, so the bar sits flush there from
-              first paint — no dvh gap, no fixed-position quirk, no scroll jump. Its surface
-              fills the home-indicator area via padding-bottom: env(safe-area-inset-bottom),
-              backed by the full-bleed backstop above. */}
+          {/* Mobile: bottom tab bar — the LAST flex child of the fixed #root column
+              (flex:0 0 auto via shrink-0, NOT position:fixed, no bottom offset). #root is the
+              visual viewport, so the bar's bottom IS the physical screen bottom; its zinc-900
+              background fills through padding-bottom: env(safe-area-inset-bottom), bleeding
+              into the home-indicator + rounded corners with no black gap. Flat/low bar. */}
           <nav className="lg:hidden shrink-0 z-40 bg-zinc-900 pb-[env(safe-area-inset-bottom)] flex shadow-[0_-6px_20px_rgba(0,0,0,0.45)]">
             {TABS.map((t) => (
               <NavItem key={t.id} vertical active={tab === t.id} onClick={() => navigate(t.path)} icon={t.icon} label={t.label} />

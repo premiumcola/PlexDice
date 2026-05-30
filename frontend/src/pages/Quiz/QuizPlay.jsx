@@ -285,10 +285,13 @@ function QuestionTimeline({ questions, statusMap, currentQid, layout, remainingM
   };
 
   if (rail) {
-    const size = `clamp(14px, calc((100dvh - 6rem) / ${n}), 32px)`;
-    const fontSize = `clamp(9px, calc((100dvh - 6rem) / ${n} * 0.42), 14px)`;
+    // Size the rail chips from the live viewport height in JS (no viewport-unit CSS): avail =
+    // window.innerHeight − 6rem (96px), divided across n chips, then clamped.
     const avail = (typeof window !== 'undefined' ? window.innerHeight : 800) - 96;
-    const gap = Math.max(14, Math.min(32, avail / n)) < 24 ? 'gap-1' : 'gap-1.5';
+    const cell = Math.max(14, Math.min(32, avail / n));
+    const size = `${cell}px`;
+    const fontSize = `${Math.max(9, Math.min(14, (avail / n) * 0.42))}px`;
+    const gap = cell < 24 ? 'gap-1' : 'gap-1.5';
     return (
       <div
         aria-label="Fragen-Fortschritt"
@@ -655,7 +658,7 @@ export default function QuizPlay({ roundId }) {
 
   if (!round || !q) {
     return (
-      <div className="min-h-[100dvh] bg-zinc-950 text-zinc-100 flex flex-col items-center justify-center gap-4 px-6 text-center">
+      <div className="min-h-full bg-zinc-950 text-zinc-100 flex flex-col items-center justify-center gap-4 px-6 text-center">
         <p className="text-zinc-400">Runde nicht gefunden (oder Server neu gestartet).</p>
         <button type="button" onClick={() => navigate('/quiz')} className="px-5 py-3 rounded-xl bg-amber-400 text-zinc-950 font-semibold">
           Zurück zum Quiz
@@ -693,7 +696,7 @@ export default function QuizPlay({ roundId }) {
   };
 
   return (
-    <div className={`h-[100dvh] flex flex-col overflow-hidden relative md:pl-[68px] ${wantsRight ? 'md:flex-row' : ''}`}>
+    <div className={`h-full flex flex-col overflow-hidden relative md:pl-[68px] ${wantsRight ? 'md:flex-row' : ''}`}>
       <style>{`
         @keyframes quizTitleFade {0%{opacity:0;transform:translateY(6px)}100%{opacity:1;transform:translateY(0)}}
         @keyframes pfVignette {0%,100%{opacity:0.6}50%{opacity:1}}
