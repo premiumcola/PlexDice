@@ -1,27 +1,18 @@
-const PLEX_DIRECT = /^https?:\/\/([\d-]+)\.[a-f0-9]+\.plex\.direct(:\d+)?/i;
-
-// Defensive: rewrite a plex.direct deep-link to its LAN IP over plain HTTP before it
-// reaches the DOM, so iOS Safari (which can't resolve *.plex.direct on restrictive home
-// DNS) follows it. Used for the local Plex Web deep link and the native-app fallback.
-export function sanitizePlexUrl(url) {
-  if (!url) return url;
-  const m = PLEX_DIRECT.exec(url);
-  if (!m) return url;
-  const ip = m[1].replace(/-/g, '.');
-  const port = m[2] || ':32400';
-  const suffix = url.slice(m[0].length);
-  return `http://${ip}${port}${suffix}`;
-}
-
-// Native-app hand-off. The Plex iOS/Android app registers the plex:// custom URL scheme,
-// which — unlike the Plex cloud universal links — reliably launches the installed app
-// even from a standalone PWA, and (since it is not a real navigation when the app is
-// missing) lets the caller cleanly fall back to the local web client. Targets the LOCAL
-// server item by machineIdentifier + ratingKey so the app opens the user's own copy on
-// the LAN, never the cloud catalog (which is empty for a local-only library). Returns
-// null when the ids are missing so the caller uses the web deep link instead.
-export function plexAppUrl(machineId, ratingKey) {
+// Native-app hand-off via Plex's documented deep-link scheme. The Plex iOS / Android / desktop
+// app registers the plex:// custom URL scheme; the "preplay" action opens the item's info screen
+// in the app (pass action "play" to start playback instead). The link targets the LOCAL server
+// item by its machineIdentifier — the 40-hex server id; the friendly name does NOT work — plus the
+// ratingKey, so the app opens the user's own copy and streams directly from the local server on the
+// LAN. It is local-only: it carries no plex.tv / relay / streaming URL and NEVER a token, only the
+// local item key, the metadata type and the local server id — the app resolves the server id and
+// streams from the local server. metadataType: movie = 1 (default 1). The metadataKey keeps RAW
+// slashes exactly as in Plex's documented example — it must NOT be URL-encoded (nor double-encoded).
+//
+// Plex requirement (a Plex limitation, not something we can fix here): the deep link only opens the
+// app if the Plex app is installed, has been opened at least once (first run completed), and is
+// logged into an account with access to that server.
+export function plexAppUrl(machineId, ratingKey, type = 1, action = 'preplay') {
   if (!machineId || !ratingKey) return null;
-  const key = encodeURIComponent(`/library/metadata/${ratingKey}`);
-  return `plex://server/${machineId}/details?key=${key}`;
+  return `plex://${action}/?metadataKey=/library/metadata/${ratingKey}`
+    + `&metadataType=${type}&server=${machineId}`;
 }

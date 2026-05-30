@@ -12,7 +12,7 @@ import AppHeader from '../components/AppHeader';
 import DieIcon from '../components/DieIcon';
 import Fireworks from '../components/Fireworks';
 import { usePrefs } from '../usePrefs';
-import { sanitizePlexUrl, plexAppUrl } from '../lib/plexLink';
+import { plexAppUrl } from '../lib/plexLink';
 
 const ACCENT = '#f5a623';
 const RUNTIME_MIN_BOUND = 60;
@@ -920,25 +920,19 @@ export default function Dice({ onNeedSettings }) {
                       <Tv2 className="w-4 h-4" /> TheTVDB
                     </a>
                   </div>
-                  {picked.plex_url && (() => {
-                    // Local Plex Web deep link (LAN, built server-side from settings) — also
-                    // the fallback when the native app is not installed. Never the Plex cloud
-                    // catalog, which is empty for a local-only library.
-                    const webUrl = sanitizePlexUrl(picked.plex_url);
-                    const appUrl = plexAppUrl(picked.machineIdentifier, picked.ratingKey);
-                    const openInPlex = () => {
-                      if (!appUrl) { window.open(webUrl, '_blank', 'noopener'); return; }
-                      // Try to hand off to the native Plex app; if it doesn't take over
-                      // (page stays visible → app not installed), open the local web client.
-                      const fallback = setTimeout(() => { window.open(webUrl, '_blank', 'noopener'); }, 1000);
-                      const cancel = () => { if (document.hidden) clearTimeout(fallback); };
-                      document.addEventListener('visibilitychange', cancel, { once: true });
-                      window.location.href = appUrl;
-                    };
+                  {(() => {
+                    // Open the movie in the NATIVE Plex app (iOS app / desktop app) via Plex's
+                    // plex:// deep link — never a browser or the "#!/server/.../details" web route,
+                    // which makes the desktop app throw "Etwas ist schief gelaufen". The SAME trigger
+                    // works on every platform: a plain location assignment hands the URL to the OS
+                    // scheme handler (window.open can leave a blank tab and may not fire it). type 1
+                    // = movie (PlexDice is movies). Gated on the local server id + ratingKey.
+                    const plexUrl = plexAppUrl(picked.machineIdentifier, picked.ratingKey);
+                    if (!plexUrl) return null;
                     return (
                       <button
                         type="button"
-                        onClick={openInPlex}
+                        onClick={() => { window.location.href = plexUrl; }}
                         className="w-full py-3 rounded-xl bg-amber-400 text-zinc-950 font-semibold flex items-center justify-center gap-2 active:scale-[0.98] transition-transform shadow-lg shadow-amber-400/20"
                       >
                         <Play className="w-4 h-4 fill-zinc-950" /> In Plex abspielen
