@@ -8,27 +8,19 @@ import './index.css';
 // (?debug=1 or the plexdice_debug flag). Lazy — when disabled nothing is imported. See debug.js.
 initDebug();
 
-// JS-driven viewport height for the #root flex column (no vh/dvh anywhere). On an iOS standalone
-// PWA (black-translucent status bar + viewport-fit=cover) the three height measures disagree:
-// window.innerHeight is the VISUAL viewport and under-reports by the top inset (e.g. 873 on an
-// iPhone 15 Pro Max), while documentElement.clientHeight (the LAYOUT viewport that cover paints)
-// and window.screen.height are the full screen (932). Pinning #root to innerHeight leaves the
-// page BODY peeking below the bottom nav. Taking the MAX of all three always reaches the true
-// bottom edge, and — unlike a standalone-mode branch — it never falls back to the short value
-// when iOS reports display-mode/navigator.standalone unreliably right after install.
-function setAppHeight() {
-  const h = Math.max(
-    document.documentElement.clientHeight,
-    window.innerHeight,
-    window.screen.height,
-  );
-  document.documentElement.style.setProperty('--app-height', `${h}px`);
-}
+// JS-driven viewport height for the #root flex column (no vh/dvh). In the iOS standalone PWA
+// window.innerHeight is the VISUAL viewport and under-reports by the top inset (873 on an iPhone
+// 15 Pro Max) while window.screen.height is the full physical screen (932). PlexDice is portrait-
+// locked, so screen.height is always the true full height — take the max of the two so #root fills
+// the screen and the bottom nav reaches the physical edge, with no body strip showing below it.
+const setAppHeight = () => {
+  const h = Math.max(window.innerHeight, window.screen.height);
+  document.documentElement.style.setProperty('--app-height', h + 'px');
+};
 setAppHeight();
-window.addEventListener('load', setAppHeight);
 window.addEventListener('resize', setAppHeight);
 window.addEventListener('orientationchange', setAppHeight);
-window.visualViewport?.addEventListener('resize', setAppHeight);
+window.visualViewport && window.visualViewport.addEventListener('resize', setAppHeight);
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
