@@ -92,12 +92,13 @@ export default function App() {
   const showBanner = needSettings && tab === 'settings';
 
   return (
-    // App shell: a flex column filling #root (the JS-height-driven flex container in index.css,
-    // height = var(--app-height) = window.innerHeight + top safe-area inset = the full screen).
-    // <main> is the only scroll area; the mobile bottom nav is the LAST flex child, sitting
-    // flush at the true screen bottom — its own background + padding-bottom
-    // env(safe-area-inset-bottom) bleed into the rounded corners. No vh/dvh, no fixed shell.
-    <div className="flex flex-col flex-1 min-h-0 overflow-hidden bg-zinc-950">
+    // Children mount DIRECTLY into #root (index.css: display:flex; flex-direction:column;
+    // height: var(--app-height) = the full screen) — no wrapper div. A redundant intermediate
+    // flex column can fail to fill #root on iOS, leaving empty #root space (a black strip) below
+    // the nav. <main> (flex-1) is the only scroll area; it grows and pushes the mobile bottom nav
+    // — the LAST flex child (flex-none) — flush to the true screen bottom, where the nav's own
+    // zinc-900 background + padding-bottom env(safe-area-inset-bottom) fill to the physical edge.
+    <>
       {/* Status-bar scrim — the STRONG top dark gradient: fully opaque black at the very top
           edge (0%) → an even linear fade to fully transparent exactly at the blue mark, the
           bottom of the Dynamic Island (height = safe-area-inset-top). Nothing renders below
@@ -153,6 +154,6 @@ export default function App() {
           </nav>
         </>
       )}
-    </div>
+    </>
   );
 }
