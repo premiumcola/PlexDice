@@ -553,9 +553,13 @@ export default function Dice({ onNeedSettings }) {
           )}
           </>)}
 
-          {/* Filter panel */}
+          {/* Filter panel — bounded to a fraction of the DYNAMIC viewport (dvh, not vh) and
+              internally scrollable, so every filter down to BEWERTUNG and the reset button is
+              reachable on iPhone (PWA) and desktop. Bottom padding + safe-area-inset-bottom keeps
+              the last control clear of the home indicator; overscroll-contain stops the scroll from
+              chaining to the page. No position:fixed (which jumps on iOS). */}
           {showFilters && (
-            <div className="mb-4 p-4 rounded-2xl bg-zinc-900/60 border border-zinc-800 space-y-5">
+            <div className="mb-4 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] rounded-2xl bg-zinc-900/60 border border-zinc-800 space-y-5 max-h-[70dvh] overflow-y-auto overscroll-contain">
               <div id="filter-genre" className={sectionClass('genre')}>
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-sm font-medium text-zinc-300 flex items-center gap-2 uppercase tracking-wide">
