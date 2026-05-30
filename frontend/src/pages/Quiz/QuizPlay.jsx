@@ -10,6 +10,11 @@ import { usePrefs } from '../../usePrefs';
 import { initAudio, playSound, preloadSounds, setSoundEnabled } from './audio';
 import RadialCountdown from './RadialCountdown';
 
+// Title→poster question prints the answer title on the cover, so every candidate is blurred while
+// unanswered. Blur radius (px) — strong enough that printed titles are illegible, while artwork and
+// colours stay distinguishable. Easy to tune: raise for more obscurity, lower for less.
+const GIVEAWAY_BLUR_PX = 7;
+
 function basePoints(timeMs) {
   if (timeMs <= 5000) return 100;
   if (timeMs <= 10000) return 80;
@@ -84,14 +89,13 @@ function OptionButton({ option, mode, fill, selected, locked, reveal, onTap, hin
     }
   }
   const isImage = option.kind === 'image';
-  // Aspect from the option (16/9 art, 1/1 face, 2/3 poster); else square for person
-  // options (headshots bottom-crop in a 2:3 cell), 2/3 for everything else.
-  const imageBox =
-    option.aspect === '16/9' ? 'aspect-video w-full'
-      : option.aspect === '1/1' ? 'aspect-square w-full'
-        : option.aspect === '2/3' ? 'aspect-[2/3] w-full'
-          : OPTIONS_ARE_PERSONS.has(mode) ? 'aspect-square w-full'
-            : 'aspect-[2/3] w-full';
+  // Image options FILL their grid cell (the grid uses h-full + auto-rows-fr so every candidate is
+  // visible at once without scrolling); object-cover preserves each poster's aspect by cropping to
+  // the cell. The title→poster question gives the answer away (the title is printed on the cover),
+  // so blur every candidate while unanswered; the blur lifts on reveal so the correct poster is
+  // sharp. Other image questions (e.g. actor→movie) stay sharp — the posters ARE the answer.
+  const imageBox = 'w-full h-full';
+  const blurGiveaway = isImage && mode === 'title_year_to_cover' && !locked;
   // Text options: in a text-only grid they stretch to fill the cell (big, centered);
   // otherwise (a rare text fallback among images) they stay compact and left-aligned.
   const textBox = fill
@@ -109,7 +113,16 @@ function OptionButton({ option, mode, fill, selected, locked, reveal, onTap, hin
       {isImage ? (
         <>
           {option.content ? (
-            <img src={option.content} alt="" className={`absolute inset-0 w-full h-full object-cover ${OPTIONS_ARE_PERSONS.has(mode) ? 'object-top' : 'object-center'}`} />
+            <img
+              src={option.content}
+              alt=""
+              className={`absolute inset-0 w-full h-full object-cover ${OPTIONS_ARE_PERSONS.has(mode) ? 'object-top' : 'object-center'}`}
+              style={{
+                filter: blurGiveaway ? `blur(${GIVEAWAY_BLUR_PX}px)` : 'none',
+                transform: blurGiveaway ? 'scale(1.06)' : 'none',
+                transition: 'filter 0.3s ease, transform 0.3s ease',
+              }}
+            />
           ) : (
             <div className="absolute inset-0 bg-zinc-800" />
           )}
@@ -668,8 +681,8 @@ export default function QuizPlay({ roundId }) {
               </div>
               {q.stem.caption && (
                 <div className="mt-2 shrink-0 text-center">
-                  <div className="text-xs uppercase tracking-wide text-zinc-500">
-                    {q.mode === 'director_to_movie' ? 'Regie' : 'Schauspiel'}
+                  <div className="text-xs tracking-wide text-zinc-500">
+                    {q.mode === 'director_to_movie' ? 'Regie' : q.mode === 'writer_to_movie' ? 'Drehbuch' : 'Schauspieler:in'}
                   </div>
                   <div className="text-base sm:text-lg font-semibold text-zinc-900">
                     {q.stem.caption}
@@ -709,7 +722,7 @@ export default function QuizPlay({ roundId }) {
           </div>
         )}
         <div className={`flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 pt-3 ${q.multi_select ? '' : 'pb-[max(0.75rem,env(safe-area-inset-bottom))]'}`}>
-          <div key={visitSeq} className={`grid ${gridCols} gap-2 sm:gap-3 ${textOptions ? 'h-full auto-rows-fr' : ''} ${shortStage ? 'max-w-2xl mx-auto w-full' : ''}`} style={{ animation: 'pfSlideUp 0.25s ease' }}>
+          <div key={visitSeq} className={`grid ${gridCols} gap-2 sm:gap-3 h-full auto-rows-fr ${shortStage ? 'max-w-2xl mx-auto w-full' : ''}`} style={{ animation: 'pfSlideUp 0.25s ease' }}>
             {q.options.map((o) => (
               <OptionButton
                 key={o.id}

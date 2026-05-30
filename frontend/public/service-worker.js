@@ -1,6 +1,6 @@
 // Minimal PWA service worker: precache the app shell, network-first for the API
 // and navigations, cache-first for hashed static assets.
-const CACHE = 'plexdice-v40';
+const CACHE = 'plexdice-v41';
 const SHELL = [
   '/',
   '/index.html',
