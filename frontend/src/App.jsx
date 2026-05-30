@@ -127,8 +127,11 @@ export default function App() {
 
       {!immersive && (
         <>
-          {/* Desktop: floating top-right nav */}
-          <nav className="hidden sm:flex fixed top-4 right-4 z-40 gap-1 p-1 rounded-2xl bg-zinc-900/90 border border-zinc-800 backdrop-blur">
+          {/* Desktop (lg+): a VERTICAL nav stacked in the very top-right corner — no hairline
+              border (depth via the translucent surface + shadow). Only at lg+, where the
+              centered content column leaves a clear right gutter, so it never overlaps the
+              header or the J1 mini-filters (which live right-aligned inside the column). */}
+          <nav className="hidden lg:flex lg:flex-col fixed top-4 right-4 z-40 gap-1 p-1 rounded-2xl bg-zinc-900/90 backdrop-blur shadow-lg shadow-black/40">
             {TABS.map((t) => (
               <NavItem key={t.id} active={tab === t.id} onClick={() => navigate(t.path)} icon={t.icon} label={t.label} />
             ))}
@@ -142,7 +145,7 @@ export default function App() {
               and only shows through to fill the safe-area otherwise. */}
           <div
             aria-hidden="true"
-            className="sm:hidden fixed inset-x-0 bottom-0 z-30 bg-zinc-900 pointer-events-none"
+            className="lg:hidden fixed inset-x-0 bottom-0 z-30 bg-zinc-900 pointer-events-none"
             style={{ height: 'calc(env(safe-area-inset-bottom) + 16px)' }}
           />
 
@@ -152,7 +155,7 @@ export default function App() {
               first paint — no dvh gap, no fixed-position quirk, no scroll jump. Its surface
               fills the home-indicator area via padding-bottom: env(safe-area-inset-bottom),
               backed by the full-bleed backstop above. */}
-          <nav className="sm:hidden shrink-0 z-40 bg-zinc-900 pb-[env(safe-area-inset-bottom)] flex shadow-[0_-6px_20px_rgba(0,0,0,0.45)]">
+          <nav className="lg:hidden shrink-0 z-40 bg-zinc-900 pb-[env(safe-area-inset-bottom)] flex shadow-[0_-6px_20px_rgba(0,0,0,0.45)]">
             {TABS.map((t) => (
               <NavItem key={t.id} vertical active={tab === t.id} onClick={() => navigate(t.path)} icon={t.icon} label={t.label} />
             ))}
