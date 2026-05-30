@@ -89,6 +89,16 @@ body {
   color: #fff;
 }
 
+/* Quiz progress chip strip: stays horizontally scrollable but hides the scrollbar chrome. */
+.quiz-chipstrip {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* legacy Edge */
+  -webkit-overflow-scrolling: touch; /* momentum scroll on iOS */
+}
+.quiz-chipstrip::-webkit-scrollbar {
+  display: none; /* WebKit (Safari/Chrome) */
+}
+
 /* Redacted plot words (plot_redacted quiz mode): a tactile dark bar sized to the
    hidden word — reads as a deliberate redaction on the light Stage card and dark
    Panel alike, never as a missing-font fallback box. */
