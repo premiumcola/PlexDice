@@ -5,30 +5,14 @@ import './index.css';
 
 // JS-driven viewport height. In an iOS standalone PWA (black-translucent status bar +
 // viewport-fit=cover) window.innerHeight EXCLUDES the top safe-area inset — e.g. on an
-// iPhone 15 Pro Max it reports 873 while the screen is 932, ~59px short — so a bottom flex
-// child pinned to innerHeight floats above the true edge. Fix: --app-height = innerHeight +
-// the measured top inset, which equals the full physical screen height. NO vh/dvh anywhere.
-function measureTopInset() {
-  // A throwaway fixed probe resolves env(safe-area-inset-top) to a concrete px height.
-  const probe = document.createElement('div');
-  probe.style.cssText =
-    'position:fixed;top:0;left:0;width:0;height:env(safe-area-inset-top);visibility:hidden;pointer-events:none';
-  document.body.appendChild(probe);
-  const px = probe.offsetHeight;
-  probe.remove();
-  return px;
-}
-
+// iPhone 15 Pro Max it reports 873 while the true screen is 932, ~59px short — so a bottom
+// flex child pinned to innerHeight floats above the real edge and the page BODY peeks below
+// the nav. PlexDice is a portrait PWA, so when launched standalone window.screen.height is the
+// reliable full-screen height; drive --app-height straight from it. In a normal browser tab
+// (not standalone) innerHeight is the right value. NO vh/dvh anywhere.
 function setAppHeight() {
-  const topInset = measureTopInset();
-  let h = window.innerHeight + topInset;
-  // Portrait only: never shorter than the physical screen height (CSS px). innerHeight + topInset
-  // can land a few px short of the true bottom, which lets the page BODY peek below the nav;
-  // flooring at screen.height closes that strip. Guarded so landscape (where iOS keeps
-  // screen.height at its portrait value) is unaffected.
-  if (window.innerHeight >= window.innerWidth) {
-    h = Math.max(h, window.screen.height);
-  }
+  const isStandalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  const h = isStandalone ? window.screen.height : window.innerHeight;
   document.documentElement.style.setProperty('--app-height', `${h}px`);
 }
 setAppHeight();
