@@ -78,6 +78,7 @@ export default function Dice({ onNeedSettings }) {
   const [settingsLoaded, setSettingsLoaded] = useState(false);
 
   const [picked, setPicked] = useState(null);
+  const [rollSeq, setRollSeq] = useState(0); // bumps per completed roll, so the scroll-to-top fires even when the same film is re-rolled
   const [rolling, setRolling] = useState(false);
   const [ticker, setTicker] = useState(null);
   const [fireworks, setFireworks] = useState(false);
@@ -218,7 +219,7 @@ export default function Dice({ onNeedSettings }) {
       resultRef.current?.closest('main')?.scrollTo({ top: 0, behavior: 'smooth' });
     }, 600);
     return () => clearTimeout(t);
-  }, [picked]);
+  }, [picked, rollSeq]);
 
   const effYearMin = yearMin ?? yearBounds.min;
   const effYearMax = yearMax ?? yearBounds.max;
@@ -306,6 +307,7 @@ export default function Dice({ onNeedSettings }) {
       clearInterval(tickInterval);
       setTicker(null);
       setPicked(choice);
+      setRollSeq((s) => s + 1);
       setHistory((h) => [choice, ...h.filter((x) => x.key !== choice.key)].slice(0, 12));
       setRolling(false);
       // Fire celebration AFTER the card has settled in its final position:
