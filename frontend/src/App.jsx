@@ -100,16 +100,16 @@ export default function App() {
     <div className="flex flex-col h-full min-h-full overflow-hidden bg-zinc-950" style={{ background: 'rgba(0,255,0,0.55)', outline: '2px solid #000' }}>
       {/* TEMP DEBUG (Task P): bottom-region tints — REMOVE AFTER DIAGNOSIS */}
       <span style={{ position: 'fixed', top: 26, left: 0, zIndex: 99999, background: 'rgba(255,255,255,0.92)', color: '#000', font: 'bold 10px/13px monospace', padding: '0 3px', pointerEvents: 'none', whiteSpace: 'nowrap' }}>SHELL</span>
-      {/* Status-bar scrim: an even LINEAR vertical fade — opaque #09090b at the very top
-          (status bar: clock, Dynamic Island, battery) → transparent, with the transparent
-          end pulled to ~16px BELOW the Dynamic Island (height = safe-area-inset-top + 16px).
-          No hard stop. Pinned to the top, on its own layer so it never jumps on iOS scroll. */}
+      {/* Status-bar scrim — the STRONG top dark gradient: fully opaque #09090b at the very top
+          edge → fully transparent, an even linear falloff that reaches 0% right at the bottom of
+          the Dynamic Island (height = safe-area-inset-top + 8px ≈ the "blue line"). Reads crisp
+          now that the yellow OVERLAY wash is gone. Own layer so it never jumps on iOS scroll. */}
       {!immersive && (
         <div
           aria-hidden="true"
           className="fixed top-0 inset-x-0 z-50 pointer-events-none"
           style={{
-            height: 'calc(env(safe-area-inset-top) + 16px)',
+            height: 'calc(env(safe-area-inset-top) + 8px)',
             transform: 'translateZ(0)',
             background:
               'linear-gradient(to bottom, '

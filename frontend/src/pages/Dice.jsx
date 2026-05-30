@@ -448,8 +448,9 @@ export default function Dice({ onNeedSettings }) {
         .dual-range-input::-moz-range-track { background: transparent; height: 36px; }
       `}</style>
       <div className="flex flex-col min-h-full bg-zinc-950 text-zinc-100 relative overflow-x-clip">
-        {/* TEMP DEBUG (Task P): was the ambient radial gradient — tinted YELLOW to find bottom band */}
-        <div className="fixed inset-0 pointer-events-none" style={{ background: 'rgba(255,255,0,0.55)', outline: '2px solid #000' }}>
+        {/* TEMP DEBUG: OVERLAY (was the ambient radial) — its flat yellow FILL is dropped (R1) so
+            the real top scrim is visible/judgable; only a thin yellow border + label remain. */}
+        <div className="fixed inset-0 pointer-events-none" style={{ background: 'transparent', outline: '1px solid #facc15' }}>
           <span style={{ position: 'fixed', top: 52, left: 0, zIndex: 99999, background: 'rgba(255,255,255,0.92)', color: '#000', font: 'bold 10px/13px monospace', padding: '0 3px', pointerEvents: 'none', whiteSpace: 'nowrap' }}>OVERLAY</span>
         </div>
 
