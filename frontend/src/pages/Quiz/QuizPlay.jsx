@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Timer, Check, X, Pause, Play, RotateCcw, LogOut, MousePointerClick } from 'lucide-react';
 import { navigate } from '../../router';
 import { quizAnswer, quizAbandon, quizState } from '../../api';
@@ -64,9 +64,44 @@ function renderRedactedPlot(text) {
   return nodes;
 }
 
+// Auto-fit the answer covers. Measures the option area and picks the column count + cover width that
+// makes every 2:3 poster as large as possible while ALL of them stay fully visible without scrolling
+// (any count, any viewport). Cells are sized to the exact 2:3 box, so object-cover neither stretches
+// nor crops — the whole poster shows. A ResizeObserver re-fits on rotate / resize / question change.
+function useFitCovers(count, ref, enabled, gap = 12) {
+  const [fit, setFit] = useState({ cols: 1, coverW: 0, gap });
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!enabled || !count || !el) return undefined;
+    const ASPECT = 2 / 3; // poster width / height
+    const compute = () => {
+      const W = el.clientWidth;
+      const H = el.clientHeight;
+      if (!W || !H) return;
+      let best = { cols: 1, coverW: 0, gap };
+      for (let c = 1; c <= count; c += 1) {
+        const r = Math.ceil(count / c);
+        const cellW = (W - (c - 1) * gap) / c;
+        const cellH = (H - (r - 1) * gap) / r;
+        if (cellW > 0 && cellH > 0) {
+          const coverW = Math.min(cellW, cellH * ASPECT);
+          if (coverW > best.coverW) best = { cols: c, coverW, gap };
+        }
+      }
+      best.coverW = Math.floor(best.coverW);
+      setFit((prev) => (prev.cols === best.cols && Math.abs(prev.coverW - best.coverW) < 1 ? prev : best));
+    };
+    compute();
+    const ro = new ResizeObserver(compute);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [count, ref, enabled, gap]);
+  return fit;
+}
+
 // Dark-Panel option. Unselected = zinc; selected (not locked) = amber outline;
 // reveal = emerald (correct) / rose (wrong chosen).
-function OptionButton({ option, mode, fill, selected, locked, reveal, onTap, hint, btnRef, flash }) {
+function OptionButton({ option, mode, fill, selected, locked, reveal, onTap, hint, btnRef, flash, coverWidth }) {
   let cls = 'border border-zinc-700 bg-zinc-800/60 text-zinc-100';
   let anim;
   if (!locked && selected) {
@@ -89,12 +124,13 @@ function OptionButton({ option, mode, fill, selected, locked, reveal, onTap, hin
     }
   }
   const isImage = option.kind === 'image';
-  // Image options FILL their grid cell (the grid uses h-full + auto-rows-fr so every candidate is
-  // visible at once without scrolling); object-cover preserves each poster's aspect by cropping to
-  // the cell. The title→poster question gives the answer away (the title is printed on the cover),
-  // so blur every candidate while unanswered; the blur lifts on reveal so the correct poster is
-  // sharp. Other image questions (e.g. actor→movie) stay sharp — the posters ARE the answer.
-  const imageBox = 'w-full h-full';
+  // Image options sit in a measured 2:3 grid cell (useFitCovers sizes the column to coverWidth): the
+  // button fills that column and an aspect-[2/3] box, so object-cover shows the WHOLE poster with no
+  // stretch and no crop. (Fallback w-full h-full covers a cell with no measured width.) The
+  // title→poster question gives the answer away (the title is printed on the cover), so blur every
+  // candidate while unanswered; the blur lifts on reveal. Other image questions (e.g. actor→movie)
+  // stay sharp — the posters ARE the answer.
+  const imageBox = coverWidth ? 'w-full aspect-[2/3]' : 'w-full h-full';
   const blurGiveaway = isImage && mode === 'title_year_to_cover' && !locked;
   // Text options: in a text-only grid they stretch to fill the cell (big, centered);
   // otherwise (a rare text fallback among images) they stay compact and left-aligned.
@@ -290,6 +326,11 @@ export default function QuizPlay({ roundId }) {
   const roundTwoTimerRef = useRef(null);
 
   const q = byId[currentQid];
+
+  // Answer-cover auto-fit: only for image-option questions (text options fill their cells instead).
+  const optionAreaRef = useRef(null);
+  const imageOptionCount = q && !q.options.every((o) => o.kind === 'text') ? q.options.length : 0;
+  const coverFit = useFitCovers(imageOptionCount, optionAreaRef, imageOptionCount > 0);
 
   const showToast = useCallback((msg) => {
     setToast(msg);
@@ -588,6 +629,24 @@ export default function QuizPlay({ roundId }) {
     navigate(to);
   };
 
+  // One option chip. coverWidth is set only on the measured image grid (→ a fixed 2:3 box).
+  const renderOption = (o, coverWidth) => (
+    <OptionButton
+      key={o.id}
+      option={o}
+      mode={q.mode}
+      fill={textOptions}
+      selected={selectedIds.includes(o.id)}
+      locked={locked}
+      reveal={reveal}
+      onTap={onOption}
+      hint={!q.multi_select}
+      btnRef={o.id === q.correct_option_id ? correctOptionRef : undefined}
+      flash={showCardFlash && o.id === q.correct_option_id}
+      coverWidth={coverWidth}
+    />
+  );
+
   return (
     <div className={`h-full flex flex-col overflow-hidden relative ${wantsRight ? 'md:flex-row' : ''}`}>
       <style>{`
@@ -721,24 +780,26 @@ export default function QuizPlay({ roundId }) {
             </span>
           </div>
         )}
-        <div className={`flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 pt-3 ${q.multi_select ? '' : 'pb-[max(0.75rem,env(safe-area-inset-bottom))]'}`}>
-          <div key={visitSeq} className={`grid ${gridCols} gap-2 sm:gap-3 h-full auto-rows-fr ${shortStage ? 'max-w-2xl mx-auto w-full' : ''}`} style={{ animation: 'pfSlideUp 0.25s ease' }}>
-            {q.options.map((o) => (
-              <OptionButton
-                key={o.id}
-                option={o}
-                mode={q.mode}
-                fill={textOptions}
-                selected={selectedIds.includes(o.id)}
-                locked={locked}
-                reveal={reveal}
-                onTap={onOption}
-                hint={!q.multi_select}
-                btnRef={o.id === q.correct_option_id ? correctOptionRef : undefined}
-                flash={showCardFlash && o.id === q.correct_option_id}
-              />
-            ))}
-          </div>
+        <div className={`flex-1 min-h-0 px-4 sm:px-6 pt-3 ${q.multi_select ? '' : 'pb-[max(0.75rem,env(safe-area-inset-bottom))]'} ${textOptions ? 'overflow-y-auto' : 'overflow-hidden'}`}>
+          {textOptions ? (
+            <div key={visitSeq} className={`grid ${gridCols} gap-2 sm:gap-3 h-full auto-rows-fr ${shortStage ? 'max-w-2xl mx-auto w-full' : ''}`} style={{ animation: 'pfSlideUp 0.25s ease' }}>
+              {q.options.map((o) => renderOption(o))}
+            </div>
+          ) : (
+            <div ref={optionAreaRef} className="w-full h-full flex items-center justify-center overflow-hidden">
+              <div
+                key={visitSeq}
+                className="grid justify-center content-center"
+                style={{
+                  gridTemplateColumns: `repeat(${coverFit.cols}, ${coverFit.coverW}px)`,
+                  gap: `${coverFit.gap}px`,
+                  animation: 'pfSlideUp 0.25s ease',
+                }}
+              >
+                {q.options.map((o) => renderOption(o, coverFit.coverW))}
+              </div>
+            </div>
+          )}
         </div>
         {q.multi_select && (
           <div className="shrink-0 px-4 sm:px-6 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
