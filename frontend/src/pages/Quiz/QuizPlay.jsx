@@ -115,11 +115,12 @@ function OptionButton({ option, mode, fill, selected, locked, reveal, onTap, hin
   // title→poster question gives the answer away (the title is printed on the cover), so blur every
   // candidate while unanswered; the blur lifts on reveal. Other image questions (e.g. actor→movie)
   // stay sharp — the posters ARE the answer.
-  // Person photos render square (1:1); movie posters keep 2:3. The button is rounded-2xl + object-
-  // cover, so neither is ever distorted. coverWidth sizes the column to the measured fit.
-  const imageBox = coverWidth
-    ? `w-full ${OPTIONS_ARE_PERSONS.has(mode) ? 'aspect-square' : 'aspect-[2/3]'}`
-    : 'w-full h-full';
+  // Render each option by its image KIND so nothing is distorted: landscape stills 16:9, person
+  // portraits 1:1 (square), movie posters 2:3. object-cover fills the matching cell without stretch.
+  const optAspectClass = option.aspect === '16/9' ? 'aspect-[16/9]'
+    : (option.aspect === '1/1' || OPTIONS_ARE_PERSONS.has(mode)) ? 'aspect-square'
+      : 'aspect-[2/3]';
+  const imageBox = coverWidth ? `w-full ${optAspectClass}` : 'w-full h-full';
   const blurGiveaway = isImage && mode === 'title_year_to_cover' && !locked;
   // Actor→film posters often print the actor's name along the top/bottom edge → blur those bands.
   const nameBands = isImage && OPTIONS_BLUR_NAME_BANDS.has(mode);
@@ -343,8 +344,12 @@ export default function QuizPlay({ roundId }) {
   // Person-photo options fit a 1:1 box; movie posters fit 2:3.
   const optionAreaRef = useRef(null);
   const imageOptionCount = q && !isConnect && !q.options.every((o) => o.kind === 'text') ? q.options.length : 0;
-  const personOptions = !!q && !isConnect && OPTIONS_ARE_PERSONS.has(q.mode);
-  const coverFit = useFitCovers(imageOptionCount, optionAreaRef, imageOptionCount > 0, personOptions ? 1 : 2 / 3);
+  // Cover-fit cell shape matches the option image kind: 16:9 stills, 1:1 person portraits, 2:3 posters.
+  const optAspect = imageOptionCount
+    ? (q.options[0].aspect || (OPTIONS_ARE_PERSONS.has(q.mode) ? '1/1' : '2/3'))
+    : '2/3';
+  const optAspectNum = optAspect === '16/9' ? 16 / 9 : optAspect === '1/1' ? 1 : 2 / 3;
+  const coverFit = useFitCovers(imageOptionCount, optionAreaRef, imageOptionCount > 0, optAspectNum);
 
   const showToast = useCallback((msg) => {
     setToast(msg);
