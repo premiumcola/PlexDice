@@ -77,10 +77,13 @@ export default function QuizReview({ roundId }) {
                   onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }} />
                 <div className="min-w-0 flex-1">
                   <div className="font-medium text-zinc-100 truncate">
-                    {q.movie_title} {q.movie_year ? <span className="text-zinc-500 tabular-nums">· {q.movie_year}</span> : null}
+                    {q.mode === 'connect'
+                      ? 'Verbinden-Runde'
+                      : <>{q.movie_title} {q.movie_year ? <span className="text-zinc-500 tabular-nums">· {q.movie_year}</span> : null}</>}
                   </div>
                   <div className="text-[11px] uppercase tracking-wide text-zinc-500">{MODE_LABEL[q.mode] || q.mode}</div>
-                  {!q.correct && (
+                  {/* Connect rounds have no single answer text — skip the Du/Richtig reveal line. */}
+                  {!q.correct && q.mode !== 'connect' && (
                     <div className="text-xs text-zinc-400 mt-0.5 truncate">
                       Du: {q.chosen_text || '–'} · <span className="text-emerald-300">Richtig: {q.correct_text}</span>
                     </div>
