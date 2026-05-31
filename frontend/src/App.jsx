@@ -124,7 +124,9 @@ export default function App() {
         </div>
       )}
 
-      <main className={`flex-1 min-h-0 overflow-y-auto ${immersive || showBanner ? '' : 'safe-top'}`}>{page}</main>
+      {/* Immersive quiz play locks itself to one 100dvh viewport, so main must NOT scroll there
+          (otherwise the app-height overshoot below the dvh cap would add a scrollable strip). */}
+      <main className={`flex-1 min-h-0 ${immersive ? 'overflow-hidden' : 'overflow-y-auto'} ${immersive || showBanner ? '' : 'safe-top'}`}>{page}</main>
 
       {!immersive && (
         <>

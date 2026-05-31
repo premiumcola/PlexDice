@@ -648,7 +648,12 @@ export default function QuizPlay({ roundId }) {
   );
 
   return (
-    <div className={`h-full flex flex-col overflow-hidden relative ${wantsRight ? 'md:flex-row' : ''}`}>
+    // Lock the quiz to ONE visible viewport: 100dvh tracks the real visible height (browser window /
+    // standalone PWA), unlike the parent's max(innerHeight, screen.height) app-height which overshoots
+    // on desktop (physical screen) and iOS — that overshoot is what scrolled the page and cut covers
+    // off. overflow-hidden + the dvh cap make the page itself non-scrollable; children use min-h-0 to
+    // shrink instead of overflow. dvh (NOT vh) so it never floats on iOS toolbar changes.
+    <div className={`h-[100dvh] flex flex-col overflow-hidden relative ${wantsRight ? 'md:flex-row' : ''}`}>
       <style>{`
         @keyframes quizTitleFade {0%{opacity:0;transform:translateY(6px)}100%{opacity:1;transform:translateY(0)}}
         @keyframes pfVignette {0%,100%{opacity:0.6}50%{opacity:1}}
