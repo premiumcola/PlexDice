@@ -664,22 +664,22 @@ export default function QuizPlay({ roundId }) {
       `}</style>
 
       {vignette && (
-        <div className="pointer-events-none fixed inset-0 z-40" style={{
+        <div className="pointer-events-none absolute inset-0 z-40" style={{
           background: 'radial-gradient(ellipse at center, transparent 45%, rgba(185,28,28,0.25) 100%)',
           animation: 'pfVignette 0.5s ease-in-out infinite',
         }} />
       )}
-      {flash && <div className="pointer-events-none fixed inset-0 z-40" style={{ background: 'rgba(185,28,28,0.35)' }} />}
+      {flash && <div className="pointer-events-none absolute inset-0 z-40" style={{ background: 'rgba(185,28,28,0.35)' }} />}
 
       {fireworksOrigin && (
         <Fireworks key={fireworksKey} variant="bursts" origin={fireworksOrigin} />
       )}
       {showPageWash && (
-        <div className="fixed inset-0 z-[55] pointer-events-none bg-emerald-400/15 animate-quizPageWash" />
+        <div className="absolute inset-0 z-[55] pointer-events-none bg-emerald-400/15 animate-quizPageWash" />
       )}
 
       {toast && (
-        <div className="pointer-events-none fixed inset-x-0 top-[max(1rem,env(safe-area-inset-top))] z-50 flex justify-center px-4" role="status" aria-live="polite">
+        <div className="pointer-events-none absolute inset-x-0 top-[max(1rem,env(safe-area-inset-top))] z-50 flex justify-center px-4" role="status" aria-live="polite">
           <span className="rounded-full bg-zinc-900/95 text-zinc-100 ring-1 ring-amber-500/40 px-4 py-2 text-sm shadow-lg" style={{ animation: 'pfHintIn 0.2s ease' }}>
             {toast}
           </span>
@@ -720,7 +720,7 @@ export default function QuizPlay({ roundId }) {
           <span aria-hidden="true" className="w-px self-stretch bg-zinc-300 mx-2 my-1.5" />
 
           {/* Group C · actions */}
-          <button type="button" onClick={doPause} aria-label="Pause" className="w-9 h-9 rounded-lg bg-zinc-200 flex items-center justify-center active:scale-95 shrink-0">
+          <button type="button" onClick={doPause} aria-label="Pause" className="w-11 h-11 rounded-lg bg-zinc-200 flex items-center justify-center active:scale-95 shrink-0">
             <Pause className="w-5 h-5 text-zinc-700" />
           </button>
         </div>
@@ -755,7 +755,7 @@ export default function QuizPlay({ roundId }) {
               )}
             </div>
           ) : (
-            <div className="max-h-full max-w-2xl overflow-auto rounded-2xl bg-white ring-1 ring-zinc-300 p-5 md:p-6 text-center">
+            <div className="max-h-full min-h-0 max-w-2xl overflow-y-auto rounded-2xl bg-white ring-1 ring-zinc-300 p-5 md:p-6 text-center">
               <p className="text-base sm:text-lg md:text-xl leading-relaxed text-zinc-900">
                 {q.mode === 'plot_redacted_to_movie' ? renderRedactedPlot(q.stem.content) : q.stem.content}
               </p>
@@ -824,7 +824,7 @@ export default function QuizPlay({ roundId }) {
           aria-live="polite"
           aria-label="Runde 2 startet"
           onClick={dismissRoundTwoIntro}
-          className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-zinc-950/85 backdrop-blur-md"
+          className="absolute inset-0 z-[60] flex flex-col items-center justify-center bg-zinc-950/85 backdrop-blur-md"
         >
           {!reduceMotion && <Fireworks variant="mini" />}
           <div className="text-amber-400 text-sm uppercase tracking-[0.3em] mb-3">
@@ -844,7 +844,7 @@ export default function QuizPlay({ roundId }) {
       )}
 
       {paused && (
-        <div className="fixed inset-0 z-50 bg-zinc-950/85 flex items-center justify-center p-6">
+        <div className="absolute inset-0 z-50 bg-zinc-950/85 flex items-center justify-center p-6">
           <div className="w-full max-w-sm rounded-2xl bg-zinc-900 ring-1 ring-zinc-800 p-6 text-center">
             <p className="font-display-tight text-2xl mb-1">Pausiert</p>
             <p className="text-sm text-zinc-400 mb-5">Frage pausiert · Gesamtzeit läuft weiter.</p>
