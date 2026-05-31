@@ -20,16 +20,47 @@ const STATE_RING = {
 };
 const nodeColor = (state) => ({ correct: GREEN, wrong: RED, idle: '#52525b' }[state] || ACCENT);
 
-// One connect item: a film poster (2:3) or actor portrait (1:1) that fills its (flex-grown) row, or
-// a THIN text token chip (shorter than the covers, so the posters get the freed vertical space).
-// Posters/portraits keep aspect (object-cover, never distorted); actor-relation poster names blurred.
+const CHIP_H = 48; // approx thin-chip height used by the width fit
+const ROW_GAP = 14; // approx column row gap
+const W_MAX = 176; // cap element width so covers aren't oversized on tall/desktop viewports
+
+// ONE element width for the whole board: the largest width where BOTH columns still fit the available
+// height without page scroll (posters 1.5·W tall, portraits 1·W, chips ~CHIP_H), capped by the per-
+// column width and W_MAX. Every cover AND chip then shares this width → tidy on desktop and mobile.
+function useConnectWidth(leftItems, rightItems, ref) {
+  const [w, setW] = useState(0);
+  useLayoutEffect(() => {
+    const fitH = (items, H) => {
+      const units = items.reduce((s, it) => s + (it.kind === 'text' ? 0 : it.aspect === '1/1' ? 1 : 1.5), 0);
+      const chipsH = items.filter((it) => it.kind === 'text').length * CHIP_H;
+      const avail = H - chipsH - Math.max(0, items.length - 1) * ROW_GAP;
+      return units > 0 ? avail / units : Infinity;
+    };
+    const compute = () => {
+      const el = ref.current;
+      if (!el || !el.clientHeight || !el.clientWidth) return;
+      const colMaxW = (el.clientWidth - 24) / 2; // two flex-1 columns minus the centre flex gap
+      const next = Math.max(48, Math.floor(Math.min(W_MAX, colMaxW, fitH(leftItems, el.clientHeight), fitH(rightItems, el.clientHeight))));
+      setW((p) => (Math.abs(p - next) < 1 ? p : next));
+    };
+    compute();
+    const ro = new ResizeObserver(compute);
+    if (ref.current) ro.observe(ref.current);
+    return () => ro.disconnect();
+  }, [leftItems, rightItems, ref]);
+  return w;
+}
+
+// One connect item, sized by its column WIDTH (so chips and covers share one width): a film poster
+// (2:3 → height 1.5·W), an actor portrait (1:1 → height W), or a thin text token chip. Posters/
+// portraits keep aspect (object-cover, never distorted); actor-relation poster names are blurred.
 function ConnectItem({ item, relation, state }) {
   const ring = STATE_RING[state] || STATE_RING.idle;
   if (item.kind === 'image') {
     const portrait = item.aspect === '1/1';
     const bands = !portrait && OPTIONS_BLUR_NAME_BANDS.has(relation);
     return (
-      <div className={`relative h-full ${portrait ? 'aspect-square' : 'aspect-[2/3]'} rounded-xl overflow-hidden bg-zinc-800 ${ring}`}>
+      <div className={`relative w-full ${portrait ? 'aspect-square' : 'aspect-[2/3]'} rounded-xl overflow-hidden bg-zinc-800 ${ring}`}>
         {item.content ? (
           <img src={item.content} alt="" draggable="false" className={`absolute inset-0 w-full h-full object-cover ${portrait ? 'object-top' : 'object-center'}`} />
         ) : (
@@ -62,9 +93,12 @@ export default function QuizConnect({ question, locked, onSubmit }) {
   const { left, right } = question.columns;
   const leftSet = useMemo(() => new Set(left), [left]);
   const correctKeys = useMemo(() => new Set(question.pairs.map((p) => connectionKey(p.left, p.right))), [question]);
+  const leftItems = useMemo(() => left.map((id) => byId[id]), [left, byId]);
+  const rightItems = useMemo(() => right.map((id) => byId[id]), [right, byId]);
   const { reduceMotion } = usePrefs();
 
   const containerRef = useRef(null);
+  const colW = useConnectWidth(leftItems, rightItems, containerRef);
   const nodeEls = useRef({});
   const dragRef = useRef(null);
   const [links, setLinks] = useState({}); // itemId -> partnerId (stored both directions)
@@ -99,7 +133,7 @@ export default function QuizConnect({ question, locked, onSubmit }) {
     const ro = new ResizeObserver(measure);
     if (containerRef.current) ro.observe(containerRef.current);
     return () => ro.disconnect();
-  }, [question]);
+  }, [question, colW]);
 
   // New round → clear all links.
   useEffect(() => { setLinks({}); setPending(null); setDragPos(null); }, [question]);
@@ -184,36 +218,34 @@ export default function QuizConnect({ question, locked, onSubmit }) {
     return 'linked';
   };
 
-  // Each element hugs its column's INNER edge (toward the centre gap), so every inner edge — and thus
-  // every node — lines up on ONE vertical rail per column. The node is anchored ON the element's inner
-  // edge (absolute, half-overlapping), never floating in the gap. Image rows grow (bigger posters);
-  // thin token rows keep their content height.
+  // A full-height column flush to the container's OUTER wall (left col → left, right col → right);
+  // its items are sized to colW so covers and chips share ONE width. The node is anchored ON each
+  // item's inner edge → all of a column's nodes sit on one vertical rail facing the centre gap.
   const Column = ({ ids, side }) => (
-    <div className="flex-1 min-w-0 h-full flex flex-col gap-2 sm:gap-3">
+    <div className={`flex-1 min-w-0 h-full flex flex-col justify-center gap-2 sm:gap-3 ${side === 'left' ? 'items-start' : 'items-end'}`}>
       {ids.map((id) => {
         const item = byId[id];
-        const isImg = item.kind === 'image';
         const state = itemState(id);
         return (
-          <div key={id} className={`flex items-center ${isImg ? 'flex-1 min-h-0' : 'shrink-0'} ${side === 'left' ? 'justify-end' : 'justify-start'}`}>
-            <div
-              data-item={id}
-              role="button"
-              tabIndex={0}
-              aria-label="Verbinden"
-              onPointerDown={(e) => onDown(id, e)}
-              onPointerMove={onMove}
-              onPointerUp={(e) => onUp(id, e)}
-              className={`relative ${isImg ? 'h-full' : 'w-full'} flex items-center justify-center max-w-full touch-none select-none cursor-pointer active:opacity-90`}
-            >
-              <ConnectItem item={item} relation={question.relation} state={state} />
-              <span
-                ref={setNodeRef(id)}
-                className="absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full ring-2 ring-zinc-950 z-10 pointer-events-none"
-                style={{ [side === 'left' ? 'right' : 'left']: '-6px', background: nodeColor(state) }}
-                aria-hidden="true"
-              />
-            </div>
+          <div
+            key={id}
+            data-item={id}
+            role="button"
+            tabIndex={0}
+            aria-label="Verbinden"
+            onPointerDown={(e) => onDown(id, e)}
+            onPointerMove={onMove}
+            onPointerUp={(e) => onUp(id, e)}
+            style={{ width: colW || undefined }}
+            className="relative max-w-full touch-none select-none cursor-pointer active:opacity-90"
+          >
+            <ConnectItem item={item} relation={question.relation} state={state} />
+            <span
+              ref={setNodeRef(id)}
+              className="absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full ring-2 ring-zinc-950 z-10 pointer-events-none"
+              style={{ [side === 'left' ? 'right' : 'left']: '-6px', background: nodeColor(state) }}
+              aria-hidden="true"
+            />
           </div>
         );
       })}
@@ -223,7 +255,11 @@ export default function QuizConnect({ question, locked, onSubmit }) {
   return (
     <div className="flex-1 min-h-0 flex flex-col px-3 sm:px-6 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
       {allCorrect && !reduceMotion && <Fireworks variant="bursts" />}
-      <div ref={containerRef} className="relative flex-1 min-h-0 flex items-stretch gap-3 sm:gap-6">
+      {/* Centred, max-width board: two full-height columns flush to the outer walls with the connection
+          gap between them. Items are sized to colW (height-bound, capped at W_MAX) and hug the outer
+          edge, so the board neither sprawls on a wide desktop nor collapses to a narrow centre strip,
+          and it fills the width on mobile. */}
+      <div ref={containerRef} className="relative flex-1 min-h-0 w-full max-w-xl mx-auto flex items-stretch gap-3 sm:gap-6">
         <Column ids={left} side="left" />
         <Column ids={right} side="right" />
         <svg className="absolute inset-0 w-full h-full pointer-events-none" aria-hidden="true">
