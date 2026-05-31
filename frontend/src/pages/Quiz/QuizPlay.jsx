@@ -863,16 +863,9 @@ export default function QuizPlay({ roundId }) {
           )}
         </div>
         )}
-        {/* Reveal-on-CORRECT: ANSWER_IS_MOVIE modes reveal the title ON the correct cover instead;
-            this Stage badge only covers the remaining film-title-answer modes (removed for the
-            attribute/subject modes in O2). */}
-        {revealCorrect && q.movie_title && !ANSWER_IS_MOVIE.has(q.mode) && (
-          <div className="absolute inset-x-0 bottom-1 z-10 flex justify-center px-4 pointer-events-none">
-            <span className="rounded-full bg-emerald-500/95 text-white px-3 py-1 text-sm font-semibold shadow-lg" style={{ animation: 'pfHintIn 0.3s ease' }}>
-              ✓ {q.movie_title}
-            </span>
-          </div>
-        )}
+        {/* No Stage-level title badge: the film's own title is the already-visible SUBJECT for the
+            attribute/cover questions, not the answer. Correctness shows via the highlighted correct
+            option; ANSWER_IS_MOVIE modes reveal the answer title on the correct cover instead. */}
       </div>
 
       {/* Panel — dark surface, edge-to-edge, single hairline divider against the Stage. For connect
