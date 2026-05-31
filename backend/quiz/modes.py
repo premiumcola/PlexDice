@@ -10,7 +10,7 @@ import random
 import re
 import uuid
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 from quiz.library import QuizLibrary, decade_of
 
@@ -80,6 +80,72 @@ def _person_stem(p):
     if p.get("thumb_url"):
         return {"kind": "image", "content": p["thumb_url"]}
     return {"kind": "text", "content": p.get("name")}
+
+
+# ── Plot spoiler censoring ──────────────────────────────────────────────────────────────────
+# A plot synopsis often names the movie itself or its cast, which hands the quiz answer away.
+# _censor_plot() is the single shared censor: it redacts those spoilers with the SAME bar token
+# the frontend already renders (renderRedactedPlot) — U+2063 invisible separators bracket a
+# length sentinel sized so the printed bar covers the hidden word, never the ▮ glyph that tofus
+# on iOS. Used by both the plain and the "censored" plot modes.
+_REDACT_SEP = "⁣"  # INVISIBLE SEPARATOR — must match the frontend renderRedactedPlot() regex
+_REDACT_RE = re.compile(rf"{_REDACT_SEP}\[REDACT:\d+\]{_REDACT_SEP}")
+
+
+def _redact_bar(length: int) -> str:
+    return f"{_REDACT_SEP}[REDACT:{length}]{_REDACT_SEP}"
+
+
+def _bar_words(span: str, terms: Optional[Set[str]] = None) -> str:
+    """Replace words in `span` with sized bars, keeping every non-word separator intact. With
+    `terms`, only words whose lowercase is in the set are barred; without it (a matched spoiler
+    phrase) every word is barred — so short or quoted tokens (e.g. the "12" in "Short Term 12")
+    never leak. Existing bar tokens survive (their inner words are not spoiler terms)."""
+    out: List[str] = []
+    for tok in re.findall(r"\w+|\W+", span):
+        if re.fullmatch(r"\w+", tok) and (terms is None or tok.lower() in terms):
+            out.append(_redact_bar(len(tok)))
+        else:
+            out.append(tok)
+    return "".join(out)
+
+
+def _spoiler_phrases(m: Dict[str, Any]) -> List[str]:
+    """The movie's title + alternate/original title and its cast/crew names (deduped)."""
+    phrases: List[str] = []
+    for title in (m.get("title"), m.get("originalTitle")):
+        title = (title or "").strip()
+        if title and title not in phrases:
+            phrases.append(title)
+    for person in (m.get("actors") or []) + (m.get("directors") or []) + (m.get("writers") or []):
+        name = (person.get("name") or "").strip()
+        if name and name not in phrases:
+            phrases.append(name)
+    return phrases
+
+
+def _censor_plot(plot: str, m: Dict[str, Any]) -> Tuple[str, int, int]:
+    """Redact the movie title (incl. alternate/original) and the cast/crew names in `plot`.
+    Case-insensitive; full phrases are caught inside quotes/punctuation and regardless of token
+    length, then individual spoiler words (>= 3 chars) are barred wherever else they appear.
+    Returns (censored_text, bar_count, total_word_count)."""
+    phrases = _spoiler_phrases(m)
+    text = plot
+    # Phrase pass: bar each full spoiler occurrence (its words in sequence, any separators
+    # between them, word-bounded, case-insensitive) so multi-word and short tokens never leak.
+    for phrase in phrases:
+        words = re.findall(r"\w+", phrase)
+        if not words:
+            continue
+        pattern = re.compile(r"(?<!\w)" + r"\W+".join(re.escape(w) for w in words) + r"(?!\w)", re.IGNORECASE)
+        text = pattern.sub(lambda mt: _bar_words(mt.group(0)), text)
+    # Word pass: bar individual spoiler words (>= 3 chars) anywhere else in the text.
+    terms: Set[str] = set()
+    for phrase in phrases:
+        terms.update(w.lower() for w in re.findall(r"\w+", phrase) if len(w) >= 3)
+    text = _bar_words(text, terms)
+    total_words = len(re.findall(r"\w+", plot))
+    return text, len(_REDACT_RE.findall(text)), total_words
 
 
 def _person_image_stem(p: Dict[str, Any]) -> Dict[str, Any]:
@@ -183,6 +249,7 @@ def b_plot_to_movie(m, lib):
     plot = (m.get("summary") or "").strip()
     if not plot:
         return None
+    plot = _censor_plot(plot, m)[0]  # hide the title / cast spoilers before serving the plot
     d = lib.movie_distractors(m, "genre_and_decade", 3)
     if len(d) < 3:
         return None
@@ -273,34 +340,14 @@ def b_plot_redacted_to_movie(m, lib):
     plot = (m.get("summary") or "").strip()
     if not plot:
         return None
-    terms = set()
-    for word in re.findall(r"\w+", m.get("title") or ""):
-        if len(word) >= 3:
-            terms.add(word.lower())
-    for person in (m.get("actors") or []) + (m.get("directors") or []):
-        for part in re.findall(r"\w+", person.get("name") or ""):
-            if len(part) >= 3:
-                terms.add(part.lower())
-    tokens = re.findall(r"\w+|\W+", plot)
-    redacted = 0
-    words = 0
-    out = []
-    for tok in tokens:
-        if re.fullmatch(r"\w+", tok):
-            words += 1
-            if tok.lower() in terms:
-                # Invisible separators (U+2063) bracket a length sentinel the frontend
-                # parses into a sized redaction bar — avoids the ▮ glyph that tofus on iOS.
-                out.append(f"⁣[REDACT:{len(tok)}]⁣")
-                redacted += 1
-                continue
-        out.append(tok)
+    text, redacted, words = _censor_plot(plot, m)
+    # The censored mode needs real redactions to be a game, but not a wall of bars.
     if words == 0 or redacted == 0 or redacted / words > 0.30:
         return None
     d = lib.movie_distractors(m, "genre_and_decade", 3)
     if len(d) < 3:
         return None
-    return {"stem": _text_stem("".join(out)), **_single(_poster(m), [_poster(x) for x in d])}
+    return {"stem": _text_stem(text), **_single(_poster(m), [_poster(x) for x in d])}
 
 
 def b_actor_filmography_multi(m, lib):

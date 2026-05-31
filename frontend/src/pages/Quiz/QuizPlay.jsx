@@ -768,7 +768,9 @@ export default function QuizPlay({ roundId }) {
           ) : (
             <div className="max-h-full min-h-0 max-w-2xl overflow-y-auto rounded-2xl bg-white ring-1 ring-zinc-300 p-5 md:p-6 text-center">
               <p className="text-base sm:text-lg md:text-xl leading-relaxed text-zinc-900">
-                {q.mode === 'plot_redacted_to_movie' ? renderRedactedPlot(q.stem.content) : q.stem.content}
+                {/* Render censor bars for any stem that carries REDACT tokens (plot + censored
+                    plot now both redact title/cast spoilers); a no-op for token-free text. */}
+                {renderRedactedPlot(q.stem.content)}
               </p>
             </div>
           )}
