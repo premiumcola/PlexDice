@@ -299,7 +299,7 @@ def b_movie_to_fsk(m, lib):
     others = sorted(pool, key=lambda v: abs(v - correct))[:3]
     if len(others) < 3:
         return None
-    return {"stem": _poster_stem(m), **_single(_chip(f"FSK {correct}"), [_chip(f"FSK {o}") for o in others])}
+    return {"stem": _movie_art_stem(m), **_single(_chip(f"FSK {correct}"), [_chip(f"FSK {o}") for o in others])}
 
 
 def b_movie_to_country(m, lib):
@@ -310,7 +310,7 @@ def b_movie_to_country(m, lib):
     others = lib.value_distractors(correct, list(lib.countries), 3)
     if len(others) < 3:
         return None
-    return {"stem": _poster_stem(m), **_single(_chip(correct), [_chip(o) for o in others])}
+    return {"stem": _movie_art_stem(m), **_single(_chip(correct), [_chip(o) for o in others])}
 
 
 # ---------- TIER 3 ----------
@@ -325,7 +325,7 @@ def b_movie_to_director(m, lib):
     d = lib.person_distractors("director", m, in_movie, 3)
     if len(d) < 3:
         return None
-    return {"stem": _poster_stem(m), **_single(_person_opt(correct_dir), [_person_opt(p) for p in d])}
+    return {"stem": _movie_art_stem(m), **_single(_person_opt(correct_dir), [_person_opt(p) for p in d])}
 
 
 def b_movie_to_year_exact(m, lib):
@@ -335,7 +335,7 @@ def b_movie_to_year_exact(m, lib):
     others = lib.numeric_distractors(year, 2, 1, 3)
     if len(others) < 3:
         return None
-    return {"stem": _poster_stem(m), **_single(_chip(year), [_chip(o) for o in others])}
+    return {"stem": _movie_art_stem(m), **_single(_chip(year), [_chip(o) for o in others])}
 
 
 def b_movie_to_runtime(m, lib):
@@ -345,7 +345,7 @@ def b_movie_to_runtime(m, lib):
     others = lib.numeric_distractors(rt, 15, 5, 3)
     if len(others) < 3:
         return None
-    return {"stem": _poster_stem(m),
+    return {"stem": _movie_art_stem(m),
             **_single(_chip(_runtime_label(rt)), [_chip(_runtime_label(o)) for o in others])}
 
 
