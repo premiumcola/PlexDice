@@ -65,15 +65,15 @@ function renderRedactedPlot(text) {
 }
 
 // Auto-fit the answer covers. Measures the option area and picks the column count + cover width that
-// makes every 2:3 poster as large as possible while ALL of them stay fully visible without scrolling
-// (any count, any viewport). Cells are sized to the exact 2:3 box, so object-cover neither stretches
-// nor crops — the whole poster shows. A ResizeObserver re-fits on rotate / resize / question change.
-function useFitCovers(count, ref, enabled, gap = 12) {
+// makes every cover as large as possible while ALL of them stay fully visible without scrolling (any
+// count, any viewport). `aspect` (width/height) is the cover shape — 2/3 for posters, 1 for square
+// person photos — so cells match it exactly and object-cover neither stretches nor crops. A
+// ResizeObserver re-fits on rotate / resize / question change.
+function useFitCovers(count, ref, enabled, aspect = 2 / 3, gap = 12) {
   const [fit, setFit] = useState({ cols: 1, coverW: 0, gap });
   useLayoutEffect(() => {
     const el = ref.current;
     if (!enabled || !count || !el) return undefined;
-    const ASPECT = 2 / 3; // poster width / height
     const compute = () => {
       const W = el.clientWidth;
       const H = el.clientHeight;
@@ -84,7 +84,7 @@ function useFitCovers(count, ref, enabled, gap = 12) {
         const cellW = (W - (c - 1) * gap) / c;
         const cellH = (H - (r - 1) * gap) / r;
         if (cellW > 0 && cellH > 0) {
-          const coverW = Math.min(cellW, cellH * ASPECT);
+          const coverW = Math.min(cellW, cellH * aspect);
           if (coverW > best.coverW) best = { cols: c, coverW, gap };
         }
       }
@@ -95,7 +95,7 @@ function useFitCovers(count, ref, enabled, gap = 12) {
     const ro = new ResizeObserver(compute);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [count, ref, enabled, gap]);
+  }, [count, ref, enabled, aspect, gap]);
   return fit;
 }
 
@@ -132,7 +132,11 @@ function OptionButton({ option, mode, fill, selected, locked, reveal, onTap, hin
   // title→poster question gives the answer away (the title is printed on the cover), so blur every
   // candidate while unanswered; the blur lifts on reveal. Other image questions (e.g. actor→movie)
   // stay sharp — the posters ARE the answer.
-  const imageBox = coverWidth ? 'w-full aspect-[2/3]' : 'w-full h-full';
+  // Person photos render square (1:1); movie posters keep 2:3. The button is rounded-2xl + object-
+  // cover, so neither is ever distorted. coverWidth sizes the column to the measured fit.
+  const imageBox = coverWidth
+    ? `w-full ${OPTIONS_ARE_PERSONS.has(mode) ? 'aspect-square' : 'aspect-[2/3]'}`
+    : 'w-full h-full';
   const blurGiveaway = isImage && mode === 'title_year_to_cover' && !locked;
   // Actor→film posters often print the actor's name along the top/bottom edge → blur those bands.
   const nameBands = isImage && OPTIONS_BLUR_NAME_BANDS.has(mode);
@@ -349,9 +353,11 @@ export default function QuizPlay({ roundId }) {
   const q = byId[currentQid];
 
   // Answer-cover auto-fit: only for image-option questions (text options fill their cells instead).
+  // Person-photo options fit a 1:1 box; movie posters fit 2:3.
   const optionAreaRef = useRef(null);
   const imageOptionCount = q && !q.options.every((o) => o.kind === 'text') ? q.options.length : 0;
-  const coverFit = useFitCovers(imageOptionCount, optionAreaRef, imageOptionCount > 0);
+  const personOptions = !!q && OPTIONS_ARE_PERSONS.has(q.mode);
+  const coverFit = useFitCovers(imageOptionCount, optionAreaRef, imageOptionCount > 0, personOptions ? 1 : 2 / 3);
 
   const showToast = useCallback((msg) => {
     setToast(msg);
