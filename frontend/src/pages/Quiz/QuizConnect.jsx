@@ -73,6 +73,9 @@ export default function QuizConnect({ question, locked, onSubmit }) {
   const [dragPos, setDragPos] = useState(null); // live drag endpoint in container coords
 
   const sameColumn = (a, b) => leftSet.has(a) === leftSet.has(b);
+  // A connection is valid ONLY between an A item (subject) and a B item (answer), across columns —
+  // never A↔A / B↔B / same-type / same-column. Wrong-but-valid guesses (film ↔ wrong attribute) stay.
+  const canConnect = (a, b) => a !== b && !sameColumn(a, b) && byId[a]?.side !== byId[b]?.side;
   const linkCount = Object.keys(links).length / 2;
   const total = left.length;
 
@@ -123,11 +126,11 @@ export default function QuizConnect({ question, locked, onSubmit }) {
       else setPending(id);
     } else if (pending === id) {
       setPending(null);
-    } else if (sameColumn(pending, id)) {
-      setPending(id);
-    } else {
+    } else if (canConnect(pending, id)) {
       connect(pending, id);
       setPending(null);
+    } else {
+      setPending(id); // invalid target (same column or same side) → switch the selection instead
     }
   };
 
@@ -158,7 +161,7 @@ export default function QuizConnect({ question, locked, onSubmit }) {
     if (!d) return;
     if (!d.moved) { handleTap(id); return; }
     const target = itemUnder(e.clientX, e.clientY);
-    if (target && target !== d.fromId && !sameColumn(d.fromId, target)) connect(d.fromId, target);
+    if (target && canConnect(d.fromId, target)) connect(d.fromId, target);
   };
 
   // De-duplicated connections (one entry per pair).

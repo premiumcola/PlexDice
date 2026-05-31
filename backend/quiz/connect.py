@@ -161,6 +161,10 @@ def _assemble(relation: str, tagged_pairs: List[Tuple[Dict[str, Any], Any, str]]
     for movie, partner, rel in tagged_pairs:
         film_item = _poster(movie)
         partner_item = _partner_item(rel, partner)
+        # Side/role tag: A = subject (film), B = answer (partner). A pair's two items go in opposite
+        # columns (see _arrange_columns), and the frontend only links an A item to a B item.
+        film_item["side"] = "A"
+        partner_item["side"] = "B"
         pair_items.append((film_item, partner_item))
         items.append(film_item)
         items.append(partner_item)
