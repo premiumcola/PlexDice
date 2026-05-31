@@ -165,9 +165,12 @@ export default function QuizConnect({ question, locked, onSubmit }) {
     return `M ${pa.x} ${pa.y} C ${pa.x + dx} ${pa.y}, ${pb.x - dx} ${pb.y}, ${pb.x} ${pb.y}`;
   };
 
-  // Connection state of an item drives its border + node colour. (correct/wrong added in M2.)
+  // Connection state of an item drives its border + node colour. After Prüfen (locked), BOTH elements
+  // of the player's own connection turn green (correct) or red (wrong) — only the player's links are
+  // coloured, the correct solution is never revealed.
   const itemState = (id) => {
     if (links[id] === undefined) return pending === id ? 'pending' : 'idle';
+    if (locked) return correctKeys.has(connectionKey(id, links[id])) ? 'correct' : 'wrong';
     return 'linked';
   };
 
