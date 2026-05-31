@@ -7,15 +7,22 @@ const ACCENT = '#f5a623';
 const GREEN = '#22c55e';
 const RED = '#ef4444';
 
-// One connect item rendered to fill its row height: a film poster (2:3), an actor portrait (1:1
-// rounded) or a short text token (chip). Posters/portraits keep their aspect (object-cover, never
-// distorted). For actor relations the printed names along the poster edges are blurred.
+// Border by connection state (static class strings — Tailwind only sees literals). 'correct'/'wrong'
+// only apply after Prüfen, on the player's own connected elements (M2).
+const STATE_RING = {
+  pending: 'ring-2 ring-[#f5a623]',
+  linked: 'ring-2 ring-[#f5a623]/70',
+  correct: 'ring-2 ring-[#22c55e]',
+  wrong: 'ring-2 ring-[#ef4444]',
+  idle: 'ring-1 ring-zinc-700',
+};
+const nodeColor = (state) => ({ correct: GREEN, wrong: RED, idle: '#52525b' }[state] || ACCENT);
+
+// One connect item: a film poster (2:3) or actor portrait (1:1) that fills its (flex-grown) row, or
+// a THIN text token chip (shorter than the covers, so the posters get the freed vertical space).
+// Posters/portraits keep aspect (object-cover, never distorted); actor-relation poster names blurred.
 function ConnectItem({ item, relation, state }) {
-  // Static class strings — Tailwind only generates classes it sees literally in the source.
-  const ring =
-    state === 'pending' ? 'ring-2 ring-[#f5a623]'
-      : state === 'linked' ? 'ring-2 ring-[#f5a623]/70'
-        : 'ring-1 ring-zinc-700';
+  const ring = STATE_RING[state] || STATE_RING.idle;
   if (item.kind === 'image') {
     const portrait = item.aspect === '1/1';
     const bands = !portrait && OPTIONS_BLUR_NAME_BANDS.has(relation);
@@ -36,8 +43,8 @@ function ConnectItem({ item, relation, state }) {
     );
   }
   return (
-    <div className={`h-full max-w-full flex items-center justify-center rounded-xl bg-zinc-800 ${ring} px-3 py-1.5 text-center`}>
-      <span className="text-sm sm:text-base font-semibold text-zinc-100 leading-tight line-clamp-3">{renderRedactedPlot(item.content)}</span>
+    <div className={`max-w-full flex items-center justify-center rounded-xl bg-zinc-800 ${ring} px-3 py-2 text-center`}>
+      <span className="text-sm sm:text-base font-semibold text-zinc-100 leading-tight line-clamp-2">{renderRedactedPlot(item.content)}</span>
     </div>
   );
 }
@@ -158,12 +165,22 @@ export default function QuizConnect({ question, locked, onSubmit }) {
     return `M ${pa.x} ${pa.y} C ${pa.x + dx} ${pa.y}, ${pb.x - dx} ${pb.y}, ${pb.x} ${pb.y}`;
   };
 
+  // Connection state of an item drives its border + node colour. (correct/wrong added in M2.)
+  const itemState = (id) => {
+    if (links[id] === undefined) return pending === id ? 'pending' : 'idle';
+    return 'linked';
+  };
+
+  // Image rows grow (flex-1 → bigger posters); thin token rows take only their content height. The
+  // node is anchored to the item's INNER edge (toward the other column), so it reads as attached.
   const Column = ({ ids, side }) => (
     <div className="flex-1 min-w-0 h-full flex flex-col gap-2 sm:gap-3">
       {ids.map((id) => {
-        const state = pending === id ? 'pending' : links[id] !== undefined ? 'linked' : 'idle';
+        const item = byId[id];
+        const isImg = item.kind === 'image';
+        const state = itemState(id);
         return (
-          <div key={id} className={`flex-1 min-h-0 flex items-center gap-1.5 ${side === 'left' ? 'flex-row' : 'flex-row-reverse'}`}>
+          <div key={id} className={`flex items-center ${isImg ? 'flex-1 min-h-0' : 'shrink-0'} ${side === 'left' ? 'justify-end' : 'justify-start'}`}>
             <div
               data-item={id}
               role="button"
@@ -172,16 +189,16 @@ export default function QuizConnect({ question, locked, onSubmit }) {
               onPointerDown={(e) => onDown(id, e)}
               onPointerMove={onMove}
               onPointerUp={(e) => onUp(id, e)}
-              className="h-full flex items-center min-w-0 max-w-full touch-none select-none cursor-pointer active:opacity-90"
+              className={`relative ${isImg ? 'h-full' : ''} flex items-center max-w-full touch-none select-none cursor-pointer active:opacity-90`}
             >
-              <ConnectItem item={byId[id]} relation={question.relation} state={state} />
+              <ConnectItem item={item} relation={question.relation} state={state} />
+              <span
+                ref={setNodeRef(id)}
+                className="absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full ring-2 ring-zinc-950 z-10 pointer-events-none"
+                style={{ [side === 'left' ? 'right' : 'left']: '-7px', background: nodeColor(state) }}
+                aria-hidden="true"
+              />
             </div>
-            <span
-              ref={setNodeRef(id)}
-              className={`shrink-0 w-3 h-3 rounded-full ring-2 ring-zinc-900 ${state === 'idle' ? 'bg-zinc-600' : ''}`}
-              style={state !== 'idle' ? { background: ACCENT } : undefined}
-              aria-hidden="true"
-            />
           </div>
         );
       })}
