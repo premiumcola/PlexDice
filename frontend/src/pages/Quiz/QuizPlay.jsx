@@ -247,14 +247,15 @@ function ChipStrip({ questions, statusMap, currentQid }) {
             >
               <span className="text-[9px] font-bold uppercase tracking-wide leading-none">{MODE_CATEGORY[qq.mode] || 'Frage'}</span>
               <span className="text-sm font-extrabold tabular-nums leading-none">{currentIndex + 1} / {total}</span>
-              <DifficultyIcon level={level} className="w-7 text-zinc-950" />
+              {/* Dark accent: the tile background IS #f5a623, so filled bars must contrast here. */}
+              <DifficultyIcon level={level} accent="#18181b" className="w-9 text-zinc-950" />
             </div>
           );
         }
         const dots = resultDots(statusMap[qq.id]);
         return (
           <div key={qq.id} className="shrink-0 flex flex-col items-center gap-1">
-            <DifficultyIcon level={level} className="w-5 text-zinc-400" />
+            <DifficultyIcon level={level} className="w-7 text-zinc-500" />
             <div className="flex items-center justify-center gap-0.5 rounded-lg bg-zinc-800 px-1.5 min-h-[20px] min-w-[20px]">
               {dots.length === 0 ? (
                 <span className="w-1.5 h-1.5 rounded-full" style={{ border: '1.5px solid #52525b' }} aria-hidden="true" />
