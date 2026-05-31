@@ -102,6 +102,13 @@ export const STEM_IS_PERSON = new Set([
 // Modes whose image options are person photos (top-anchor + keep the name label).
 export const OPTIONS_ARE_PERSONS = new Set(['movie_to_actor', 'movie_to_director']);
 
+// Actor→film modes: the answer is which film an actor is in, and that actor's name is often
+// printed at the very top/bottom edge of the poster — a spoiler. Blur a band there on the
+// answer covers (centre stays sharp). Posters keep their aspect ratio (the blur is an overlay).
+export const OPTIONS_BLUR_NAME_BANDS = new Set([
+  'actor_to_movie', 'two_actors_to_shared', 'actor_filmography_multi',
+]);
+
 // md+ panel side. By default the Stage sits on the left (cover / face / plot) and the
 // answers fill a Panel on the right. Two cases drop to a Panel below, where the wide
 // bottom tray serves them better. Below md the Panel is always below (QuizPlay CSS).

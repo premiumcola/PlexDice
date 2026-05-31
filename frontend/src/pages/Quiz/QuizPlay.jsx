@@ -3,7 +3,7 @@ import { Timer, Check, X, Pause, Play, RotateCcw, LogOut, MousePointerClick } fr
 import { navigate } from '../../router';
 import { quizAnswer, quizAbandon, quizState } from '../../api';
 import { loadRound, saveResults, clearRound } from './store';
-import { MODE_PROMPT, MODE_CATEGORY, STEM_IS_PERSON, OPTIONS_ARE_PERSONS, panelOnRight, fmt } from './util';
+import { MODE_PROMPT, MODE_CATEGORY, STEM_IS_PERSON, OPTIONS_ARE_PERSONS, OPTIONS_BLUR_NAME_BANDS, panelOnRight, fmt } from './util';
 import Fireworks from '../../components/Fireworks';
 import DifficultyIcon from '../../components/DifficultyIcon';
 import { usePrefs } from '../../usePrefs';
@@ -134,6 +134,8 @@ function OptionButton({ option, mode, fill, selected, locked, reveal, onTap, hin
   // stay sharp — the posters ARE the answer.
   const imageBox = coverWidth ? 'w-full aspect-[2/3]' : 'w-full h-full';
   const blurGiveaway = isImage && mode === 'title_year_to_cover' && !locked;
+  // Actor→film posters often print the actor's name along the top/bottom edge → blur those bands.
+  const nameBands = isImage && OPTIONS_BLUR_NAME_BANDS.has(mode);
   // Text options: in a text-only grid they stretch to fill the cell (big, centered);
   // otherwise (a rare text fallback among images) they stay compact and left-aligned.
   const textBox = fill
@@ -163,6 +165,18 @@ function OptionButton({ option, mode, fill, selected, locked, reveal, onTap, hin
             />
           ) : (
             <div className="absolute inset-0 bg-zinc-800" />
+          )}
+          {nameBands && (
+            <>
+              <div
+                className="absolute inset-x-0 top-0 pointer-events-none"
+                style={{ height: '13%', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', background: 'linear-gradient(to bottom, rgba(9,9,11,0.5), rgba(9,9,11,0))' }}
+              />
+              <div
+                className="absolute inset-x-0 bottom-0 pointer-events-none"
+                style={{ height: '13%', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', background: 'linear-gradient(to top, rgba(9,9,11,0.5), rgba(9,9,11,0))' }}
+              />
+            </>
           )}
           {(OPTIONS_ARE_PERSONS.has(mode) || option.show_label) && (
             <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-zinc-950/90 to-transparent px-2 py-1.5">
