@@ -170,7 +170,10 @@ function OptionButton({ option, mode, fill, selected, locked, reveal, onTap, hin
               />
             </>
           )}
-          {(OPTIONS_ARE_PERSONS.has(mode) || option.show_label) && (
+          {/* Person options always show the name (you pick by name). Title captions (show_label, e.g.
+              the two-actors stills) stay HIDDEN during the question — it's a hard, no-text-hint round;
+              the title is only revealed on a correct answer (Task K). */}
+          {OPTIONS_ARE_PERSONS.has(mode) && (
             <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-zinc-950/90 to-transparent px-2 py-1.5">
               <div className="text-xs sm:text-sm font-medium text-white truncate">{option.label}</div>
             </div>
