@@ -632,9 +632,12 @@ export default function QuizPlay({ roundId }) {
   // A short "pill" text stem shrinks the Stage so the cover options fill the Panel
   // below; it stays panel-below on every breakpoint (never side-by-side).
   const shortStage = stemIsShortText(q);
+  // Single-actor question: a COMPACT header (question top-left, portrait + name side by side)
+  // instead of a centred portrait with the name below — frees the Panel for the answer covers.
+  const compactActor = !isConnect && q.mode === 'actor_to_movie' && stem.kind === 'image';
   // md+ only: tall image options claim the full-height stage on the right so covers
   // never clip; pill stems, multi-select trays and connect rounds sit full-width regardless.
-  const wantsRight = panelOnRight(q) && !shortStage && !isConnect;
+  const wantsRight = panelOnRight(q) && !shortStage && !isConnect && !compactActor;
   // A text-only option grid stretches to fill the Panel; image grids keep their aspect.
   const textOptions = !isConnect && q.options.every((o) => o.kind === 'text');
   const gridCols = !isConnect && q.options.length > 4 ? 'grid-cols-3' : 'grid-cols-2';
@@ -712,7 +715,7 @@ export default function QuizPlay({ roundId }) {
       {!showRoundTwoIntro && (
       <>
       {/* Stage — light neutral surface (connect rounds use it as a fixed header only) */}
-      <div className={`relative flex flex-col w-full bg-zinc-100 text-zinc-900 ${isConnect ? 'shrink-0' : shortStage ? 'shrink-0 h-auto' : `h-[55%] ${wantsRight ? 'md:h-full md:w-[62%]' : ''}`}`}>
+      <div className={`relative flex flex-col w-full bg-zinc-100 text-zinc-900 ${isConnect || compactActor ? 'shrink-0' : shortStage ? 'shrink-0 h-auto' : `h-[55%] ${wantsRight ? 'md:h-full md:w-[62%]' : ''}`}`}>
         {/* HUD — progress (left), stats (flexible middle, right-aligned), pause (right). No divider
             lines (depth via colour/spacing); stats are right-aligned in a flex-1 box so the score sits
             a gap before the pause and can never overlap it. */}
@@ -746,23 +749,44 @@ export default function QuizPlay({ roundId }) {
 
         <ChipStrip questions={questions} statusMap={statusMap} currentQid={currentQid} />
 
-        {/* Prompt + countdown ring in a RESERVED slot on the right — the ring lives here, never over
-            the stem text card, so it can't cover the plot/slogan on any viewport. A matching left
-            spacer keeps the prompt visually centred; the slot stays reserved when locked (ring
-            hidden) so the layout never jumps on reveal. */}
-        <div className="shrink-0 flex items-center gap-2 px-4 sm:px-6 pt-1">
-          <div className="w-14 sm:w-16 shrink-0" aria-hidden="true" />
-          <div className="flex-1 min-w-0 text-center font-display text-lg md:text-2xl lg:text-3xl text-zinc-900">
-            {MODE_PROMPT[q.mode] || 'Frage'}
+        {compactActor ? (
+          /* Single-actor: question top-left, portrait + name SIDE BY SIDE (frees the Panel for the
+             4 answer covers). Timer top-right. */
+          <div className="shrink-0 px-4 sm:px-6 pt-1 pb-2">
+            <div className="flex items-start gap-2">
+              <div className="flex-1 min-w-0 font-display text-base sm:text-xl text-zinc-900 leading-tight">{MODE_PROMPT[q.mode] || 'Frage'}</div>
+              <div className="w-12 h-12 sm:w-14 sm:h-14 shrink-0 flex items-center justify-center">
+                {!locked && <RadialCountdown remaining={remaining} duration={dur} />}
+              </div>
+            </div>
+            <div className="flex items-center gap-3 mt-2">
+              <div className="h-24 w-24 sm:h-28 sm:w-28 shrink-0 rounded-2xl overflow-hidden ring-1 ring-zinc-300 bg-zinc-200">
+                <img src={q.stem.content} alt="" className="w-full h-full object-cover object-top" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-[11px] uppercase tracking-wide text-zinc-500">Schauspieler:in</div>
+                <div className="text-lg sm:text-2xl font-semibold text-zinc-900 leading-tight">{q.stem.caption}</div>
+              </div>
+            </div>
           </div>
-          <div className="w-14 h-14 sm:w-16 sm:h-16 shrink-0 flex items-center justify-center">
-            {!locked && !isConnect && <RadialCountdown remaining={remaining} duration={dur} />}
+        ) : (
+          /* Prompt + countdown ring in a RESERVED slot on the right — the ring lives here, never over
+             the stem text card. A matching left spacer keeps the prompt visually centred; the slot
+             stays reserved when locked (ring hidden) so the layout never jumps on reveal. */
+          <div className="shrink-0 flex items-center gap-2 px-4 sm:px-6 pt-1">
+            <div className="w-14 sm:w-16 shrink-0" aria-hidden="true" />
+            <div className="flex-1 min-w-0 text-center font-display text-lg md:text-2xl lg:text-3xl text-zinc-900">
+              {MODE_PROMPT[q.mode] || 'Frage'}
+            </div>
+            <div className="w-14 h-14 sm:w-16 sm:h-16 shrink-0 flex items-center justify-center">
+              {!locked && !isConnect && <RadialCountdown remaining={remaining} duration={dur} />}
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* Stem (the countdown ring lives in the prompt row above, never over this card).
-            Connect rounds have no stem — their matching columns render in the panel below. */}
-        {!isConnect && (
+        {/* Stem (the countdown ring lives in the prompt row above, never over this card). Connect
+            rounds have no stem; the single-actor portrait already lives in the compact header. */}
+        {!isConnect && !compactActor && (
         <div className={`${shortStage ? 'shrink-0' : 'flex-1 min-h-0'} px-4 sm:px-6 py-3 flex items-center justify-center overflow-hidden`}>
           {stemImage ? (
             <div className="flex h-full w-full flex-col items-center justify-center gap-2 overflow-hidden">
@@ -800,7 +824,7 @@ export default function QuizPlay({ roundId }) {
 
       {/* Panel — dark surface, edge-to-edge, single hairline divider against the Stage. For connect
           rounds it fills the screen and hosts the matching columns + Prüfen button (QuizConnect). */}
-      <div className={`flex flex-col w-full bg-zinc-950 text-zinc-100 border-t border-amber-500/50 ${isConnect || shortStage ? 'flex-1 min-h-0' : `h-[45%] ${wantsRight ? 'md:h-full md:w-[38%] md:border-t-0 md:border-l' : ''}`}`}>
+      <div className={`flex flex-col w-full bg-zinc-950 text-zinc-100 border-t border-amber-500/50 ${isConnect || compactActor || shortStage ? 'flex-1 min-h-0' : `h-[45%] ${wantsRight ? 'md:h-full md:w-[38%] md:border-t-0 md:border-l' : ''}`}`}>
         {isConnect ? (
           <QuizConnect question={q} locked={locked} reveal={reveal} onSubmit={(keys) => lockIn(keys)} />
         ) : (
