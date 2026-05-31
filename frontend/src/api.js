@@ -145,6 +145,12 @@ export function quizLeaderboard() {
 export function quizSubmitScore(body) {
   return postJson('/api/quiz/leaderboard', body);
 }
+export function quizPlayers() {
+  return fetch('/api/quiz/players').then(unwrap);
+}
+export function quizAddPlayer(name) {
+  return postJson('/api/quiz/players', { name });
+}
 export function quizMovieStats(movieKey) {
   return fetch(`/api/quiz/movie/${movieKey}/stats`).then(unwrap);
 }

@@ -29,8 +29,11 @@ history = History(
     os.path.join(DATA_DIR, "quiz_movie_stats.json"),
     os.path.join(DATA_DIR, "quiz_recent.json"),
 )
-# Shared, server-side leaderboard (all instance users see the same board).
-leaderboard = Leaderboard(os.path.join(DATA_DIR, "leaderboard.json"))
+# Shared, server-side leaderboard + reusable player-name roster (all instance users share both).
+leaderboard = Leaderboard(
+    os.path.join(DATA_DIR, "leaderboard.json"),
+    os.path.join(DATA_DIR, "players.json"),
+)
 
 # Remove photo files no round references anymore (runs once on boot).
 try:
@@ -201,6 +204,17 @@ def leaderboard_submit():
         body.get("name"), body.get("score"), body.get("correct"), body.get("wrong"), body.get("size"),
     )
     return jsonify(entry)
+
+
+@bp.get("/players")
+def players_list():
+    return jsonify({"players": leaderboard.players()})
+
+
+@bp.post("/players")
+def players_add():
+    body = request.get_json(silent=True) or {}
+    return jsonify({"players": leaderboard.add_player(body.get("name"))})
 
 
 @bp.get("/history/<round_id>")
