@@ -655,7 +655,6 @@ export default function QuizPlay({ roundId }) {
     // shrink instead of overflow. dvh (NOT vh) so it never floats on iOS toolbar changes.
     <div className={`h-[100dvh] flex flex-col overflow-hidden relative ${wantsRight ? 'md:flex-row' : ''}`}>
       <style>{`
-        @keyframes quizTitleFade {0%{opacity:0;transform:translateY(6px)}100%{opacity:1;transform:translateY(0)}}
         @keyframes pfVignette {0%,100%{opacity:0.6}50%{opacity:1}}
         @keyframes pfSlideUp {from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
         @keyframes pfCorrect {0%,100%{transform:scale(1)}40%{transform:scale(1.05)}}
@@ -765,12 +764,6 @@ export default function QuizPlay({ roundId }) {
             <div className="absolute top-2 right-2 sm:top-3 sm:right-3">
               <RadialCountdown remaining={remaining} duration={dur} />
             </div>
-          )}
-        </div>
-
-        <div className="shrink-0 h-6 text-center">
-          {locked && (
-            <span className="text-sm font-medium text-zinc-700" style={{ animation: 'quizTitleFade 0.4s ease' }}>{q.movie_title}</span>
           )}
         </div>
       </div>
