@@ -179,41 +179,36 @@ export default function QuizConnect({ question, locked, onSubmit }) {
     return 'linked';
   };
 
-  // Image rows grow (flex-1 → bigger posters); thin token rows take only their content height.
-  // Items are flush to the OUTER wall (left col → left, right col → right); the node is a flex child
-  // pushed (justify-between) to the column's INNER edge, so every node sits on ONE consistent vertical
-  // rail per column regardless of cover size → the connection lines stay clean.
+  // Each element hugs its column's INNER edge (toward the centre gap), so every inner edge — and thus
+  // every node — lines up on ONE vertical rail per column. The node is anchored ON the element's inner
+  // edge (absolute, half-overlapping), never floating in the gap. Image rows grow (bigger posters);
+  // thin token rows keep their content height.
   const Column = ({ ids, side }) => (
     <div className="flex-1 min-w-0 h-full flex flex-col gap-2 sm:gap-3">
       {ids.map((id) => {
         const item = byId[id];
         const isImg = item.kind === 'image';
         const state = itemState(id);
-        const itemEl = (
-          <div
-            data-item={id}
-            role="button"
-            tabIndex={0}
-            aria-label="Verbinden"
-            onPointerDown={(e) => onDown(id, e)}
-            onPointerMove={onMove}
-            onPointerUp={(e) => onUp(id, e)}
-            className={`${isImg ? 'h-full' : ''} flex items-center min-w-0 max-w-full touch-none select-none cursor-pointer active:opacity-90`}
-          >
-            <ConnectItem item={item} relation={question.relation} state={state} />
-          </div>
-        );
-        const node = (
-          <span
-            ref={setNodeRef(id)}
-            className="shrink-0 w-3.5 h-3.5 rounded-full ring-2 ring-zinc-950"
-            style={{ background: nodeColor(state) }}
-            aria-hidden="true"
-          />
-        );
         return (
-          <div key={id} className={`flex items-center justify-between gap-2 ${isImg ? 'flex-1 min-h-0' : 'shrink-0'}`}>
-            {side === 'left' ? <>{itemEl}{node}</> : <>{node}{itemEl}</>}
+          <div key={id} className={`flex items-center ${isImg ? 'flex-1 min-h-0' : 'shrink-0'} ${side === 'left' ? 'justify-end' : 'justify-start'}`}>
+            <div
+              data-item={id}
+              role="button"
+              tabIndex={0}
+              aria-label="Verbinden"
+              onPointerDown={(e) => onDown(id, e)}
+              onPointerMove={onMove}
+              onPointerUp={(e) => onUp(id, e)}
+              className={`relative ${isImg ? 'h-full' : ''} flex items-center max-w-full touch-none select-none cursor-pointer active:opacity-90`}
+            >
+              <ConnectItem item={item} relation={question.relation} state={state} />
+              <span
+                ref={setNodeRef(id)}
+                className="absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full ring-2 ring-zinc-950 z-10 pointer-events-none"
+                style={{ [side === 'left' ? 'right' : 'left']: '-6px', background: nodeColor(state) }}
+                aria-hidden="true"
+              />
+            </div>
           </div>
         );
       })}
