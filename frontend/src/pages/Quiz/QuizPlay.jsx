@@ -713,13 +713,15 @@ export default function QuizPlay({ roundId }) {
       <>
       {/* Stage — light neutral surface (connect rounds use it as a fixed header only) */}
       <div className={`relative flex flex-col w-full bg-zinc-100 text-zinc-900 ${isConnect ? 'shrink-0' : shortStage ? 'shrink-0 h-auto' : `h-[55%] ${wantsRight ? 'md:h-full md:w-[62%]' : ''}`}`}>
-        {/* HUD — three readable groups: progress · status · actions */}
-        <div className="shrink-0 flex items-center gap-1 px-3 sm:px-6 py-1.5 pt-[max(0.5rem,env(safe-area-inset-top))] text-base sm:text-lg min-h-[56px]">
-          {/* Group A · progress */}
-          <div className="flex items-center gap-2">
+        {/* HUD — progress (left), stats (flexible middle, right-aligned), pause (right). No divider
+            lines (depth via colour/spacing); stats are right-aligned in a flex-1 box so the score sits
+            a gap before the pause and can never overlap it. */}
+        <div className="shrink-0 flex items-center gap-2 px-3 sm:px-6 py-1.5 pt-[max(0.5rem,env(safe-area-inset-top))] min-h-[56px]">
+          {/* progress */}
+          <div className="flex items-center gap-2 shrink-0">
             <div className="flex flex-col leading-none">
               <span className="text-xl sm:text-2xl font-bold text-zinc-900 tabular-nums">{resolvedCount}/{total}</span>
-              <span className="text-xs text-zinc-500">gelöst</span>
+              <span className="text-[10px] text-zinc-500">gelöst</span>
             </div>
             {visit === 'retry' && (
               <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-400/20 text-amber-600" role="img" aria-label="Wiederholung" title="Wiederholung">
@@ -728,17 +730,13 @@ export default function QuizPlay({ roundId }) {
             )}
           </div>
 
-          <span aria-hidden="true" className="w-px self-stretch bg-zinc-300 mx-2 my-1.5" />
-
-          {/* Group B · status */}
-          <div className="flex flex-1 items-center gap-1 sm:gap-2 min-w-0">
-            <span className="flex items-center gap-1 font-mono font-semibold tabular-nums text-zinc-900 py-1.5 px-2"><Timer className="w-4 h-4 text-zinc-500" /> {mmss(elapsed)}</span>
-            <span className="flex items-center gap-1 font-semibold tabular-nums text-emerald-600 py-1.5 px-2"><Check className="w-4 h-4 text-zinc-500" /> {correctCount}</span>
-            <span className="flex items-center gap-1 font-semibold tabular-nums text-rose-600 py-1.5 px-2"><X className="w-4 h-4 text-zinc-500" /> {wrongCount}</span>
-            <span className="flex items-center gap-1 font-semibold tabular-nums text-amber-600 py-1.5 px-2">✨ {fmt(score)}</span>
+          {/* status — right-aligned, shrinks toward the progress side, never under the pause */}
+          <div className="flex flex-1 items-center justify-end gap-2 sm:gap-3 min-w-0 text-sm sm:text-base font-semibold tabular-nums">
+            <span className="flex items-center gap-1 font-mono text-zinc-800"><Timer className="w-4 h-4 text-zinc-400 shrink-0" />{mmss(elapsed)}</span>
+            <span className="flex items-center gap-1 text-emerald-600"><Check className="w-4 h-4 shrink-0" />{correctCount}</span>
+            <span className="flex items-center gap-1 text-rose-600"><X className="w-4 h-4 shrink-0" />{wrongCount}</span>
+            <span className="flex items-center gap-0.5 text-amber-600 whitespace-nowrap">✨ {fmt(score)}</span>
           </div>
-
-          <span aria-hidden="true" className="w-px self-stretch bg-zinc-300 mx-2 my-1.5" />
 
           {/* Group C · actions */}
           <button type="button" onClick={doPause} aria-label="Pause" className="w-11 h-11 rounded-lg bg-zinc-200 flex items-center justify-center active:scale-95 shrink-0">
