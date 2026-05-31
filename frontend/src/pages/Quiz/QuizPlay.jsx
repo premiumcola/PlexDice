@@ -82,6 +82,41 @@ function useFitCovers(count, ref, enabled, aspect = 2 / 3, gap = 12) {
   return fit;
 }
 
+// THE single subject-image renderer for every question. Routes strictly by image KIND via `aspect`:
+// a still/backdrop (16/9) ALWAYS lands in a landscape container, a poster in 2:3, a person photo in
+// 1:1 — a still can never be forced into a 2:3 box (the recurring bug). object-cover → never
+// distorted. cover_to_title gets the heavy blur + one sharp window (lifted on a correct answer).
+// `className` carries sizing + decoration; extra overlays (e.g. a name) go in children.
+function SubjectImage({ content, aspect, mode, revealCorrect = false, className = '', children }) {
+  const aspectClass = aspect === '16/9' ? 'aspect-[16/9]' : aspect === '1/1' ? 'aspect-square' : 'aspect-[2/3]';
+  const person = STEM_IS_PERSON.has(mode);
+  const blurred = mode === 'cover_to_title' && !revealCorrect;
+  return (
+    <div className={`relative ${aspectClass} rounded-2xl overflow-hidden ${className}`}>
+      {content ? (
+        <img
+          src={content}
+          alt=""
+          className={`w-full h-full object-cover ${person ? 'object-top' : 'object-center'}`}
+          style={blurred ? { filter: 'blur(18px) brightness(0.85) saturate(1.15)', transform: 'scale(1.04)' } : undefined}
+        />
+      ) : (
+        <div className="absolute inset-0 bg-zinc-800 flex items-center justify-center"><User className="w-1/3 h-1/3 text-zinc-600" /></div>
+      )}
+      {blurred && (
+        <img
+          src={content}
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 w-full h-full object-cover object-center"
+          style={{ transform: 'scale(1.04)', clipPath: 'circle(16% at 58% 42%)', WebkitClipPath: 'circle(16% at 58% 42%)' }}
+        />
+      )}
+      {children}
+    </div>
+  );
+}
+
 // Dark-Panel option. Unselected = zinc; selected (not locked) = amber outline;
 // reveal = emerald (correct) / rose (wrong chosen).
 function OptionButton({ option, mode, fill, selected, locked, reveal, revealCorrect, onTap, hint, btnRef, flash, coverWidth }) {
@@ -645,10 +680,9 @@ export default function QuizPlay({ roundId }) {
 
   const stem = q.stem || {};
   const stemImage = stem.kind === 'image';
-  // Stem aspect comes from the backend (16/9 backdrops, 1/1 faces); default 2/3 posters.
+  // Stem aspect comes from the backend (16/9 backdrops, 1/1 faces); default 2/3 posters. SubjectImage
+  // maps the aspect → container; stemLandscape only drives the wrapper sizing/decoration here.
   const stemAspect = stem.aspect || (STEM_IS_PERSON.has(q.mode) ? '1/1' : '2/3');
-  const stemAspectClass =
-    stemAspect === '16/9' ? 'aspect-[16/9]' : stemAspect === '1/1' ? 'aspect-square' : 'aspect-[2/3]';
   const stemLandscape = stemAspect === '16/9';
   // A short "pill" text stem shrinks the Stage so the cover options fill the Panel
   // below; it stays panel-below on every breakpoint (never side-by-side).
@@ -787,14 +821,13 @@ export default function QuizPlay({ roundId }) {
               </div>
             </div>
             <div className="flex items-center gap-3 mt-2">
-              <div className="relative h-24 w-24 sm:h-28 sm:w-28 shrink-0 rounded-2xl overflow-hidden ring-1 ring-zinc-300 bg-zinc-200">
-                <img src={q.stem.content} alt="" className="w-full h-full object-cover object-top" />
+              <SubjectImage content={q.stem.content} aspect="1/1" mode={q.mode} className="h-24 w-24 sm:h-28 sm:w-28 shrink-0 ring-1 ring-zinc-300 bg-zinc-200">
                 {compactFilmography && q.actor_name && (
                   <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent px-1.5 py-1">
                     <div className="text-[11px] sm:text-xs font-semibold text-white text-center leading-tight truncate">{q.actor_name}</div>
                   </div>
                 )}
-              </div>
+              </SubjectImage>
               {compactActor && (
                 <div className="min-w-0">
                   <div className="text-[11px] uppercase tracking-wide text-zinc-500">Schauspieler:in</div>
@@ -822,25 +855,13 @@ export default function QuizPlay({ roundId }) {
         <div className={`${shortStage ? 'shrink-0' : 'flex-1 min-h-0'} px-4 sm:px-6 py-3 flex items-center justify-center overflow-hidden`}>
           {stemImage ? (
             <div className="flex h-full w-full flex-col items-center justify-center gap-2 overflow-hidden">
-              <div className={`relative ${stemLandscape ? 'w-full h-auto max-h-full' : q.stem.caption ? 'min-h-0 flex-1 w-auto max-w-full' : 'h-full w-auto'} ${stemAspectClass} rounded-2xl overflow-hidden ${stemLandscape ? 'ring-1 ring-black/10' : 'shadow-2xl'}`}>
-                <img
-                  src={q.stem.content}
-                  alt=""
-                  className={`w-full h-full object-cover ${STEM_IS_PERSON.has(q.mode) ? 'object-top' : 'object-center'}`}
-                  style={q.mode === 'cover_to_title' && !revealCorrect ? { filter: 'blur(18px) brightness(0.85) saturate(1.15)', transform: 'scale(1.04)' } : undefined}
-                />
-                {/* Guess-poster: one small SHARP window over the heavy blur — a fair hint (a single
-                    clear detail) without giving the whole poster away. Lifts entirely on correct. */}
-                {q.mode === 'cover_to_title' && !revealCorrect && (
-                  <img
-                    src={q.stem.content}
-                    alt=""
-                    aria-hidden="true"
-                    className="absolute inset-0 w-full h-full object-cover object-center"
-                    style={{ transform: 'scale(1.04)', clipPath: 'circle(16% at 58% 42%)', WebkitClipPath: 'circle(16% at 58% 42%)' }}
-                  />
-                )}
-              </div>
+              <SubjectImage
+                content={q.stem.content}
+                aspect={stemAspect}
+                mode={q.mode}
+                revealCorrect={revealCorrect}
+                className={`${stemLandscape ? 'w-full h-auto max-h-full ring-1 ring-black/10' : q.stem.caption ? 'min-h-0 flex-1 w-auto max-w-full shadow-2xl' : 'h-full w-auto shadow-2xl'}`}
+              />
               {q.stem.caption && (
                 <div className="mt-2 shrink-0 text-center">
                   <div className="text-xs tracking-wide text-zinc-500">

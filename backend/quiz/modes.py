@@ -447,10 +447,12 @@ def b_collection_member(m, lib):
     d = lib.movie_distractors(m, "genre_adjacent", 3, exclude=members)
     if len(d) < 3:
         return None
-    # Show a sibling's poster, not the series name — the name would be the answer.
+    # Show a sibling's still/backdrop (landscape), not the series name — the name would be the answer.
+    # _movie_art_stem tags the kind (16/9 backdrop, else 2/3 poster) so the frontend never forces it
+    # into a 2:3 box.
     siblings = [s for s in member_objs if s.get("key") != m.get("key") and s.get("thumb_url")]
     if siblings:
-        stem = {"kind": "image", "content": random.choice(siblings)["thumb_url"]}
+        stem = _movie_art_stem(random.choice(siblings))
     else:
         stem = _text_stem(f"Reihe: ████ ({len(member_objs)} Filme)")
     return {"stem": stem, **_single(_poster(m), [_poster(x) for x in d])}
