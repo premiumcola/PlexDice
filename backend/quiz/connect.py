@@ -29,6 +29,21 @@ _VALUE_FNS: Dict[str, Callable[[Dict[str, Any]], Optional[str]]] = {
 }
 SINGLE_RELATIONS: Tuple[str, ...] = ("film_zitat", "film_genre", "film_jahr", "film_fsk", "film_actor")
 
+CONNECT_TIER = 3  # every connect relation is HARD — level 3 on the existing 3-level tier scale.
+
+# All connect relations sit at difficulty 3; "mixed" is the hardest connect variant. This reuses the
+# SAME 1-3 tier scale and the "tier"/"difficulty" fields the classic ModeDef questions carry
+# (modes.py), so the existing difficulty indicator renders connect rounds — no second difficulty
+# mechanism. Used by build_connect_round below and by the selection layer (Task H).
+CONNECT_RELATIONS: Dict[str, Dict[str, Any]] = {
+    "film_zitat": {"tier": CONNECT_TIER, "label": "Film ↔ Zitat", "hardest": False},
+    "film_genre": {"tier": CONNECT_TIER, "label": "Film ↔ Genre", "hardest": False},
+    "film_jahr": {"tier": CONNECT_TIER, "label": "Film ↔ Jahr", "hardest": False},
+    "film_fsk": {"tier": CONNECT_TIER, "label": "Film ↔ FSK", "hardest": False},
+    "film_actor": {"tier": CONNECT_TIER, "label": "Film ↔ Schauspieler", "hardest": False},
+    "mixed": {"tier": CONNECT_TIER, "label": "Gemischt", "hardest": True},
+}
+
 
 def _visible(token: str) -> bool:
     """True if a censored token still has readable (non-redacted) characters left."""
@@ -149,9 +164,13 @@ def _assemble(relation: str, tagged_pairs: List[Tuple[Dict[str, Any], Any, str]]
         items.append(film_item)
         items.append(partner_item)
         pairs.append({"left": film_item["id"], "right": partner_item["id"]})
+    meta = CONNECT_RELATIONS[relation]
     return {
         "mode": "connect",
         "relation": relation,
+        "tier": meta["tier"],
+        "difficulty": meta["tier"],
+        "hardest": meta["hardest"],
         "pairs": pairs,
         "items": items,
         "columns": _arrange_columns(pair_items),
