@@ -102,13 +102,15 @@ function useFitCovers(count, ref, enabled, gap = 12) {
 // Dark-Panel option. Unselected = zinc; selected (not locked) = amber outline;
 // reveal = emerald (correct) / rose (wrong chosen).
 function OptionButton({ option, mode, fill, selected, locked, reveal, onTap, hint, btnRef, flash, coverWidth }) {
-  let cls = 'border border-zinc-700 bg-zinc-800/60 text-zinc-100';
+  let cls = 'border-2 border-zinc-700 bg-zinc-800/60 text-zinc-100';
   let anim;
   if (!locked && selected) {
-    // Unmistakable selection: thick amber ring, deeper fill, outer glow and a subtle
-    // lift. The lift rides on transform so neighbour chips never reflow.
-    cls =
-      'ring-[3px] ring-amber-400 bg-amber-400/22 text-amber-200 shadow-[0_0_24px_rgba(245,166,35,0.45)] scale-[1.025]';
+    // Selection: an accent (#f5a623) border drawn INSIDE the cell (border-box → never wider than
+    // the cell) plus an accent fill and a soft glow for elevation. NO scale transform — a zoom would
+    // push the card past its grid cell and the overflow-hidden option area would clip the poster top
+    // and the "Nochmal tippen" hint (the reported bug). Border width stays constant across states so
+    // the poster never reflows.
+    cls = 'border-[3px] border-[#f5a623] bg-[#f5a623]/25 text-amber-100 shadow-[0_0_12px_rgba(245,166,35,0.45)]';
   }
   if (locked && reveal) {
     const isCorrect = reveal.correctIds.includes(option.id);
@@ -120,7 +122,7 @@ function OptionButton({ option, mode, fill, selected, locked, reveal, onTap, hin
       cls = 'border-2 border-rose-500 bg-rose-500/20 text-zinc-100';
       anim = 'pfWrong 0.3s ease';
     } else {
-      cls = 'border border-zinc-700 bg-zinc-800/60 text-zinc-100 opacity-50';
+      cls = 'border-2 border-zinc-700 bg-zinc-800/60 text-zinc-100 opacity-50';
     }
   }
   const isImage = option.kind === 'image';
@@ -784,7 +786,7 @@ export default function QuizPlay({ roundId }) {
               {q.options.map((o) => renderOption(o))}
             </div>
           ) : (
-            <div ref={optionAreaRef} className="w-full h-full flex items-center justify-center overflow-hidden">
+            <div ref={optionAreaRef} className="w-full h-full flex items-center justify-center">
               <div
                 key={visitSeq}
                 className="grid justify-center content-center"
