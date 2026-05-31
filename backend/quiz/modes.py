@@ -232,6 +232,11 @@ def b_actor_to_movie(m, lib):
             **_single(_poster(m), [_poster(x) for x in d])}
 
 
+def _is_animation(m: Dict[str, Any]) -> bool:
+    """Animation film? Its voice cast isn't recognisable, so 'who acts in this' is the hardest tier."""
+    return bool({(g or "").lower() for g in (m.get("genres") or [])} & {"animation", "anime"})
+
+
 def b_movie_to_actor(m, lib):
     # Person-answer options must all be photos (never a blank card): correct actor + distractors
     # are taken from people WITH an image; exclude every co-star (named) from the distractors.
@@ -243,8 +248,12 @@ def b_movie_to_actor(m, lib):
     d = lib.person_distractors("actor", m, in_movie, 3)
     if len(d) < 3:
         return None
-    return {"stem": _movie_art_stem(m), "actor_name": correct_actor.get("name"),
-            **_single(_person_opt(correct_actor), [_person_opt(p) for p in d])}
+    out = {"stem": _movie_art_stem(m), "actor_name": correct_actor.get("name"),
+           **_single(_person_opt(correct_actor), [_person_opt(p) for p in d])}
+    if _is_animation(m):
+        out["tier"] = 3  # voice cast unrecognisable → hardest; make() merges this over the default
+        out["difficulty"] = 3
+    return out
 
 
 def b_plot_to_movie(m, lib):
