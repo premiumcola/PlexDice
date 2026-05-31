@@ -53,9 +53,9 @@ def _chip(text):
 
 
 def _person_opt(p):
-    if p.get("thumb_url"):
-        return _opt("image", p["thumb_url"], p.get("name"))
-    return _opt("text", p.get("name"), p.get("role") or "")
+    # Callers pass only people WITH a photo (b_movie_to_actor / b_movie_to_director), so a person
+    # option is always an image; the frontend still falls back gracefully if content is ever empty.
+    return _opt("image", p.get("thumb_url"), p.get("name"))
 
 
 def _poster_stem(m):
@@ -233,11 +233,13 @@ def b_actor_to_movie(m, lib):
 
 
 def b_movie_to_actor(m, lib):
-    actors = m.get("actors") or []
+    # Person-answer options must all be photos (never a blank card): correct actor + distractors
+    # are taken from people WITH an image; exclude every co-star (named) from the distractors.
+    actors = [a for a in (m.get("actors") or []) if a.get("thumb_url")]
     if not actors:
         return None
     correct_actor = actors[0]
-    in_movie = {a.get("name") for a in actors}
+    in_movie = {a.get("name") for a in (m.get("actors") or [])}
     d = lib.person_distractors("actor", m, in_movie, 3)
     if len(d) < 3:
         return None
@@ -304,11 +306,13 @@ def b_movie_to_country(m, lib):
 
 # ---------- TIER 3 ----------
 def b_movie_to_director(m, lib):
-    dirs = m.get("directors") or []
+    # Photo-only options (never a blank card): pick the correct director and distractors from
+    # people WITH an image; exclude every credited director (named) from the distractors.
+    dirs = [p for p in (m.get("directors") or []) if p.get("thumb_url")]
     if not dirs:
         return None
     correct_dir = dirs[0]
-    in_movie = {d.get("name") for d in dirs}
+    in_movie = {p.get("name") for p in (m.get("directors") or [])}
     d = lib.person_distractors("director", m, in_movie, 3)
     if len(d) < 3:
         return None

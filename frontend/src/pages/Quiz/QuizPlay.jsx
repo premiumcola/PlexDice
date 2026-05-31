@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Timer, Check, X, Pause, Play, RotateCcw, LogOut, MousePointerClick } from 'lucide-react';
+import { Timer, Check, X, Pause, Play, RotateCcw, LogOut, MousePointerClick, User } from 'lucide-react';
 import { navigate } from '../../router';
 import { quizAnswer, quizAbandon, quizState } from '../../api';
 import { loadRound, saveResults, clearRound } from './store';
@@ -164,7 +164,11 @@ function OptionButton({ option, mode, fill, selected, locked, reveal, onTap, hin
               }}
             />
           ) : (
-            <div className="absolute inset-0 bg-zinc-800" />
+            // Graceful fallback — never a blank card. Person options show a neutral avatar icon
+            // (the name label still renders below); the backend already filters photo-less people.
+            <div className="absolute inset-0 bg-zinc-800 flex items-center justify-center">
+              {OPTIONS_ARE_PERSONS.has(mode) && <User className="w-1/3 h-1/3 text-zinc-600" />}
+            </div>
           )}
           {nameBands && (
             <>

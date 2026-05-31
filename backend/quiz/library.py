@@ -179,21 +179,25 @@ class QuizLibrary:
 
     # ---- person distractors ----
     def person_distractors(self, kind: str, target_movie, exclude_names, k: int) -> List[Dict[str, Any]]:
-        """Other actors/directors from films sharing the target's primary genre."""
+        """Other actors/directors WITH A PHOTO from films sharing the target's primary genre.
+        Photo-only so person-answer options never render as a blank card (see modes.py)."""
         info = self.actor_info if kind == "actor" else self.director_info
         movies_idx = self.actor_movies if kind == "actor" else self.director_movies
         pg = self.primary_genre(target_movie)
         blocked = set(exclude_names)
 
-        def peer(name):
+        def peer(name: str) -> bool:
             if pg is None:
                 return True
             return any(pg in (mm.get("genres") or []) for mm in movies_idx.get(name, []))
 
-        names = [n for n in info if n not in blocked and peer(n)]
+        def has_photo(name: str) -> bool:
+            return bool(info[name].get("thumb_url"))
+
+        names = [n for n in info if n not in blocked and has_photo(n) and peer(n)]
         random.shuffle(names)
         if len(names) < k:
-            extra = [n for n in info if n not in blocked and n not in names]
+            extra = [n for n in info if n not in blocked and has_photo(n) and n not in names]
             random.shuffle(extra)
             names += extra
         return [info[n] for n in names[:k]]
