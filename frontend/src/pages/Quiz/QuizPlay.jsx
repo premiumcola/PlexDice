@@ -766,7 +766,7 @@ export default function QuizPlay({ roundId }) {
         <div className={`${shortStage ? 'shrink-0' : 'flex-1 min-h-0'} px-4 sm:px-6 py-3 flex items-center justify-center overflow-hidden`}>
           {stemImage ? (
             <div className="flex h-full w-full flex-col items-center justify-center gap-2 overflow-hidden">
-              <div className={`relative ${stemLandscape ? 'w-full h-auto max-h-full' : q.stem.caption ? 'min-h-0 flex-1 w-auto max-w-full' : 'h-full w-auto'} ${stemAspectClass} rounded-2xl overflow-hidden shadow-2xl`}>
+              <div className={`relative ${stemLandscape ? 'w-full h-auto max-h-full' : q.stem.caption ? 'min-h-0 flex-1 w-auto max-w-full' : 'h-full w-auto'} ${stemAspectClass} rounded-2xl overflow-hidden ${stemLandscape ? 'ring-1 ring-black/10' : 'shadow-2xl'}`}>
                 <img
                   src={q.stem.content}
                   alt=""
