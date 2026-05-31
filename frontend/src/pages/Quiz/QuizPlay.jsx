@@ -84,7 +84,7 @@ function useFitCovers(count, ref, enabled, aspect = 2 / 3, gap = 12) {
 
 // Dark-Panel option. Unselected = zinc; selected (not locked) = amber outline;
 // reveal = emerald (correct) / rose (wrong chosen).
-function OptionButton({ option, mode, fill, selected, locked, reveal, onTap, hint, btnRef, flash, coverWidth }) {
+function OptionButton({ option, mode, fill, selected, locked, reveal, revealCorrect, onTap, hint, btnRef, flash, coverWidth }) {
   let cls = 'border-2 border-zinc-700 bg-zinc-800/60 text-zinc-100';
   let anim;
   if (!locked && selected) {
@@ -121,7 +121,9 @@ function OptionButton({ option, mode, fill, selected, locked, reveal, onTap, hin
     : (option.aspect === '1/1' || OPTIONS_ARE_PERSONS.has(mode)) ? 'aspect-square'
       : 'aspect-[2/3]';
   const imageBox = coverWidth ? `w-full ${optAspectClass}` : 'w-full h-full';
-  const blurGiveaway = isImage && mode === 'title_year_to_cover' && !locked;
+  // The blur hides the title printed on the poster; lift it only on a CORRECT answer (a wrong pick
+  // keeps the candidates unspoiled for when they reappear).
+  const blurGiveaway = isImage && mode === 'title_year_to_cover' && !revealCorrect;
   // Actor→film posters often print the actor's name along the top/bottom edge → blur those bands.
   const nameBands = isImage && OPTIONS_BLUR_NAME_BANDS.has(mode);
   // Text options: in a text-only grid they stretch to fill the cell (big, centered);
@@ -171,9 +173,9 @@ function OptionButton({ option, mode, fill, selected, locked, reveal, onTap, hin
             </>
           )}
           {/* Person options always show the name (you pick by name). Title captions (show_label, e.g.
-              the two-actors stills) stay HIDDEN during the question — it's a hard, no-text-hint round;
-              the title is only revealed on a correct answer (Task K). */}
-          {OPTIONS_ARE_PERSONS.has(mode) && (
+              the two-actors stills) stay hidden during the question — a hard, no-text-hint round — and
+              appear ONLY on a correct answer (reveal-on-correct). */}
+          {(OPTIONS_ARE_PERSONS.has(mode) || (option.show_label && revealCorrect)) && (
             <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-zinc-950/90 to-transparent px-2 py-1.5">
               <div className="text-xs sm:text-sm font-medium text-white truncate">{option.label}</div>
             </div>
@@ -308,6 +310,9 @@ export default function QuizPlay({ roundId }) {
   const [wrongCount, setWrongCount] = useState(0);
   const [locked, setLocked] = useState(false);
   const [reveal, setReveal] = useState(null);
+  // Reveal-on-CORRECT only: on a correct answer, briefly show extras (the film title) and lift any
+  // blur; a wrong answer reveals nothing and keeps blurs on (items may reappear unspoiled).
+  const [revealCorrect, setRevealCorrect] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
   const [remaining, setRemaining] = useState(dur);
   const [elapsed, setElapsed] = useState(0);
@@ -433,6 +438,7 @@ export default function QuizPlay({ roundId }) {
       setVisitSeq((n) => n + 1);
       setLocked(false);
       setReveal(null);
+      setRevealCorrect(false);
       setSelectedIds([]);
       selectedRef.current = [];
       lastTapRef.current = { id: null, ts: 0 };
@@ -468,6 +474,7 @@ export default function QuizPlay({ roundId }) {
         payload = { question_id: q.id, chosen_option_id: id, time_ms: timeMs };
       }
       setReveal({ correctIds: correct || showCorrect ? correctIds : [], chosenIds: chosenSet });
+      setRevealCorrect(correct); // extras + un-blur only when right; wrong stays unspoiled
       if (correct) setCorrectCount((c) => c + 1);
       else setWrongCount((c) => c + 1);
       answersRef.current.push({ mode: q.mode, correct, points: pts, difficulty: q.difficulty });
@@ -491,11 +498,13 @@ export default function QuizPlay({ roundId }) {
         setFlash(true);
         setTimeout(() => setFlash(false), 200);
       }
-      // The server response decides what comes next (retry order is server-side).
+      // The server response decides what comes next (retry order is server-side). A correct answer
+      // lingers a little (>= 2s) so the brief reveal (title + un-blur) is enjoyable; wrong advances
+      // at the normal pace with nothing revealed.
       const answerPromise = quizAnswer(roundId, payload).catch(() => null);
       advanceRef.current = setTimeout(async () => {
         applyNext(await answerPromise);
-      }, autoreveal);
+      }, correct ? Math.max(autoreveal, 2000) : autoreveal);
     },
     [locked, q, roundId, applyNext, dur, soundOn, showCorrect, autoreveal, reduceMotion],
   );
@@ -667,6 +676,7 @@ export default function QuizPlay({ roundId }) {
       selected={selectedIds.includes(o.id)}
       locked={locked}
       reveal={reveal}
+      revealCorrect={revealCorrect}
       onTap={onOption}
       hint={!q.multi_select}
       btnRef={o.id === q.correct_option_id ? correctOptionRef : undefined}
@@ -798,7 +808,7 @@ export default function QuizPlay({ roundId }) {
                   src={q.stem.content}
                   alt=""
                   className={`w-full h-full object-cover ${STEM_IS_PERSON.has(q.mode) ? 'object-top' : 'object-center'}`}
-                  style={q.mode === 'cover_to_title' ? { filter: 'blur(18px) brightness(0.85) saturate(1.15)', transform: 'scale(1.04)' } : undefined}
+                  style={q.mode === 'cover_to_title' && !revealCorrect ? { filter: 'blur(18px) brightness(0.85) saturate(1.15)', transform: 'scale(1.04)' } : undefined}
                 />
               </div>
               {q.stem.caption && (
@@ -822,6 +832,14 @@ export default function QuizPlay({ roundId }) {
             </div>
           )}
         </div>
+        )}
+        {/* Reveal-on-CORRECT: the film title appears briefly only when the answer was right. */}
+        {revealCorrect && q.movie_title && (
+          <div className="absolute inset-x-0 bottom-1 z-10 flex justify-center px-4 pointer-events-none">
+            <span className="rounded-full bg-emerald-500/95 text-white px-3 py-1 text-sm font-semibold shadow-lg" style={{ animation: 'pfHintIn 0.3s ease' }}>
+              ✓ {q.movie_title}
+            </span>
+          </div>
         )}
       </div>
 
