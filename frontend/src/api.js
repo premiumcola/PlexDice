@@ -139,6 +139,12 @@ export function quizDeleteRound(roundId) {
 export function quizTopMovies() {
   return fetch('/api/quiz/history/top').then(unwrap);
 }
+export function quizLeaderboard() {
+  return fetch('/api/quiz/leaderboard').then(unwrap);
+}
+export function quizSubmitScore(body) {
+  return postJson('/api/quiz/leaderboard', body);
+}
 export function quizMovieStats(movieKey) {
   return fetch(`/api/quiz/movie/${movieKey}/stats`).then(unwrap);
 }

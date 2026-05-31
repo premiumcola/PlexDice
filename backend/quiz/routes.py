@@ -10,6 +10,7 @@ from flask import Blueprint, jsonify, request, send_file
 from quiz import photos
 from quiz.generator import QuizGenerator
 from quiz.history import History
+from quiz.leaderboard import Leaderboard
 from quiz.modes import MODES
 from quiz.session import SessionStore
 from services import DATA_DIR, library_cache, settings_store
@@ -28,6 +29,8 @@ history = History(
     os.path.join(DATA_DIR, "quiz_movie_stats.json"),
     os.path.join(DATA_DIR, "quiz_recent.json"),
 )
+# Shared, server-side leaderboard (all instance users see the same board).
+leaderboard = Leaderboard(os.path.join(DATA_DIR, "leaderboard.json"))
 
 # Remove photo files no round references anymore (runs once on boot).
 try:
@@ -184,6 +187,20 @@ def history_list():
 @bp.get("/history/top")
 def history_top():
     return jsonify({"movies": history.top_movies(10)})
+
+
+@bp.get("/leaderboard")
+def leaderboard_top():
+    return jsonify({"entries": leaderboard.top(50)})
+
+
+@bp.post("/leaderboard")
+def leaderboard_submit():
+    body = request.get_json(silent=True) or {}
+    entry = leaderboard.submit(
+        body.get("name"), body.get("score"), body.get("correct"), body.get("wrong"), body.get("size"),
+    )
+    return jsonify(entry)
 
 
 @bp.get("/history/<round_id>")
