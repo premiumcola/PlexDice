@@ -158,12 +158,29 @@ def _assemble(relation: str, tagged_pairs: List[Tuple[Dict[str, Any], Any, str]]
     }
 
 
+def _mixed_pairs(lib: QuizLibrary) -> List[Tuple[Dict[str, Any], Any, str]]:
+    """One pair per single relation (5 DIFFERENT relations), each tied to a distinct film."""
+    used_films: set = set()
+    out: List[Tuple[Dict[str, Any], Any, str]] = []
+    for rel in SINGLE_RELATIONS:
+        picked = _pick_pairs(rel, lib, 1, used_films=used_films)
+        if not picked:
+            return []
+        movie, partner = picked[0]
+        used_films.add(movie["key"])
+        out.append((movie, partner, rel))
+    return out
+
+
 def build_connect_round(relation: str, lib: QuizLibrary) -> Optional[Dict[str, Any]]:
-    """Build one connect round for `relation` (a SINGLE_RELATIONS kind). Returns None if the library
-    lacks 5 valid, distinct pairs. ("mixed" is handled in F2.)"""
-    if relation not in SINGLE_RELATIONS:
+    """Build one connect round. `relation` is a SINGLE_RELATIONS kind or "mixed" (5 pairs, each a
+    different relation). Returns None if the library lacks 5 valid, distinct pairs."""
+    if relation == "mixed":
+        tagged = _mixed_pairs(lib)
+    elif relation in SINGLE_RELATIONS:
+        tagged = [(m, p, relation) for (m, p) in _pick_pairs(relation, lib, PAIRS_PER_ROUND)]
+    else:
         return None
-    picked = _pick_pairs(relation, lib, PAIRS_PER_ROUND)
-    if len(picked) < PAIRS_PER_ROUND:
+    if len(tagged) < PAIRS_PER_ROUND:
         return None
-    return _assemble(relation, [(m, p, relation) for (m, p) in picked])
+    return _assemble(relation, tagged)
