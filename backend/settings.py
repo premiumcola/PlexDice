@@ -36,6 +36,7 @@ def _default_settings() -> Dict[str, Any]:
             "enabled_modes": [],  # empty = all modes enabled
             "show_correct_on_wrong": True,
             "autoreveal_delay_ms": 1200,
+            "connect_share": 0.2,  # minority share of "Verbinden" connect rounds per run (0 = off)
         },
     }
 
