@@ -728,12 +728,22 @@ export default function QuizPlay({ roundId }) {
 
         <ChipStrip questions={questions} statusMap={statusMap} currentQid={currentQid} />
 
-        <div className="shrink-0 px-4 sm:px-6 pt-1 text-center font-display text-lg md:text-2xl lg:text-3xl text-zinc-900">
-          {MODE_PROMPT[q.mode] || 'Frage'}
+        {/* Prompt + countdown ring in a RESERVED slot on the right — the ring lives here, never over
+            the stem text card, so it can't cover the plot/slogan on any viewport. A matching left
+            spacer keeps the prompt visually centred; the slot stays reserved when locked (ring
+            hidden) so the layout never jumps on reveal. */}
+        <div className="shrink-0 flex items-center gap-2 px-4 sm:px-6 pt-1">
+          <div className="w-14 sm:w-16 shrink-0" aria-hidden="true" />
+          <div className="flex-1 min-w-0 text-center font-display text-lg md:text-2xl lg:text-3xl text-zinc-900">
+            {MODE_PROMPT[q.mode] || 'Frage'}
+          </div>
+          <div className="w-14 h-14 sm:w-16 sm:h-16 shrink-0 flex items-center justify-center">
+            {!locked && <RadialCountdown remaining={remaining} duration={dur} />}
+          </div>
         </div>
 
-        {/* Stem + radial countdown */}
-        <div className={`${shortStage ? 'shrink-0' : 'flex-1 min-h-0'} px-4 sm:px-6 py-3 flex items-center justify-center overflow-hidden relative`}>
+        {/* Stem (the countdown ring lives in the prompt row above, never over this card) */}
+        <div className={`${shortStage ? 'shrink-0' : 'flex-1 min-h-0'} px-4 sm:px-6 py-3 flex items-center justify-center overflow-hidden`}>
           {stemImage ? (
             <div className="flex h-full w-full flex-col items-center justify-center gap-2 overflow-hidden">
               <div className={`relative ${stemLandscape ? 'w-full h-auto max-h-full' : q.stem.caption ? 'min-h-0 flex-1 w-auto max-w-full' : 'h-full w-auto'} ${stemAspectClass} rounded-2xl overflow-hidden shadow-2xl`}>
@@ -760,11 +770,6 @@ export default function QuizPlay({ roundId }) {
               <p className="text-base sm:text-lg md:text-xl leading-relaxed text-zinc-900">
                 {q.mode === 'plot_redacted_to_movie' ? renderRedactedPlot(q.stem.content) : q.stem.content}
               </p>
-            </div>
-          )}
-          {!locked && (
-            <div className="absolute top-2 right-2 sm:top-3 sm:right-3">
-              <RadialCountdown remaining={remaining} duration={dur} />
             </div>
           )}
         </div>
