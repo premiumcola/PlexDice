@@ -110,6 +110,16 @@ export const STEM_IS_PERSON = new Set([
 // Modes whose image options are person photos (top-anchor + keep the name label).
 export const OPTIONS_ARE_PERSONS = new Set(['movie_to_actor', 'movie_to_director']);
 
+// Modes where the ANSWER is a film and you pick its poster/still: on a correct answer the film
+// title is the genuinely hidden answer → reveal it as an overlay on the correct cover. (Excludes
+// title_year_to_cover, where the title IS the question, and the attribute/person modes, where the
+// title is the already-visible subject — those reveal nothing extra.)
+export const ANSWER_IS_MOVIE = new Set([
+  'plot_to_movie', 'tagline_to_movie', 'plot_redacted_to_movie',
+  'actor_to_movie', 'director_to_movie', 'writer_to_movie',
+  'two_actors_to_shared', 'collection_member',
+]);
+
 // Actor→film modes: the answer is which film an actor is in, and that actor's name is often
 // printed at the very top/bottom edge of the poster — a spoiler. Blur a band there on the
 // answer covers (centre stays sharp). Posters keep their aspect ratio (the blur is an overlay).

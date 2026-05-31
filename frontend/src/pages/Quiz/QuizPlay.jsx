@@ -3,7 +3,7 @@ import { Timer, Check, X, Pause, Play, RotateCcw, LogOut, MousePointerClick, Use
 import { navigate } from '../../router';
 import { quizAnswer, quizAbandon, quizState } from '../../api';
 import { loadRound, saveResults, clearRound } from './store';
-import { MODE_PROMPT, MODE_CATEGORY, STEM_IS_PERSON, OPTIONS_ARE_PERSONS, OPTIONS_BLUR_NAME_BANDS, panelOnRight, fmt } from './util';
+import { MODE_PROMPT, MODE_CATEGORY, STEM_IS_PERSON, OPTIONS_ARE_PERSONS, OPTIONS_BLUR_NAME_BANDS, ANSWER_IS_MOVIE, panelOnRight, fmt } from './util';
 import Fireworks from '../../components/Fireworks';
 import DifficultyIcon from '../../components/DifficultyIcon';
 import { usePrefs } from '../../usePrefs';
@@ -109,6 +109,10 @@ function OptionButton({ option, mode, fill, selected, locked, reveal, revealCorr
     }
   }
   const isImage = option.kind === 'image';
+  // The film title is the hidden answer only for ANSWER_IS_MOVIE modes → reveal it on the CORRECT
+  // cover (never for attribute/person modes, where the title is the visible subject).
+  const isCorrectOption = !!(locked && reveal && reveal.correctIds.includes(option.id));
+  const titleReveal = isImage && revealCorrect && isCorrectOption && ANSWER_IS_MOVIE.has(mode);
   // Image options sit in a measured 2:3 grid cell (useFitCovers sizes the column to coverWidth): the
   // button fills that column and an aspect-[2/3] box, so object-cover shows the WHOLE poster with no
   // stretch and no crop. (Fallback w-full h-full covers a cell with no measured width.) The
@@ -172,12 +176,17 @@ function OptionButton({ option, mode, fill, selected, locked, reveal, revealCorr
               />
             </>
           )}
-          {/* Person options always show the name (you pick by name). Title captions (show_label, e.g.
-              the two-actors stills) stay hidden during the question — a hard, no-text-hint round — and
-              appear ONLY on a correct answer (reveal-on-correct). */}
-          {(OPTIONS_ARE_PERSONS.has(mode) || (option.show_label && revealCorrect)) && (
+          {/* Person options always show the name (you pick by name) — single line. */}
+          {OPTIONS_ARE_PERSONS.has(mode) && (
             <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-zinc-950/90 to-transparent px-2 py-1.5">
               <div className="text-xs sm:text-sm font-medium text-white truncate">{option.label}</div>
+            </div>
+          )}
+          {/* Reveal-on-correct: the answer film's title overlaid on the CORRECT cover, fit to width
+              and wrapping to at most 2 lines (a hard, no-text-hint round otherwise). */}
+          {titleReveal && (
+            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-zinc-950/95 via-zinc-950/75 to-transparent px-2 pt-5 pb-1.5">
+              <div className="text-xs sm:text-sm font-semibold text-white text-center leading-tight line-clamp-2">{option.label}</div>
             </div>
           )}
           {selected && !locked && hint && (
@@ -795,12 +804,10 @@ export default function QuizPlay({ roundId }) {
             </div>
           </div>
         ) : (
-          /* Prompt + countdown ring in a RESERVED slot on the right — the ring lives here, never over
-             the stem text card. A matching left spacer keeps the prompt visually centred; the slot
-             stays reserved when locked (ring hidden) so the layout never jumps on reveal. */
+          /* Prompt uses the FULL title-row width (no left spacer) so it stays on one line when it
+             fits; the countdown ring sits in a reserved right slot (kept when locked so no jump). */
           <div className="shrink-0 flex items-center gap-2 px-4 sm:px-6 pt-1">
-            <div className="w-14 sm:w-16 shrink-0" aria-hidden="true" />
-            <div className="flex-1 min-w-0 text-center font-display text-lg md:text-2xl lg:text-3xl text-zinc-900">
+            <div className="flex-1 min-w-0 text-center font-display text-lg md:text-2xl lg:text-3xl text-zinc-900 text-balance">
               {MODE_PROMPT[q.mode] || 'Frage'}
             </div>
             <div className="w-14 h-14 sm:w-16 sm:h-16 shrink-0 flex items-center justify-center">
@@ -856,8 +863,10 @@ export default function QuizPlay({ roundId }) {
           )}
         </div>
         )}
-        {/* Reveal-on-CORRECT: the film title appears briefly only when the answer was right. */}
-        {revealCorrect && q.movie_title && (
+        {/* Reveal-on-CORRECT: ANSWER_IS_MOVIE modes reveal the title ON the correct cover instead;
+            this Stage badge only covers the remaining film-title-answer modes (removed for the
+            attribute/subject modes in O2). */}
+        {revealCorrect && q.movie_title && !ANSWER_IS_MOVIE.has(q.mode) && (
           <div className="absolute inset-x-0 bottom-1 z-10 flex justify-center px-4 pointer-events-none">
             <span className="rounded-full bg-emerald-500/95 text-white px-3 py-1 text-sm font-semibold shadow-lg" style={{ animation: 'pfHintIn 0.3s ease' }}>
               ✓ {q.movie_title}
