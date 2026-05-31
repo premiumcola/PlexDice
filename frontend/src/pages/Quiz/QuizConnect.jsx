@@ -2,6 +2,8 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { User } from 'lucide-react';
 import { OPTIONS_BLUR_NAME_BANDS, connectionKey } from './util';
 import { renderRedactedPlot } from './redact';
+import Fireworks from '../../components/Fireworks';
+import { usePrefs } from '../../usePrefs';
 
 const ACCENT = '#f5a623';
 const GREEN = '#22c55e';
@@ -58,6 +60,7 @@ export default function QuizConnect({ question, locked, onSubmit }) {
   const { left, right } = question.columns;
   const leftSet = useMemo(() => new Set(left), [left]);
   const correctKeys = useMemo(() => new Set(question.pairs.map((p) => connectionKey(p.left, p.right))), [question]);
+  const { reduceMotion } = usePrefs();
 
   const containerRef = useRef(null);
   const nodeEls = useRef({});
@@ -160,6 +163,8 @@ export default function QuizConnect({ question, locked, onSubmit }) {
   const connections = [];
   Object.keys(links).forEach((id) => { if (id < links[id]) connections.push({ a: id, b: links[id] }); });
   const pathColor = (a, b) => (locked ? (correctKeys.has(connectionKey(a, b)) ? GREEN : RED) : ACCENT);
+  // All pairs correct after Prüfen → celebrate (green nodes + borders come from itemState/M2).
+  const allCorrect = locked && connections.length === total && connections.every(({ a, b }) => correctKeys.has(connectionKey(a, b)));
   const dInstr = (pa, pb) => {
     const dx = Math.max(24, Math.abs(pb.x - pa.x) * 0.4) * (pb.x >= pa.x ? 1 : -1);
     return `M ${pa.x} ${pa.y} C ${pa.x + dx} ${pa.y}, ${pb.x - dx} ${pb.y}, ${pb.x} ${pb.y}`;
@@ -210,6 +215,7 @@ export default function QuizConnect({ question, locked, onSubmit }) {
 
   return (
     <div className="flex-1 min-h-0 flex flex-col px-3 sm:px-6 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      {allCorrect && !reduceMotion && <Fireworks variant="bursts" />}
       <div ref={containerRef} className="relative flex-1 min-h-0 flex items-stretch gap-3 sm:gap-6">
         <Column ids={left} side="left" />
         <Column ids={right} side="right" />
