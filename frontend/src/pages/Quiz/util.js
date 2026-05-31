@@ -43,7 +43,13 @@ export const MODE_PROMPT = {
   writer_to_movie: 'Welchen Film schrieb diese Person?',
   two_actors_to_shared: 'In welchem Film spielen die beiden Schauspieler:innen mit?',
   collection_member: 'Welcher Film gehört zu dieser Reihe?',
+  connect: 'Verbinde die passenden Paare',
 };
+
+// Canonical, order-independent id for one connection (and for a correct pair): the two item ids
+// sorted + joined. The client posts these as chosen_option_ids; the backend's correct_option_ids
+// use the same form, so the existing multi-select scorer validates a connect answer unchanged.
+export const connectionKey = (a, b) => [a, b].sort().join('|');
 
 export const MODE_LABEL = {
   cover_to_title: 'Cover → Titel',
@@ -66,6 +72,7 @@ export const MODE_LABEL = {
   writer_to_movie: 'Drehbuch → Film',
   two_actors_to_shared: 'Zwei Stars → Film',
   collection_member: 'Filmreihe',
+  connect: 'Verbinden',
 };
 
 // Short uppercase category for the progress chip strip's active tile — derived from the existing
@@ -91,6 +98,7 @@ export const MODE_CATEGORY = {
   writer_to_movie: 'DREHBUCH',
   two_actors_to_shared: 'STARS',
   collection_member: 'REIHE',
+  connect: 'VERBINDEN',
 };
 
 export const TIER_LABEL = { 1: 'Leicht', 2: 'Mittel', 3: 'Schwer' };

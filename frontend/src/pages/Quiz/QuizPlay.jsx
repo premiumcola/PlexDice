@@ -9,6 +9,8 @@ import DifficultyIcon from '../../components/DifficultyIcon';
 import { usePrefs } from '../../usePrefs';
 import { initAudio, playSound, preloadSounds, setSoundEnabled } from './audio';
 import RadialCountdown from './RadialCountdown';
+import QuizConnect from './QuizConnect';
+import { renderRedactedPlot } from './redact';
 
 // Title→poster question prints the answer title on the cover, so every candidate is blurred while
 // unanswered. Blur radius (px) — strong enough that printed titles are illegible, while artwork and
@@ -43,25 +45,6 @@ function stemIsShortText(q) {
   if (PILL_MODES.has(q.mode)) return true;
   // Belt-and-braces: any TEXT stem under 60 chars counts as a pill.
   return text.length <= 60;
-}
-
-// Backend marks each redacted plot word as ⁣[REDACT:n]⁣ (invisible separators
-// as parser anchors). Split on that and render each as a fixed-width bar sized to the
-// hidden word — a deliberate redaction, never a missing-font tofu box.
-function renderRedactedPlot(text) {
-  const re = /⁣\[REDACT:(\d+)\]⁣/g;
-  const nodes = [];
-  let last = 0;
-  let key = 0;
-  let m;
-  while ((m = re.exec(text)) !== null) {
-    if (m.index > last) nodes.push(text.slice(last, m.index));
-    const n = Math.max(2, parseInt(m[1], 10) || 3);
-    nodes.push(<span key={`r${key++}`} className="redact-block" style={{ width: `${n}ch` }} aria-label="zensiert" />);
-    last = m.index + m[0].length;
-  }
-  if (last < text.length) nodes.push(text.slice(last));
-  return nodes;
 }
 
 // Auto-fit the answer covers. Measures the option area and picks the column count + cover width that
@@ -351,12 +334,16 @@ export default function QuizPlay({ roundId }) {
   const roundTwoTimerRef = useRef(null);
 
   const q = byId[currentQid];
+  // Connect ("Verbinden") rounds carry pairs/items/columns instead of a stem + options, and render
+  // in their own component; guard the stem/option-derived values below so they never touch q.stem
+  // / q.options for a connect question.
+  const isConnect = !!q && q.mode === 'connect';
 
   // Answer-cover auto-fit: only for image-option questions (text options fill their cells instead).
   // Person-photo options fit a 1:1 box; movie posters fit 2:3.
   const optionAreaRef = useRef(null);
-  const imageOptionCount = q && !q.options.every((o) => o.kind === 'text') ? q.options.length : 0;
-  const personOptions = !!q && OPTIONS_ARE_PERSONS.has(q.mode);
+  const imageOptionCount = q && !isConnect && !q.options.every((o) => o.kind === 'text') ? q.options.length : 0;
+  const personOptions = !!q && !isConnect && OPTIONS_ARE_PERSONS.has(q.mode);
   const coverFit = useFitCovers(imageOptionCount, optionAreaRef, imageOptionCount > 0, personOptions ? 1 : 2 / 3);
 
   const showToast = useCallback((msg) => {
@@ -540,6 +527,8 @@ export default function QuizPlay({ roundId }) {
   useEffect(() => {
     if (locked || !q) return undefined;
     startRef.current = Date.now();
+    // Connect rounds are a multi-step matching task — no per-question countdown / timeout.
+    if (q.mode === 'connect') return undefined;
     lastSecRef.current = null;
     setRemaining(dur);
     const iv = setInterval(() => {
@@ -628,9 +617,10 @@ export default function QuizPlay({ roundId }) {
     );
   }
 
-  const stemImage = q.stem.kind === 'image';
+  const stem = q.stem || {};
+  const stemImage = stem.kind === 'image';
   // Stem aspect comes from the backend (16/9 backdrops, 1/1 faces); default 2/3 posters.
-  const stemAspect = q.stem.aspect || (STEM_IS_PERSON.has(q.mode) ? '1/1' : '2/3');
+  const stemAspect = stem.aspect || (STEM_IS_PERSON.has(q.mode) ? '1/1' : '2/3');
   const stemAspectClass =
     stemAspect === '16/9' ? 'aspect-[16/9]' : stemAspect === '1/1' ? 'aspect-square' : 'aspect-[2/3]';
   const stemLandscape = stemAspect === '16/9';
@@ -638,12 +628,12 @@ export default function QuizPlay({ roundId }) {
   // below; it stays panel-below on every breakpoint (never side-by-side).
   const shortStage = stemIsShortText(q);
   // md+ only: tall image options claim the full-height stage on the right so covers
-  // never clip; pill stems and multi-select trays sit below regardless.
-  const wantsRight = panelOnRight(q) && !shortStage;
+  // never clip; pill stems, multi-select trays and connect rounds sit full-width regardless.
+  const wantsRight = panelOnRight(q) && !shortStage && !isConnect;
   // A text-only option grid stretches to fill the Panel; image grids keep their aspect.
-  const textOptions = q.options.every((o) => o.kind === 'text');
-  const gridCols = q.options.length > 4 ? 'grid-cols-3' : 'grid-cols-2';
-  const vignette = remaining <= 5000 && !locked;
+  const textOptions = !isConnect && q.options.every((o) => o.kind === 'text');
+  const gridCols = !isConnect && q.options.length > 4 ? 'grid-cols-3' : 'grid-cols-2';
+  const vignette = remaining <= 5000 && !locked && !isConnect;
 
   const leave = async (to) => {
     clearTimeout(advanceRef.current);
@@ -716,8 +706,8 @@ export default function QuizPlay({ roundId }) {
           never flashes before the countdown completes. */}
       {!showRoundTwoIntro && (
       <>
-      {/* Stage — light neutral surface */}
-      <div className={`relative flex flex-col w-full bg-zinc-100 text-zinc-900 ${shortStage ? 'shrink-0 h-auto' : `h-[55%] ${wantsRight ? 'md:h-full md:w-[62%]' : ''}`}`}>
+      {/* Stage — light neutral surface (connect rounds use it as a fixed header only) */}
+      <div className={`relative flex flex-col w-full bg-zinc-100 text-zinc-900 ${isConnect ? 'shrink-0' : shortStage ? 'shrink-0 h-auto' : `h-[55%] ${wantsRight ? 'md:h-full md:w-[62%]' : ''}`}`}>
         {/* HUD — three readable groups: progress · status · actions */}
         <div className="shrink-0 flex items-center gap-1 px-3 sm:px-6 py-1.5 pt-[max(0.5rem,env(safe-area-inset-top))] text-base sm:text-lg min-h-[56px]">
           {/* Group A · progress */}
@@ -763,11 +753,13 @@ export default function QuizPlay({ roundId }) {
             {MODE_PROMPT[q.mode] || 'Frage'}
           </div>
           <div className="w-14 h-14 sm:w-16 sm:h-16 shrink-0 flex items-center justify-center">
-            {!locked && <RadialCountdown remaining={remaining} duration={dur} />}
+            {!locked && !isConnect && <RadialCountdown remaining={remaining} duration={dur} />}
           </div>
         </div>
 
-        {/* Stem (the countdown ring lives in the prompt row above, never over this card) */}
+        {/* Stem (the countdown ring lives in the prompt row above, never over this card).
+            Connect rounds have no stem — their matching columns render in the panel below. */}
+        {!isConnect && (
         <div className={`${shortStage ? 'shrink-0' : 'flex-1 min-h-0'} px-4 sm:px-6 py-3 flex items-center justify-center overflow-hidden`}>
           {stemImage ? (
             <div className="flex h-full w-full flex-col items-center justify-center gap-2 overflow-hidden">
@@ -800,10 +792,16 @@ export default function QuizPlay({ roundId }) {
             </div>
           )}
         </div>
+        )}
       </div>
 
-      {/* Panel — dark surface, edge-to-edge, single hairline divider against the Stage */}
-      <div className={`flex flex-col w-full bg-zinc-950 text-zinc-100 border-t border-amber-500/50 ${shortStage ? 'flex-1 min-h-0' : `h-[45%] ${wantsRight ? 'md:h-full md:w-[38%] md:border-t-0 md:border-l' : ''}`}`}>
+      {/* Panel — dark surface, edge-to-edge, single hairline divider against the Stage. For connect
+          rounds it fills the screen and hosts the matching columns + Prüfen button (QuizConnect). */}
+      <div className={`flex flex-col w-full bg-zinc-950 text-zinc-100 border-t border-amber-500/50 ${isConnect || shortStage ? 'flex-1 min-h-0' : `h-[45%] ${wantsRight ? 'md:h-full md:w-[38%] md:border-t-0 md:border-l' : ''}`}`}>
+        {isConnect ? (
+          <QuizConnect question={q} locked={locked} reveal={reveal} onSubmit={(keys) => lockIn(keys)} />
+        ) : (
+        <>
         {!locked && q.multi_select && (
           <div role="status" aria-live="polite" className="shrink-0 px-4 sm:px-6 pt-3 flex justify-center" style={{ animation: 'pfHintIn 0.15s ease' }}>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-zinc-800/80 text-zinc-200 px-3 py-1.5 text-xs sm:text-sm">
@@ -840,6 +838,8 @@ export default function QuizPlay({ roundId }) {
               Bestätigen ({selectedIds.length})
             </button>
           </div>
+        )}
+        </>
         )}
       </div>
       </>
