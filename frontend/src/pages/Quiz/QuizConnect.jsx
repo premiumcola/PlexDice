@@ -44,8 +44,10 @@ function ConnectItem({ item, relation, state }) {
       </div>
     );
   }
+  // Thin token chip spans its column with centered text, so its inner edge (and node) sits on the
+  // same rail as the posters' nodes while the chip itself looks centred, not jammed to one side.
   return (
-    <div className={`max-w-full flex items-center justify-center rounded-xl bg-zinc-800 ${ring} px-3 py-2 text-center`}>
+    <div className={`w-full flex items-center justify-center rounded-xl bg-zinc-800 ${ring} px-3 py-2 text-center`}>
       <span className="text-sm sm:text-base font-semibold text-zinc-100 leading-tight line-clamp-2">{renderRedactedPlot(item.content)}</span>
     </div>
   );
@@ -199,7 +201,7 @@ export default function QuizConnect({ question, locked, onSubmit }) {
               onPointerDown={(e) => onDown(id, e)}
               onPointerMove={onMove}
               onPointerUp={(e) => onUp(id, e)}
-              className={`relative ${isImg ? 'h-full' : ''} flex items-center max-w-full touch-none select-none cursor-pointer active:opacity-90`}
+              className={`relative ${isImg ? 'h-full' : 'w-full'} flex items-center justify-center max-w-full touch-none select-none cursor-pointer active:opacity-90`}
             >
               <ConnectItem item={item} relation={question.relation} state={state} />
               <span
