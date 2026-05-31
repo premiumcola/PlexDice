@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, MoreVertical, Dices, BarChart3, Trophy, Loader2, Medal } from 'lucide-react';
 import { navigate } from '../../router';
-import { quizHistory, quizTopMovies, quizDeleteRound } from '../../api';
+import { quizHistory, quizTopMovies, quizDeleteRound, quizLeaderboard } from '../../api';
 import { relativeDate, fmt, scoreRank } from './util';
 
 const MEDALS = ['🥇', '🥈', '🥉'];
@@ -78,6 +78,27 @@ function StatsTab({ topMovies }) {
   );
 }
 
+// Shared, server-side leaderboard (top player scores across the whole instance).
+function LeaderboardTab({ board }) {
+  if (!board.length) {
+    return <p className="text-sm text-zinc-500 text-center py-8">Noch keine Einträge — spiel eine Runde und speichere deinen Namen.</p>;
+  }
+  return (
+    <div className="space-y-2">
+      {board.map((e, i) => (
+        <div key={`${e.name}-${e.ts}-${i}`} className="flex items-center gap-3 rounded-2xl bg-zinc-900/60 ring-1 ring-zinc-800 p-3">
+          <div className="w-8 text-center text-lg tabular-nums shrink-0">{MEDALS[i] || <span className="text-zinc-500">{i + 1}</span>}</div>
+          <div className="min-w-0 flex-1">
+            <div className="font-medium text-zinc-100 truncate">{e.name}</div>
+            <div className="text-xs text-zinc-500 tabular-nums mt-0.5">✓ {e.correct} · ✗ {e.wrong} · {relativeDate(e.ts)}</div>
+          </div>
+          <div className="font-display-tight text-2xl text-amber-400 tabular-nums shrink-0">{fmt(e.score)}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function QuizHistory() {
   // Arriving straight from a just-saved round: highlight it and rank by score so its placement is
   // obvious. The id rides in a ?saved= query param (the path-only router ignores the query).
@@ -86,6 +107,7 @@ export default function QuizHistory() {
   });
   const [rounds, setRounds] = useState([]);
   const [topMovies, setTopMovies] = useState([]);
+  const [board, setBoard] = useState([]); // shared server-side leaderboard entries
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('alle');
   const [sort, setSort] = useState(savedId ? 'beste' : 'neueste');
@@ -96,6 +118,7 @@ export default function QuizHistory() {
   const reload = () => {
     quizHistory().then((d) => setRounds(d.rounds || [])).catch(() => {}).finally(() => setLoading(false));
     quizTopMovies().then((d) => setTopMovies(d.movies || [])).catch(() => {});
+    quizLeaderboard().then((d) => setBoard(d.entries || [])).catch(() => {});
   };
   useEffect(reload, []);
 
@@ -169,6 +192,10 @@ export default function QuizHistory() {
             className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-sm font-medium ${tab === 'rounds' ? 'bg-amber-400 text-zinc-950' : 'text-zinc-400'}`}>
             <Trophy className="w-4 h-4" /> Runden
           </button>
+          <button type="button" onClick={() => setTab('board')}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-sm font-medium ${tab === 'board' ? 'bg-amber-400 text-zinc-950' : 'text-zinc-400'}`}>
+            <Medal className="w-4 h-4" /> Bestenliste
+          </button>
           <button type="button" onClick={() => setTab('stats')}
             className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-sm font-medium ${tab === 'stats' ? 'bg-amber-400 text-zinc-950' : 'text-zinc-400'}`}>
             <BarChart3 className="w-4 h-4" /> Lernkurve
@@ -186,6 +213,8 @@ export default function QuizHistory() {
           <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-zinc-500" /></div>
         ) : tab === 'stats' ? (
           <StatsTab topMovies={topMovies} />
+        ) : tab === 'board' ? (
+          <LeaderboardTab board={board} />
         ) : rounds.length === 0 ? (
           <p className="text-sm text-zinc-500 text-center py-12">Noch keine Runden gespielt.</p>
         ) : (

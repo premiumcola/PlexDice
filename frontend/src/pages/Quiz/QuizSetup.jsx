@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ArrowLeft, X, Camera, Play, Loader2, AlertCircle } from 'lucide-react';
 import { navigate } from '../../router';
-import { quizNewRound, quizUploadPhoto, quizGetConfig } from '../../api';
+import { quizNewRound, quizUploadPhoto, quizGetConfig, quizPlayers } from '../../api';
 import { saveRound } from './store';
 import { initAudio } from './audio';
 
@@ -17,6 +17,7 @@ export default function QuizSetup() {
   const [name, setName] = useState('');
   const [players, setPlayers] = useState([]);
   const [playerInput, setPlayerInput] = useState('');
+  const [roster, setRoster] = useState([]); // shared saved names (server-side), reusable quick-picks
   const [size, setSize] = useState(50);
   const [difficulty, setDifficulty] = useState('medium');
   const [photoPreview, setPhotoPreview] = useState(null);
@@ -32,6 +33,7 @@ export default function QuizSetup() {
         if (c.default_size) setSize(c.default_size);
       })
       .catch(() => {});
+    quizPlayers().then((d) => setRoster(d.players || [])).catch(() => {});
   }, []);
 
   const addPlayer = () => {
@@ -39,6 +41,7 @@ export default function QuizSetup() {
     if (p && !players.includes(p)) setPlayers([...players, p]);
     setPlayerInput('');
   };
+  const pickPlayer = (p) => setPlayers((cur) => (cur.includes(p) ? cur : [...cur, p]));
 
   const onPhoto = async (e) => {
     const file = e.target.files?.[0];
@@ -116,6 +119,21 @@ export default function QuizSetup() {
               placeholder="Name + Enter"
               className="w-full px-4 py-3 rounded-xl bg-zinc-900 ring-1 ring-zinc-800 text-zinc-100 placeholder-zinc-600 outline-none focus:ring-2 focus:ring-amber-400/60"
             />
+            {/* Shared, reusable saved names — tap to add this player to the round. */}
+            {roster.filter((p) => !players.includes(p)).length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                {roster.filter((p) => !players.includes(p)).map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => pickPlayer(p)}
+                    className="px-3 py-1.5 rounded-full bg-zinc-800 text-zinc-200 text-sm ring-1 ring-zinc-700 active:scale-95 transition-transform"
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div>

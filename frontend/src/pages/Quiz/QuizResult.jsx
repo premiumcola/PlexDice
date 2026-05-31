@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Loader2, Save, Trophy, TrendingUp, AlertTriangle, Clock, Check, RotateCcw, SkipForward, Camera, Medal } from 'lucide-react';
 import { navigate } from '../../router';
-import { quizComplete, quizAbandon, quizHistory, quizRound, quizUploadPhoto } from '../../api';
+import { quizComplete, quizAbandon, quizHistory, quizRound, quizUploadPhoto, quizSubmitScore } from '../../api';
 import { loadResults, loadRound, clearRound } from './store';
 import { MODE_LABEL, fmt, scoreRank } from './util';
 
@@ -158,6 +158,11 @@ export default function QuizResult({ roundId }) {
         player_names: setup.playerNames || [],
         photo_id: photoId || null,
       });
+      // Submit one shared-leaderboard entry per player (the backend adds new names to the roster).
+      const names = (setup.playerNames && setup.playerNames.length ? setup.playerNames : [setup.name]).filter(Boolean);
+      await Promise.all(names.map((p) => quizSubmitScore({
+        name: p, score: results.score, correct, wrong: Math.max(0, size - correct), size,
+      }).catch(() => {})));
       clearRound(roundId);
       navigate(`/quiz/history?saved=${roundId}`);
     } catch {
