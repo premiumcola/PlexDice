@@ -511,7 +511,7 @@ _DEFS = [
     ModeDef("actor_filmography_multi", 3, "Filmografie", "Welche Filme gehören zu dieser Person? (Mehrfachauswahl)", ("poster", "cast"), b_actor_filmography_multi, _pool("actors")),
     ModeDef("writer_to_movie", 3, "Drehbuch → Film", "Welchen Film schrieb diese Person?", ("poster", "writers"), b_writer_to_movie, _pool("writers")),
     ModeDef("two_actors_to_shared", 3, "Zwei Stars → Film", "In welchem Film spielten beide mit?", ("poster", "cast"), b_two_actors_to_shared, _pool("actors")),
-    ModeDef("collection_member", 3, "Filmreihe", "Welcher Film gehört zu dieser Reihe?", ("poster", "collections"), b_collection_member, _pool("collections")),
+    ModeDef("collection_member", 1, "Filmreihe", "Welcher Film gehört zu dieser Reihe?", ("poster", "collections"), b_collection_member, _pool("collections")),
 ]
 
 MODES: Dict[str, ModeDef] = {d.id: d for d in _DEFS}
