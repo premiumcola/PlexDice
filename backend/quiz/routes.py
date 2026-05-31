@@ -58,11 +58,15 @@ def new_round():
 
     status = library_cache.status()
     generator = QuizGenerator(library_cache.movies(), status)
+    # Connect ("Verbinden") rounds are a configurable minority of the run; excluding "connect" from
+    # enabled_modes turns them off. Default ~20%.
+    connect_share = 0.0 if (enabled_modes and "connect" not in enabled_modes) else float(cfg.get("connect_share", 0.2))
     questions, meta = generator.build_round(
         size,
         difficulty=difficulty,
         enabled_modes=enabled_modes,
         avoid=history.recent_signatures(),
+        connect_share=connect_share,
     )
     if not questions:
         return jsonify({"error": "Nicht genug Daten für ein Quiz"}), 400

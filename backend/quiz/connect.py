@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import logging
 import random
+import uuid
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from quiz.library import QuizLibrary
@@ -171,10 +172,30 @@ def _assemble(relation: str, tagged_pairs: List[Tuple[Dict[str, Any], Any, str]]
         "tier": meta["tier"],
         "difficulty": meta["tier"],
         "hardest": meta["hardest"],
+        # Representative movie for recent-round signatures / review (a connect round spans 5 films).
+        "movie_key": tagged_pairs[0][0].get("key"),
         "pairs": pairs,
         "items": items,
         "columns": _arrange_columns(pair_items),
     }
+
+
+def _connection_key(a: str, b: str) -> str:
+    """Order-independent key for one match — must mirror the frontend connectionKey()."""
+    return "|".join(sorted([a, b]))
+
+
+def make_connect_question(relation: str, lib: QuizLibrary) -> Optional[Dict[str, Any]]:
+    """A connect round packaged as a quiz question: a stable id plus multi_select + correct_option_ids
+    (canonical pair keys) so the EXISTING multi-select scorer (session.record) validates the player's
+    submitted connections unchanged. Returns None if the round can't be built (caller falls back)."""
+    rnd = build_connect_round(relation, lib)
+    if not rnd:
+        return None
+    rnd["id"] = uuid.uuid4().hex
+    rnd["multi_select"] = True
+    rnd["correct_option_ids"] = [_connection_key(p["left"], p["right"]) for p in rnd["pairs"]]
+    return rnd
 
 
 def _mixed_pairs(lib: QuizLibrary) -> List[Tuple[Dict[str, Any], Any, str]]:

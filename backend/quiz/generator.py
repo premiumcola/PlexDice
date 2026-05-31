@@ -13,6 +13,7 @@ import random
 from collections import Counter
 from typing import Any, Dict, List, Optional, Set, Tuple
 
+from quiz.connect import CONNECT_RELATIONS, make_connect_question
 from quiz.library import QuizLibrary
 from quiz.modes import MODES, available_modes
 
@@ -40,6 +41,7 @@ class QuizGenerator:
         difficulty: str = "medium",
         enabled_modes: Optional[List[str]] = None,
         avoid: Optional[Set[str]] = None,
+        connect_share: float = 0.2,
     ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
         avoid = set(avoid or set())
         avail = set(self.available_modes())
@@ -80,12 +82,36 @@ class QuizGenerator:
             if question:
                 questions.append(question)
         random.shuffle(questions)
+        questions = self._inject_connect(questions, connect_share)
         tier_counts = Counter(qq.get("tier") for qq in questions)
         logger.info(
             "Quiz round built: difficulty=%s size=%d tiers=%s",
             difficulty, len(questions), dict(sorted(tier_counts.items())),
         )
         return questions, meta
+
+    def _inject_connect(self, questions: List[Dict[str, Any]], share: float) -> List[Dict[str, Any]]:
+        """Replace a spaced, non-adjacent MINORITY of slots with connect rounds (relation varied,
+        incl. 'mixed'). Runs on the FINAL order so no two connect rounds are ever adjacent. A slot
+        that can't build any connect round keeps its classic question (the Task-F fallback), so a
+        run always stays full."""
+        n = len(questions)
+        target = min(round(n * share), n // 2) if share > 0 else 0
+        if n < 3 or target <= 0:
+            return questions
+        even = list(range(0, n, 2))  # even indices differ by >= 2 → never adjacent
+        positions = sorted(random.sample(even, min(target, len(even))))
+        relations = list(CONNECT_RELATIONS.keys())
+        random.shuffle(relations)
+        ri = 0
+        for pos in positions:
+            for _ in range(len(relations)):
+                built = make_connect_question(relations[ri % len(relations)], self.lib)
+                ri += 1
+                if built:
+                    questions[pos] = built
+                    break
+        return questions
 
     @staticmethod
     def _even_tier_plan(tiers: List[int], size: int) -> List[int]:
