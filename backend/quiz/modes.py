@@ -492,7 +492,7 @@ def _pool(*tokens):
 
 
 _DEFS = [
-    ModeDef("cover_to_title", 1, "Cover → Titel", "Poster zum richtigen Titel zuordnen", ("poster",), b_cover_to_title, _pool()),
+    ModeDef("cover_to_title", 2, "Cover → Titel", "Poster zum richtigen Titel zuordnen", ("poster",), b_cover_to_title, _pool()),
     ModeDef("cover_to_decade", 1, "Cover → Jahrzehnt", "Aus welchem Jahrzehnt ist dieses Poster?", ("poster", "year"), b_cover_to_decade, _pool("year")),
     ModeDef("cover_to_genre", 1, "Cover → Genre", "Welches Genre hat dieser Film?", ("poster",), b_cover_to_genre, _pool()),
     ModeDef("cover_to_studio", 1, "Cover → Studio", "Welches Studio steckt dahinter?", ("poster", "studio"), b_cover_to_studio, _pool("studio")),

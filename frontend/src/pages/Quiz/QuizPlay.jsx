@@ -810,6 +810,17 @@ export default function QuizPlay({ roundId }) {
                   className={`w-full h-full object-cover ${STEM_IS_PERSON.has(q.mode) ? 'object-top' : 'object-center'}`}
                   style={q.mode === 'cover_to_title' && !revealCorrect ? { filter: 'blur(18px) brightness(0.85) saturate(1.15)', transform: 'scale(1.04)' } : undefined}
                 />
+                {/* Guess-poster: one small SHARP window over the heavy blur — a fair hint (a single
+                    clear detail) without giving the whole poster away. Lifts entirely on correct. */}
+                {q.mode === 'cover_to_title' && !revealCorrect && (
+                  <img
+                    src={q.stem.content}
+                    alt=""
+                    aria-hidden="true"
+                    className="absolute inset-0 w-full h-full object-cover object-center"
+                    style={{ transform: 'scale(1.04)', clipPath: 'circle(16% at 58% 42%)', WebkitClipPath: 'circle(16% at 58% 42%)' }}
+                  />
+                )}
               </div>
               {q.stem.caption && (
                 <div className="mt-2 shrink-0 text-center">
